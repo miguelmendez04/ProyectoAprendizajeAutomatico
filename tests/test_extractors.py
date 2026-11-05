@@ -53,3 +53,17 @@ def test_extractores_piden_columnas_explicitas(monkeypatch):
     assert "a_o" in pedidas["aaaa-1111"] and "ies_con_oferta" in pedidas["aaaa-1111"]
     assert "matriculados_2015" in pedidas["bbbb-2222"] and "id_g_nero" in pedidas["bbbb-2222"]
     assert pedidas["cccc-3333"] == ["cod_dpto", "dpto", "cod_mpio", "nom_mpio", "tipo_municipio", "longitud", "latitud"]
+
+
+def test_extract_ies_catalogo(monkeypatch):
+    pedidas = {}
+
+    def falso(dataset_id, dest, **kwargs):
+        pedidas[dataset_id] = (Path(dest).as_posix(), kwargs.get("columnas"))
+        return Path(dest)
+
+    monkeypatch.setattr(snies, "download_socrata", falso)
+    ruta = snies.extract_ies_catalogo({**CFG, "datasets": {**CFG["datasets"], "snies_ies": "dddd-4444"}})
+    assert ruta.as_posix() == "data/raw/snies/ies_catalogo.csv"
+    destino, columnas = pedidas["dddd-4444"]
+    assert {"c_digo_instituci_n", "nombre_instituci_n", "principal_seccional", "sector"} <= set(columnas)

@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.config import load_config
-from src.integrate.build import construir_dataset
+from src.integrate.build import construir_dataset, hay_exports_spadies
 from src.validate.dictionary import describir_columnas, generar_diccionario
 from src.validate.schema import validar
 
@@ -52,10 +52,11 @@ def main(config_path: str = "config/config.yaml", saltar_extract: bool = False) 
     if not saltar_extract:
         from src.extract.dane import extract_divipola
         from src.extract.saber11 import extract_saber11
-        from src.extract.snies import extract_snies
+        from src.extract.snies import extract_ies_catalogo, extract_snies
 
         extract_divipola(cfg)
         extract_snies(cfg)
+        extract_ies_catalogo(cfg)
         extract_saber11(cfg)
 
     reportes: list[pd.DataFrame] = []
@@ -63,7 +64,7 @@ def main(config_path: str = "config/config.yaml", saltar_extract: bool = False) 
     df, log = construir_dataset(cfg, reportes, notas)
 
     # Sin export de SPADIES la tasa es nula: se valida el resto, no el objetivo
-    hay_objetivo = Path(cfg["spadies"]["archivo"]).exists()
+    hay_objetivo = hay_exports_spadies(Path(cfg["spadies"]["directorio"]))
     validar(df, unidad, cfg["max_nulos_pct"], objetivo_obligatorio=hay_objetivo)
 
     processed = Path(cfg["rutas"]["processed"])

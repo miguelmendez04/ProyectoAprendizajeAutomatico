@@ -28,6 +28,20 @@ def _esqueleto(unidad: str, snies_mpio: pd.DataFrame, snies_programa: pd.DataFra
     return base
 
 
+def sede_por_ies(catalogo: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Municipio sede de cada IES (el que concentra más programas) y las IES con más de una sede.
+
+    SNIES registra un único código por institución; las seccionales pueden venir agregadas bajo
+    la sede principal, de modo que asignar toda la IES a un municipio es una aproximación.
+    """
+    cat = catalogo.dropna(subset=["cod_divipola_mpio"])
+    conteo = cat.groupby(["cod_ies", "cod_divipola_mpio", "sector", "caracter"], as_index=False).size()
+    conteo = conteo.sort_values(["cod_ies", "size", "cod_divipola_mpio"], ascending=[True, False, True])
+    sede = conteo.drop_duplicates("cod_ies")[["cod_ies", "cod_divipola_mpio", "sector", "caracter"]]
+    multisede = cat.groupby("cod_ies")["cod_divipola_mpio"].nunique()
+    return sede.reset_index(drop=True), sorted(multisede[multisede > 1].index)
+
+
 def _unir_rezagada(base, tabla, llave, cols, nombre, log):
     """Une `tabla` con sus columnas `cols` desplazadas un año (t-1)."""
     lag = rezagar_features(tabla, llave, cols, rezago=1)
@@ -53,7 +67,7 @@ def construir_dataset_desde_tablas(
     base = _esqueleto(unidad, snies_mpio, snies_programa) if objetivo is None else objetivo.copy()
     base = base[base["anio"].isin(anios)].reset_index(drop=True)
 
-    sede_ies = catalogo.drop_duplicates("cod_ies")[["cod_ies", "cod_divipola_mpio", "sector", "caracter"]]
+    sede_ies, _ = sede_por_ies(catalogo)
 
     if unidad == "ies":
         base = unir_con_perdida(base, sede_ies, ["cod_ies"], "catalogo_ies", log)
@@ -77,7 +91,8 @@ def construir_dataset_desde_tablas(
             base = unir_con_perdida(base, sede_ies[["cod_ies", "cod_divipola_mpio"]], ["cod_ies"], "sede_ies", log)
             base = base.dropna(subset=["cod_divipola_mpio"])
         # No se conserva el número de IES: se calcula con el objetivo del año t y sería fuga
-        base = base.groupby(LLAVE_MPIO, as_index=False).agg(tasa_desercion=("tasa_desercion", "mean"))
+        llave = LLAVE_MPIO + [c for c in ("semestre",) if c in base.columns]
+        base = base.groupby(llave, as_index=False).agg(tasa_desercion=("tasa_desercion", "mean"))
 
     # Variables municipales (todas rezagadas t-1)
     cols_saber = [c for c in saber_mpio.columns if c not in LLAVE_MPIO]
@@ -90,6 +105,13 @@ def construir_dataset_desde_tablas(
     if dane is not None:
         base = unir_con_perdida(base, dane, ["cod_divipola_mpio"], "dane", log)
     return base.reset_index(drop=True), log
+
+
+def hay_exports_spadies(directorio: Path) -> bool:
+    """True si el directorio tiene al menos un export `spadies_<codigo>_<nombre>.csv`."""
+    from src.extract.spadies import PATRON_ARCHIVO
+
+    return directorio.is_dir() and any(PATRON_ARCHIVO.match(p.name) for p in directorio.glob("*.csv"))
 
 
 def codigos_fuera_de_divipola(df: pd.DataFrame, divipola: pd.DataFrame) -> int:
@@ -160,13 +182,20 @@ def construir_dataset(
     snies_programa.to_csv(interim / "snies_matricula_programa.csv", index=False)
     catalogo.to_csv(interim / "snies_catalogo.csv", index=False)
 
-    archivo_spadies = Path(cfg["spadies"]["archivo"])
-    if archivo_spadies.exists():
-        objetivo = leer_spadies(archivo_spadies, cfg)
+    dir_spadies = Path(cfg["spadies"]["directorio"])
+    if hay_exports_spadies(dir_spadies):
+        objetivo = leer_spadies(cfg, notas)
         objetivo.to_csv(interim / "spadies.csv", index=False)
+        _, multisede = sede_por_ies(catalogo)
+        con_tasa = sorted(set(objetivo["cod_ies"]) & set(multisede))
+        if con_tasa:
+            notas.append(
+                f"IES con programas en más de un municipio ({len(con_tasa)}: {', '.join(con_tasa)}): SPADIES las "
+                "reporta agregadas y se asignan al municipio con más programas; el contexto territorial es una aproximación"
+            )
     else:
         objetivo = None
-        notas.append(f"SPADIES: no existe {archivo_spadies}; dataset preliminar con tasa_desercion nula")
+        notas.append(f"SPADIES: no hay exports en {dir_spadies}; dataset preliminar con tasa_desercion nula")
 
     return construir_dataset_desde_tablas(
         cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,

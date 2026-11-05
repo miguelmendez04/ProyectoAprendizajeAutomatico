@@ -46,7 +46,7 @@ def _escribir_crudos(raw):
     pd.DataFrame(prog).to_csv(raw / "snies" / "matricula_programa.csv", index=False)
 
 
-def _config(tmp_path, unidad):
+def _config(tmp_path, unidad, periodicidad="anual"):
     raw = tmp_path / "data" / "raw"
     cfg = {
         "unidad_analisis": unidad,
@@ -55,12 +55,8 @@ def _config(tmp_path, unidad):
                   "processed": str(tmp_path / "data" / "processed"), "reports": str(tmp_path / "reports")},
         "datasets": {},
         "manual": {"dane": str(raw / "dane" / "dane.csv"), "terridata": str(raw / "terridata" / "terridata.csv")},
-        "spadies": {
-            "archivo": str(raw / "spadies" / "desercion.csv"),
-            "tasa_en_porcentaje": True,
-            "columnas": {"codigo_ies": "cod_ies", "codigo_programa": "cod_snies_programa", "anio": "anio",
-                         "tasa_desercion": "tasa_desercion"},
-        },
+        "spadies": {"directorio": str(raw / "spadies"), "nacional": str(raw / "spadies" / "spadies_nacional.csv"),
+                    "periodicidad": periodicidad},
         "max_nulos_pct": 0.5,
     }
     ruta = tmp_path / "config.yaml"
@@ -68,18 +64,20 @@ def _config(tmp_path, unidad):
     return ruta, raw
 
 
-def _spadies(raw, con_programa):
-    d = pd.DataFrame({"codigo_ies": ["1101", "2833"], "anio": [2018, 2018], "tasa_desercion": ["10,5", "20"]})
-    if con_programa:
-        d["codigo_programa"] = ["10", "20"]
-    d.to_csv(raw / "spadies" / "desercion.csv", index=False)
+def _spadies(raw):
+    """Un export por IES (2016-1 a 2018-2); la tasa anual de 2018 es 0,105 (IES 1101) y 0,2 (IES 2833)."""
+    periodos = ["2016-1", "2016-2", "2017-1", "2017-2", "2018-1", "2018-2"]
+    for ies, nombre, desertores in (("1101", "NACIONAL", 105), ("2833", "OCCIDENTE", 200)):
+        texto = "TIPO;" + ";".join(periodos) + "\nDESERTORES;" + ";".join([str(desertores)] * 6)
+        texto += "\nMATRICULADOS;" + ";".join(["1000"] * 6) + "\n"
+        (raw / "spadies" / f"spadies_{ies}_{nombre}.csv").write_text(texto, encoding="utf-8")
 
 
-@pytest.mark.parametrize("unidad, col_llave", [("municipio", "cod_divipola_mpio"), ("ies", "cod_ies"), ("programa", "cod_ies")])
-def test_pipeline_end_to_end_con_fixtures(tmp_path, unidad, col_llave):
+@pytest.mark.parametrize("unidad", ["municipio", "ies"])
+def test_pipeline_end_to_end_con_fixtures(tmp_path, unidad):
     ruta, raw = _config(tmp_path, unidad)
     _escribir_crudos(raw)
-    _spadies(raw, con_programa=(unidad == "programa"))
+    _spadies(raw)
 
     salida = pipeline.main(str(ruta), saltar_extract=True)
 
@@ -134,9 +132,46 @@ def test_cambios_de_codigo_se_aplican_a_todas_las_fuentes(tmp_path):
     cfg["cambios_codigo"] = {"76001": "76002"}  # municipio con código cambiado
     ruta.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     _escribir_crudos(raw)
-    _spadies(raw, con_programa=False)
+    _spadies(raw)
 
     df = pd.read_csv(pipeline.main(str(ruta), saltar_extract=True), dtype={"cod_divipola_mpio": str})
 
     assert set(df["cod_divipola_mpio"]) == {"05001", "76002"}
     assert df["punt_global_media_t1"].notna().all()  # Saber 11 y SNIES siguieron al municipio renombrado
+
+
+def test_unidad_ies_semestral_agrega_semestre_a_la_llave(tmp_path):
+    ruta, raw = _config(tmp_path, "ies", periodicidad="semestre")
+    _escribir_crudos(raw)
+    _spadies(raw)
+
+    df = pd.read_csv(pipeline.main(str(ruta), saltar_extract=True), dtype={"cod_ies": str})
+
+    assert sorted(df["semestre"].unique()) == [1, 2] and len(df) == 4  # 2 IES x 2 semestres de 2018
+    assert df["punt_global_media_t1"].notna().all()  # el contexto territorial anual se une por el municipio sede
+
+
+def test_unidad_programa_sin_spadies_por_programa_error_claro(tmp_path):
+    ruta, raw = _config(tmp_path, "programa")
+    _escribir_crudos(raw)
+    _spadies(raw)
+    with pytest.raises(ValueError, match="cod_snies_programa"):
+        pipeline.main(str(ruta), saltar_extract=True)
+
+
+def test_ies_con_varias_sedes_se_asigna_a_la_de_mas_programas_y_se_senala(tmp_path):
+    ruta, raw = _config(tmp_path, "ies")
+    _escribir_crudos(raw)
+    _spadies(raw)
+    prog = pd.read_csv(raw / "snies" / "matricula_programa.csv", dtype=str)
+    extra = prog[prog["c_digo_de_la_instituci_n"] == "1101"].copy()
+    extra["c_digo_snies_delprograma"] = "11"
+    extra["c_digo_del_municipio_ies"] = "76001"  # un programa más, en Cali
+    extra["c_digo_del_municipio_programa"] = "76001"
+    pd.concat([prog, extra, extra.assign(c_digo_snies_delprograma="12")]).to_csv(raw / "snies" / "matricula_programa.csv", index=False)
+
+    df = pd.read_csv(pipeline.main(str(ruta), saltar_extract=True), dtype={"cod_ies": str, "cod_divipola_mpio": str})
+
+    assert df.set_index("cod_ies").loc["1101", "cod_divipola_mpio"] == "76001"  # 2 programas en Cali contra 1 en Medellín
+    log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
+    assert "IES con programas en más de un municipio (1: 1101)" in log

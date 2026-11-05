@@ -14,6 +14,18 @@ COLUMNAS_MATRICULA_PROGRAMA = [
     "c_digo_del_municipio_programa", "id_sector", "id_caracter", "a_o", "semestre", "id_g_nero",
     "matriculados_2015",
 ]
+# Catálogo oficial de IES: nombre, sector y si es sede principal o seccional.
+COLUMNAS_IES = [
+    "c_digo_instituci_n", "nombre_instituci_n", "principal_seccional", "sector", "car_cter_acad_mico",
+    "departamento_domicilio", "municipio_domicilio",
+]
+
+
+def extract_ies_catalogo(cfg: dict) -> Path:
+    """Descarga el catálogo de IES (`MEN_INSTITUCIONES EDUCACIÓN SUPERIOR`)."""
+    return download_socrata(
+        cfg["datasets"]["snies_ies"], Path(cfg["rutas"]["raw"]) / "snies" / "ies_catalogo.csv", columnas=COLUMNAS_IES
+    )
 
 
 def extract_snies(cfg: dict) -> dict[str, Path]:

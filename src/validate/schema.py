@@ -11,7 +11,9 @@ LLAVES = {
 PUNTAJE_MAX_SABER11 = 500  # el puntaje global de Saber 11 va de 0 a 500
 
 
-def construir_esquema(unidad: str, max_nulos_pct: float, objetivo_obligatorio: bool = True) -> pa.DataFrameSchema:
+def construir_esquema(
+    unidad: str, max_nulos_pct: float, objetivo_obligatorio: bool = True, semestral: bool = False
+) -> pa.DataFrameSchema:
     """Esquema con rangos, unicidad de la llave, tope de nulos por columna y consistencia.
 
     Las columnas se declaran opcionales (`required=False`): solo se validan las que existan.
@@ -51,7 +53,7 @@ def construir_esquema(unidad: str, max_nulos_pct: float, objetivo_obligatorio: b
             pa.Check(nulos_dentro_del_tope, error=f"alguna columna supera {max_nulos_pct:.0%} de nulos"),
             pa.Check(matriculados_mayor_que_desertores, error="matriculados < desertores"),
         ],
-        unique=LLAVES[unidad],
+        unique=LLAVES[unidad] + (['semestre'] if semestral else []),
         report_duplicates="all",
         strict=False,
         coerce=False,
@@ -60,4 +62,5 @@ def construir_esquema(unidad: str, max_nulos_pct: float, objetivo_obligatorio: b
 
 def validar(df, unidad: str, max_nulos_pct: float, objetivo_obligatorio: bool = True):
     """Valida `df`; lanza `pandera.errors.SchemaErrors` con todas las violaciones (lazy)."""
-    return construir_esquema(unidad, max_nulos_pct, objetivo_obligatorio).validate(df, lazy=True)
+    semestral = "semestre" in df.columns
+    return construir_esquema(unidad, max_nulos_pct, objetivo_obligatorio, semestral).validate(df, lazy=True)

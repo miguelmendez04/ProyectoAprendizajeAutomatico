@@ -15,7 +15,7 @@ La unidad de análisis (`ies | programa | municipio`), la ventana de años y los
 ## Regenerar `data/raw/` (no se versiona)
 - **Automático** (`pipeline.py` sin `--saltar-extract`): Saber 11 (`kgxf-xxbe`, ~3,4 M filas, ~25 min), matrícula SNIES y DIVIPOLA. datos.gov.co falla de forma intermitente (500/503); la descarga reintenta sola.
 - **Manual**:
-  - `data/raw/spadies/desercion_ies.csv` — export de la consulta pública de SPADIES (variable objetivo). Columnas esperadas en `config.yaml: spadies.columnas`. Sin este archivo el pipeline genera un dataset **preliminar** con `tasa_desercion` nula.
+  - `data/raw/spadies/spadies_<código SNIES>_<nombre>.csv` — un export de la consulta pública de SPADIES por IES (variable objetivo; las IES a descargar están en `reports/ies_a_descargar.csv`) y `spadies_nacional.csv` (total nacional, solo contexto y control). Formato y cálculo de la tasa en `reports/etl_log.md`. Sin exports el pipeline genera un dataset **preliminar** con `tasa_desercion` nula.
   - `data/raw/dane/dane_poblacion_nbi.csv` y `data/raw/terridata/terridata.csv` (formatos en `config.yaml`). Si faltan, la fuente se omite y se anota en `reports/etl_log.md`.
 
 ## Salidas

@@ -1,0 +1,127 @@
+"""Prueba end-to-end del pipeline con archivos crudos mínimos (formato real de datos.gov.co)."""
+import pandas as pd
+import pytest
+import yaml
+
+import pipeline
+from src.validate.schema import validar
+
+NIVELES = ["tecnica_profesional", "tecnologica", "universitaria", "especializacion", "maestria", "doctorado"]
+
+
+def _escribir_crudos(raw):
+    """Crea data/raw mínimo: 2 municipios (Medellín 05001, Cali 76001), 2 IES, años 2017-2018."""
+    (raw / "dane").mkdir(parents=True)
+    (raw / "snies").mkdir()
+    (raw / "saber11").mkdir()
+    (raw / "spadies").mkdir()
+
+    pd.DataFrame(
+        {"cod_dpto": ["05", "76"], "dpto": ["ANTIOQUIA", "VALLE DEL CAUCA"], "cod_mpio": ["05001", "76001"],
+         "nom_mpio": ["MEDELLÍN", "CALI"], "tipo_municipio": ["Municipio"] * 2,
+         "longitud": ["-75,5", "-76,5"], "latitud": ["6,2", "3,4"]}
+    ).to_csv(raw / "dane" / "divipola.csv", index=False)
+
+    # Saber 11 (periodo 2017 -> predice 2018); códigos sin cero a la izquierda
+    pd.DataFrame(
+        {"periodo": ["20172"] * 4, "cole_cod_mcpio_ubicacion": ["5001", "5001", "76001", "0"],
+         "punt_global": [250, 270, 300, 200], "fami_estratovivienda": ["Estrato 1", "Estrato 4", "Estrato 2", "Sin Estrato"],
+         "cole_naturaleza": ["OFICIAL", "NO OFICIAL", "OFICIAL", "OFICIAL"]}
+    ).to_csv(raw / "saber11" / "saber11.csv", index=False)
+
+    filas = []
+    for anio in ("2017", "2018"):
+        for cod, nombre in (("5001", "MEDELLÍN"), ("76001", "CALI")):
+            filas.append({"a_o": anio, "c_digo_delmunicipio": cod, "nombre_del_municipio": nombre,
+                          **{n: "10" for n in NIVELES}, "ies_con_oferta": "5"})
+    pd.DataFrame(filas).to_csv(raw / "snies" / "matricula_mpio.csv", index=False)
+
+    prog = []
+    for anio in ("2017", "2018"):
+        for ies, programa, mpio in (("1101", "10", "5001"), ("2833", "20", "76001")):
+            prog.append({"c_digo_de_la_instituci_n": ies, "c_digo_snies_delprograma": programa,
+                         "c_digo_del_municipio_ies": mpio, "c_digo_del_municipio_programa": mpio,
+                         "id_sector": "1", "id_caracter": "4", "a_o": anio, "semestre": "1",
+                         "id_g_nero": "1", "matriculados_2015": "30"})
+    pd.DataFrame(prog).to_csv(raw / "snies" / "matricula_programa.csv", index=False)
+
+
+def _config(tmp_path, unidad):
+    raw = tmp_path / "data" / "raw"
+    cfg = {
+        "unidad_analisis": unidad,
+        "anios": [2018],
+        "rutas": {"raw": str(raw), "interim": str(tmp_path / "data" / "interim"),
+                  "processed": str(tmp_path / "data" / "processed"), "reports": str(tmp_path / "reports")},
+        "datasets": {},
+        "manual": {"dane": str(raw / "dane" / "dane.csv"), "terridata": str(raw / "terridata" / "terridata.csv")},
+        "spadies": {
+            "archivo": str(raw / "spadies" / "desercion.csv"),
+            "tasa_en_porcentaje": True,
+            "columnas": {"codigo_ies": "cod_ies", "codigo_programa": "cod_snies_programa", "anio": "anio",
+                         "tasa_desercion": "tasa_desercion"},
+        },
+        "max_nulos_pct": 0.5,
+    }
+    ruta = tmp_path / "config.yaml"
+    ruta.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    return ruta, raw
+
+
+def _spadies(raw, con_programa):
+    d = pd.DataFrame({"codigo_ies": ["1101", "2833"], "anio": [2018, 2018], "tasa_desercion": ["10,5", "20"]})
+    if con_programa:
+        d["codigo_programa"] = ["10", "20"]
+    d.to_csv(raw / "spadies" / "desercion.csv", index=False)
+
+
+@pytest.mark.parametrize("unidad, col_llave", [("municipio", "cod_divipola_mpio"), ("ies", "cod_ies"), ("programa", "cod_ies")])
+def test_pipeline_end_to_end_con_fixtures(tmp_path, unidad, col_llave):
+    ruta, raw = _config(tmp_path, unidad)
+    _escribir_crudos(raw)
+    _spadies(raw, con_programa=(unidad == "programa"))
+
+    salida = pipeline.main(str(ruta), saltar_extract=True)
+
+    df = pd.read_csv(salida, dtype={"cod_divipola_mpio": str, "cod_ies": str})
+    assert salida.name == f"dataset_{unidad}.csv" and len(df) == 2
+    validar(df, unidad, max_nulos_pct=0.5)
+    assert df["tasa_desercion"].round(3).tolist() in ([0.105, 0.2], [0.2, 0.105])
+    assert df["punt_global_media_t1"].notna().all()  # Saber 2017 llegó como variable t-1
+    log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
+    assert "| saber11 |" in log and "filas_sin_match" in log
+    assert (tmp_path / "reports" / "data_dictionary.md").exists()
+
+
+def test_pipeline_sin_spadies_genera_dataset_preliminar(tmp_path):
+    ruta, raw = _config(tmp_path, "municipio")
+    _escribir_crudos(raw)  # sin export de SPADIES
+
+    salida = pipeline.main(str(ruta), saltar_extract=True)
+
+    df = pd.read_csv(salida, dtype={"cod_divipola_mpio": str})
+    assert df["tasa_desercion"].isna().all() and len(df) == 2
+    assert "SPADIES" in (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
+
+
+def test_codigos_fuera_de_divipola_se_cuentan():
+    from src.integrate.build import codigos_fuera_de_divipola
+
+    divipola = pd.DataFrame({"cod_divipola_mpio": ["05001"]})
+    df = pd.DataFrame({"cod_divipola_mpio": ["05001", "99999x", "76001", None]})
+    assert codigos_fuera_de_divipola(df, divipola) == 2  # los nulos no cuentan
+
+
+def test_bitacora_conserva_notas_manuales_entre_corridas(tmp_path):
+    ruta, raw = _config(tmp_path, "municipio")
+    _escribir_crudos(raw)
+    bitacora = tmp_path / "reports" / "etl_log.md"
+    bitacora.parent.mkdir(parents=True)
+    bitacora.write_text("# Bitácora\n\nDecisión manual: ventana 2015-2021.\n", encoding="utf-8")
+
+    pipeline.main(str(ruta), saltar_extract=True)
+    pipeline.main(str(ruta), saltar_extract=True)
+
+    texto = bitacora.read_text(encoding="utf-8")
+    assert texto.count("Decisión manual: ventana 2015-2021.") == 1
+    assert texto.count("| saber11 |") == 1  # el bloque automático se reemplaza, no se acumula

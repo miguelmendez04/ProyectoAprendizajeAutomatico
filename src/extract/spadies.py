@@ -26,10 +26,16 @@ def leer_spadies(path: Path, cfg: dict) -> pd.DataFrame:
     else:
         crudo = pd.read_csv(path, dtype=str)
 
-    faltantes = [c for c in cfg_s["columnas"] if c not in crudo.columns]
+    # Solo las columnas canónicas obligatorias deben venir en el export; las demás
+    # (p. ej. código de programa) del mapeo se usan si están presentes.
+    faltantes = [
+        orig for orig, canon in cfg_s["columnas"].items()
+        if orig not in crudo.columns and canon in COLUMNAS_OBLIGATORIAS
+    ]
     if faltantes:
         raise KeyError(f"SPADIES ({path.name}): faltan las columnas {faltantes}")
-    df = crudo[list(cfg_s["columnas"])].rename(columns=cfg_s["columnas"])
+    presentes = {orig: canon for orig, canon in cfg_s["columnas"].items() if orig in crudo.columns}
+    df = crudo[list(presentes)].rename(columns=presentes)
 
     df["cod_ies"] = df["cod_ies"].str.strip().str.replace(r"\.0+$", "", regex=True)
     df["anio"] = df["anio"].astype(float).astype(int)

@@ -6,6 +6,8 @@ Reglas de diseño:
   NBI) no llevan sufijo.
 - Cada join registra las filas de la base sin pareja en el log.
 """
+from pathlib import Path
+
 import pandas as pd
 
 from src.integrate.join import rezagar_features, unir_con_perdida
@@ -90,3 +92,73 @@ def construir_dataset_desde_tablas(
     if dane is not None:
         base = unir_con_perdida(base, dane, ["cod_divipola_mpio"], "dane", log)
     return base.reset_index(drop=True), log
+
+
+def codigos_fuera_de_divipola(df: pd.DataFrame, divipola: pd.DataFrame) -> int:
+    """Cuenta filas con código de municipio no nulo que no existe en el catálogo DIVIPOLA vigente."""
+    codigos = df["cod_divipola_mpio"].dropna()
+    return int((~codigos.isin(divipola["cod_divipola_mpio"])).sum())
+
+
+def construir_dataset(
+    cfg: dict,
+    reportes: list[pd.DataFrame] | None = None,
+    notas: list[str] | None = None,
+) -> tuple[pd.DataFrame, list[dict]]:
+    """Lee `data/raw/`, transforma cada fuente (guardando `data/interim/`) y construye el dataset.
+
+    `reportes` recibe los emparejamientos no exactos de municipios; `notas` recibe observaciones
+    de calidad (códigos fuera de DIVIPOLA, SPADIES ausente) para la bitácora.
+    """
+    from src.extract.dane import leer_manual
+    from src.extract.spadies import leer_spadies
+    from src.homologation.divipola import cargar_divipola
+    from src.integrate.aggregate import agregar_saber11_municipio
+    from src.transform.dane import transformar_dane, transformar_terridata
+    from src.transform.saber11 import leer_saber11
+    from src.transform.snies import (
+        transformar_snies_catalogo,
+        transformar_snies_matricula,
+        transformar_snies_matricula_programa,
+    )
+
+    notas = notas if notas is not None else []
+    raw, interim = Path(cfg["rutas"]["raw"]), Path(cfg["rutas"]["interim"])
+    interim.mkdir(parents=True, exist_ok=True)
+
+    divipola = cargar_divipola(raw / "dane" / "divipola.csv")
+    saber = agregar_saber11_municipio(leer_saber11(raw / "saber11" / "saber11.csv"))
+    crudo_mpio = pd.read_csv(raw / "snies" / "matricula_mpio.csv", dtype=str)
+    crudo_prog = pd.read_csv(raw / "snies" / "matricula_programa.csv", dtype=str)
+    snies_mpio = transformar_snies_matricula(crudo_mpio)
+    snies_programa = transformar_snies_matricula_programa(crudo_prog)
+    catalogo = transformar_snies_catalogo(crudo_prog)
+
+    crudo_dane = leer_manual(cfg["manual"]["dane"])
+    dane = transformar_dane(crudo_dane, divipola, reportes) if crudo_dane is not None else None
+    crudo_td = leer_manual(cfg["manual"]["terridata"])
+    terridata = transformar_terridata(crudo_td) if crudo_td is not None else None
+    for nombre, tabla in (("DANE", dane), ("TerriData", terridata)):
+        if tabla is None:
+            notas.append(f"{nombre}: no hay archivo manual en data/raw; la fuente no se integró")
+
+    for nombre, tabla in (("saber11_municipio", saber), ("snies_matricula_mpio", snies_mpio)):
+        fuera = codigos_fuera_de_divipola(tabla, divipola)
+        if fuera:
+            notas.append(f"{nombre}: {fuera} filas con código de municipio que no está en DIVIPOLA vigente")
+        tabla.to_csv(interim / f"{nombre}.csv", index=False)
+    snies_programa.to_csv(interim / "snies_matricula_programa.csv", index=False)
+    catalogo.to_csv(interim / "snies_catalogo.csv", index=False)
+
+    archivo_spadies = Path(cfg["spadies"]["archivo"])
+    if archivo_spadies.exists():
+        objetivo = leer_spadies(archivo_spadies, cfg)
+        objetivo.to_csv(interim / "spadies.csv", index=False)
+    else:
+        objetivo = None
+        notas.append(f"SPADIES: no existe {archivo_spadies}; dataset preliminar con tasa_desercion nula")
+
+    return construir_dataset_desde_tablas(
+        cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
+        objetivo=objetivo, dane=dane, terridata=terridata,
+    )

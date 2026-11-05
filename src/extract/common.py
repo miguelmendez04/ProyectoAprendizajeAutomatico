@@ -2,6 +2,7 @@
 import csv
 import hashlib
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +30,28 @@ def write_metadata(path: Path, fuente: str, url: str, filas: int) -> Path:
     return destino
 
 
+def _get_con_reintentos(url: str, params: dict, reintentos: int, espera_s: float) -> list[dict]:
+    """GET con reintentos y espera exponencial ante errores transitorios (5xx, 429, red).
+
+    datos.gov.co devuelve 500/503 de forma intermitente; los 4xx restantes se propagan de inmediato.
+    """
+    for intento in range(reintentos):
+        ultimo = intento == reintentos - 1
+        try:
+            respuesta = requests.get(url, params=params, timeout=300)
+            respuesta.raise_for_status()
+            return respuesta.json()
+        except requests.HTTPError as e:
+            codigo = getattr(e.response, "status_code", None)
+            transitorio = codigo is not None and (codigo >= 500 or codigo == 429)
+            if not transitorio or ultimo:
+                raise
+        except (requests.ConnectionError, requests.Timeout):
+            if ultimo:
+                raise
+        time.sleep(espera_s * 2**intento)
+
+
 def download_socrata(
     dataset_id: str,
     dest: Path,
@@ -36,6 +59,8 @@ def download_socrata(
     where: str | None = None,
     page_size: int = 50000,
     base_url: str = BASE_URL,
+    reintentos: int = 5,
+    espera_s: float = 2.0,
 ) -> Path:
     """Descarga un dataset de datos.gov.co paginando con $limit/$offset hasta página vacía.
 
@@ -55,9 +80,7 @@ def download_socrata(
                 params["$select"] = ",".join(columnas)
             if where:
                 params["$where"] = where  # filtro en el servidor (SoQL)
-            respuesta = requests.get(url, params=params, timeout=120)
-            respuesta.raise_for_status()
-            pagina = respuesta.json()
+            pagina = _get_con_reintentos(url, params, reintentos, espera_s)
             if not pagina:
                 break
             if escritor is None:

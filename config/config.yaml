@@ -11,6 +11,7 @@ rutas:
   raw: data/raw
   interim: data/interim
   processed: data/processed
+  reports: reports
 
 datasets:
   # Saber 11: dataset unificado, todos los periodos en una sola tabla (columna `periodo`, ej. 20152).
@@ -19,12 +20,19 @@ datasets:
   snies_matricula_programa: 5wck-szir  # matrícula por IES x programa x municipio (2015-2021)
   divipola_municipios: gdxc-w37w       # catálogo oficial de municipios
 
+# Archivos descargados a mano (DANE: cod_mpio, municipio, departamento, poblacion, nbi;
+# TerriData en formato largo: cod_municipio, anio, indicador, valor). Si no existen, se omiten.
+manual:
+  dane: data/raw/dane/dane_poblacion_nbi.csv
+  terridata: data/raw/terridata/terridata.csv
+
 # Export manual de la consulta pública de SPADIES (data/raw/spadies/).
 spadies:
   archivo: data/raw/spadies/desercion_ies.csv
   tasa_en_porcentaje: true             # el export trae la tasa en 0-100
   columnas:                            # columna del export -> columna canónica
     codigo_ies: cod_ies
+    codigo_programa: cod_snies_programa  # opcional (export por programa)
     anio: anio
     tasa_desercion: tasa_desercion
 

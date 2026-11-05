@@ -2,6 +2,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from src.extract import common
 
@@ -59,3 +60,48 @@ def test_where_filtra_en_servidor(monkeypatch, tmp_path):
     llamadas = _simular(monkeypatch, [[{"a": "1"}], []])
     common.download_socrata("abcd-1234", tmp_path / "d.csv", where="periodo >= '20141'", page_size=5)
     assert llamadas[0]["$where"] == "periodo >= '20141'"
+
+
+class _RespuestaError(_Respuesta):
+    def __init__(self, codigo):
+        super().__init__([])
+        self.status_code = codigo
+
+    def raise_for_status(self):
+        raise common.requests.HTTPError(f"{self.status_code} Server Error", response=self)
+
+
+def test_reintenta_ante_error_5xx_transitorio(monkeypatch, tmp_path):
+    respuestas = [_RespuestaError(503), _RespuestaError(500), _Respuesta([{"a": "1"}]), _Respuesta([])]
+    llamadas = []
+
+    def falso_get(url, params=None, timeout=None):
+        llamadas.append(dict(params))
+        return respuestas[len(llamadas) - 1]
+
+    monkeypatch.setattr(common.requests, "get", falso_get)
+    monkeypatch.setattr(common.time, "sleep", lambda s: None)
+    destino = common.download_socrata("abcd-1234", tmp_path / "d.csv", page_size=5)
+    assert len(pd.read_csv(destino)) == 1
+    assert [c["$offset"] for c in llamadas] == [0, 0, 0, 5]  # reintenta la misma página
+
+
+def test_se_rinde_tras_agotar_reintentos(monkeypatch, tmp_path):
+    monkeypatch.setattr(common.requests, "get", lambda url, params=None, timeout=None: _RespuestaError(503))
+    monkeypatch.setattr(common.time, "sleep", lambda s: None)
+    with pytest.raises(common.requests.HTTPError):
+        common.download_socrata("abcd-1234", tmp_path / "d.csv", page_size=5, reintentos=3)
+
+
+def test_no_reintenta_errores_4xx(monkeypatch, tmp_path):
+    llamadas = []
+
+    def falso_get(url, params=None, timeout=None):
+        llamadas.append(1)
+        return _RespuestaError(404)
+
+    monkeypatch.setattr(common.requests, "get", falso_get)
+    monkeypatch.setattr(common.time, "sleep", lambda s: None)
+    with pytest.raises(common.requests.HTTPError):
+        common.download_socrata("abcd-1234", tmp_path / "d.csv")
+    assert len(llamadas) == 1

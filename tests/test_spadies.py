@@ -70,3 +70,16 @@ def test_lee_excel(tmp_path):
     out = leer_spadies(ruta, CFG)
     assert out["tasa_desercion"].tolist() == pytest.approx([0.125])
     assert out["cod_ies"].tolist() == ["1101"]
+
+
+def test_columnas_opcionales_del_mapeo_pueden_faltar_en_el_export(tmp_path):
+    cfg = {"spadies": {**CFG["spadies"], "columnas": {**CFG["spadies"]["columnas"], "codigo_programa": "cod_snies_programa"}}}
+    ruta = _csv(tmp_path, "codigo_ies,anio,tasa_desercion\n1101,2015,5\n")
+    out = leer_spadies(ruta, cfg)
+    assert "cod_snies_programa" not in out.columns and len(out) == 1
+
+
+def test_columna_opcional_presente_se_conserva(tmp_path):
+    cfg = {"spadies": {**CFG["spadies"], "columnas": {**CFG["spadies"]["columnas"], "codigo_programa": "cod_snies_programa"}}}
+    ruta = _csv(tmp_path, "codigo_ies,codigo_programa,anio,tasa_desercion\n1101,10,2015,5\n1101,11,2015,6\n")
+    assert leer_spadies(ruta, cfg)["cod_snies_programa"].tolist() == ["10", "11"]

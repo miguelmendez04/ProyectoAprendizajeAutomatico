@@ -13,7 +13,6 @@ _CATALOGO = {
     "anio": ("—", "Año del objetivo (t). Las variables explicativas son del año t-1"),
     "sector": ("SNIES (MEN)", "Sector de la IES (id_sector: oficial/privada)"),
     "caracter": ("SNIES (MEN)", "Carácter académico de la IES (id_caracter)"),
-    "n_ies": ("SNIES (MEN)", "Número de IES con sede en el municipio incluidas en la tasa agregada"),
     "punt_global_media": ("Saber 11 (ICFES)", "Media del puntaje global de los estudiantes del municipio"),
     "punt_global_mediana": ("Saber 11 (ICFES)", "Mediana del puntaje global de los estudiantes del municipio"),
     "pct_estrato_bajo": ("Saber 11 (ICFES)", "Proporción de estudiantes de estratos 1-2 (entre los de estrato conocido)"),

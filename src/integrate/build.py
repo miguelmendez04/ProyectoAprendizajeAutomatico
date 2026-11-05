@@ -1,0 +1,92 @@
+"""Construcción del dataset integrado a la unidad de análisis configurada.
+
+Reglas de diseño:
+- Objetivo (tasa de deserción SPADIES) en el año t; todas las variables explicativas con año
+  entran rezagadas (t-1) para evitar fuga de datos. Las variables estáticas (sector, población,
+  NBI) no llevan sufijo.
+- Cada join registra las filas de la base sin pareja en el log.
+"""
+import pandas as pd
+
+from src.integrate.join import rezagar_features, unir_con_perdida
+
+LLAVE_MPIO = ["cod_divipola_mpio", "anio"]
+
+
+def _esqueleto(unidad: str, snies_mpio: pd.DataFrame, snies_programa: pd.DataFrame) -> pd.DataFrame:
+    """Llaves de la unidad con objetivo nulo (para cuando SPADIES aún no se ha exportado)."""
+    if unidad == "municipio":
+        base = snies_mpio[LLAVE_MPIO]
+    elif unidad == "ies":
+        base = snies_programa[["cod_ies", "anio"]]
+    else:
+        base = snies_programa[["cod_ies", "cod_snies_programa", "anio"]]
+    base = base.drop_duplicates().reset_index(drop=True)
+    base["tasa_desercion"] = float("nan")
+    return base
+
+
+def _unir_rezagada(base, tabla, llave, cols, nombre, log):
+    """Une `tabla` con sus columnas `cols` desplazadas un año (t-1)."""
+    lag = rezagar_features(tabla, llave, cols, rezago=1)
+    return unir_con_perdida(base, lag, llave, nombre, log)
+
+
+def construir_dataset_desde_tablas(
+    unidad: str,
+    anios: list[int],
+    saber_mpio: pd.DataFrame,
+    snies_mpio: pd.DataFrame,
+    snies_programa: pd.DataFrame,
+    catalogo: pd.DataFrame,
+    objetivo: pd.DataFrame | None = None,
+    dane: pd.DataFrame | None = None,
+    terridata: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, list[dict]]:
+    """Devuelve (dataset, log de joins) para la unidad `ies | programa | municipio`.
+
+    Si `objetivo` es None se genera un esqueleto con `tasa_desercion` nula.
+    """
+    log: list[dict] = []
+    base = _esqueleto(unidad, snies_mpio, snies_programa) if objetivo is None else objetivo.copy()
+    base = base[base["anio"].isin(anios)].reset_index(drop=True)
+
+    sede_ies = catalogo.drop_duplicates("cod_ies")[["cod_ies", "cod_divipola_mpio", "sector", "caracter"]]
+
+    if unidad == "ies":
+        base = unir_con_perdida(base, sede_ies, ["cod_ies"], "catalogo_ies", log)
+        mat = snies_programa.groupby(["cod_ies", "anio"], as_index=False)["matriculados"].sum()
+        mat = mat.rename(columns={"matriculados": "matriculados_ies"})
+        base = _unir_rezagada(base, mat, ["cod_ies", "anio"], ["matriculados_ies"], "matricula_ies", log)
+    elif unidad == "programa":
+        if "cod_snies_programa" not in base.columns:
+            raise ValueError(
+                "unidad 'programa' requiere cod_snies_programa en el objetivo (export de SPADIES por programa)"
+            )
+        prog = catalogo[["cod_ies", "cod_snies_programa", "cod_divipola_mpio_programa", "sector", "caracter"]]
+        prog = prog.rename(columns={"cod_divipola_mpio_programa": "cod_divipola_mpio"})
+        base = unir_con_perdida(base, prog, ["cod_ies", "cod_snies_programa"], "catalogo_programa", log)
+        mat = snies_programa.rename(columns={"matriculados": "matriculados_programa"})
+        llave = ["cod_ies", "cod_snies_programa", "anio"]
+        base = _unir_rezagada(base, mat, llave, ["matriculados_programa"], "matricula_programa", log)
+    else:  # municipio
+        if "cod_divipola_mpio" not in base.columns:
+            # la tasa de cada IES se asigna a su municipio sede
+            base = unir_con_perdida(base, sede_ies[["cod_ies", "cod_divipola_mpio"]], ["cod_ies"], "sede_ies", log)
+            base = base.dropna(subset=["cod_divipola_mpio"])
+            n_ies = ("cod_ies", "nunique")
+        else:
+            n_ies = ("tasa_desercion", "size")
+        base = base.groupby(LLAVE_MPIO, as_index=False).agg(tasa_desercion=("tasa_desercion", "mean"), n_ies=n_ies)
+
+    # Variables municipales (todas rezagadas t-1)
+    cols_saber = [c for c in saber_mpio.columns if c not in LLAVE_MPIO]
+    base = _unir_rezagada(base, saber_mpio, LLAVE_MPIO, cols_saber, "saber11", log)
+    mpio = snies_mpio.rename(columns={"matriculados": "mpio_matriculados", "ies_con_oferta": "mpio_ies_con_oferta"})
+    base = _unir_rezagada(base, mpio, LLAVE_MPIO, ["mpio_matriculados", "mpio_ies_con_oferta"], "snies_municipio", log)
+    if terridata is not None:
+        cols_td = [c for c in terridata.columns if c not in LLAVE_MPIO]
+        base = _unir_rezagada(base, terridata, LLAVE_MPIO, cols_td, "terridata", log)
+    if dane is not None:
+        base = unir_con_perdida(base, dane, ["cod_divipola_mpio"], "dane", log)
+    return base.reset_index(drop=True), log

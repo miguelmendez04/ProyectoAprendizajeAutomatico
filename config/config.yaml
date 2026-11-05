@@ -1,0 +1,32 @@
+# Configuración del ETL de deserción en educación superior (Colombia).
+# Todos los IDs de datasets fueron verificados contra datos.gov.co el 2026-11-05 (ver reports/fase0.md).
+
+# Unidad de análisis de la tabla final: ies | programa | municipio
+unidad_analisis: municipio
+
+# Ventana temporal común a todas las fuentes (objetivo y matrícula SNIES: 2015-2021).
+anios: [2015, 2016, 2017, 2018, 2019, 2020, 2021]
+
+rutas:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+
+datasets:
+  # Saber 11: dataset unificado, todos los periodos en una sola tabla (columna `periodo`, ej. 20152).
+  saber11: kgxf-xxbe
+  snies_matricula_mpio: y9ga-zwzy      # matrícula ES por municipio y nivel, desde 2005
+  snies_matricula_programa: 5wck-szir  # matrícula por IES x programa x municipio (2015-2021)
+  divipola_municipios: gdxc-w37w       # catálogo oficial de municipios
+
+# Export manual de la consulta pública de SPADIES (data/raw/spadies/).
+spadies:
+  archivo: data/raw/spadies/desercion_ies.csv
+  tasa_en_porcentaje: true             # el export trae la tasa en 0-100
+  columnas:                            # columna del export -> columna canónica
+    codigo_ies: cod_ies
+    anio: anio
+    tasa_desercion: tasa_desercion
+
+# Máximo de nulos tolerado por columna en la validación (proporción 0-1).
+max_nulos_pct: 0.5

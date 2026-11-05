@@ -1,0 +1,10 @@
+pandas
+requests
+pandera
+pyyaml
+pytest
+openpyxl
+matplotlib
+jupyter
+# opcional, solo para el mapa coroplético del EDA
+geopandas

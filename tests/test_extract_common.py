@@ -53,3 +53,9 @@ def test_metadata_json(monkeypatch, tmp_path):
     assert len(meta["sha256"]) == 64
     assert meta["fuente"] == "abcd-1234" and "abcd-1234" in meta["url"]
     assert destino.exists()
+
+
+def test_where_filtra_en_servidor(monkeypatch, tmp_path):
+    llamadas = _simular(monkeypatch, [[{"a": "1"}], []])
+    common.download_socrata("abcd-1234", tmp_path / "d.csv", where="periodo >= '20141'", page_size=5)
+    assert llamadas[0]["$where"] == "periodo >= '20141'"

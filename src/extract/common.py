@@ -33,6 +33,7 @@ def download_socrata(
     dataset_id: str,
     dest: Path,
     columnas: list[str] | None = None,
+    where: str | None = None,
     page_size: int = 50000,
     base_url: str = BASE_URL,
 ) -> Path:
@@ -52,6 +53,8 @@ def download_socrata(
             params = {"$limit": page_size, "$offset": offset, "$order": ":id"}
             if columnas:
                 params["$select"] = ",".join(columnas)
+            if where:
+                params["$where"] = where  # filtro en el servidor (SoQL)
             respuesta = requests.get(url, params=params, timeout=120)
             respuesta.raise_for_status()
             pagina = respuesta.json()

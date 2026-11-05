@@ -63,6 +63,18 @@ def aplicar_cambios_codigo(df: pd.DataFrame, col: str, cambios: dict[str, str]) 
     return out
 
 
+def _resolver_depto(depto_norm: str, departamentos: list[str]) -> str | None:
+    """Encuentra el departamento del catálogo: exacto, contenido ("SAN ANDRES") o parecido."""
+    if depto_norm in departamentos:
+        return depto_norm
+    if len(depto_norm) >= 4:
+        contenidos = [d for d in departamentos if depto_norm in d or d in depto_norm]
+        if len(contenidos) == 1:
+            return contenidos[0]
+    cercano = difflib.get_close_matches(depto_norm, departamentos, n=1, cutoff=0.8)
+    return cercano[0] if cercano else None
+
+
 def emparejar_por_nombre(
     df: pd.DataFrame,
     divipola: pd.DataFrame,
@@ -82,7 +94,7 @@ def emparejar_por_nombre(
     }
     codigos, reporte = [], []
     for nombre, depto in zip(df[col_municipio], df[col_depto]):
-        candidatos = por_depto.get(normalizar_texto(depto), {})
+        candidatos = por_depto.get(_resolver_depto(normalizar_texto(depto), list(por_depto)), {})
         norm = normalizar_texto(nombre)
         if norm in candidatos:
             codigos.append(candidatos[norm])
@@ -94,6 +106,7 @@ def emparejar_por_nombre(
             reporte.append((nombre, cercano[0], candidatos[cercano[0]], score))
         else:
             codigos.append(None)
+            reporte.append((nombre, None, None, float("nan")))  # sin pareja: también se reporta
     out = df.copy()
     out["cod_divipola_mpio"] = codigos
     columnas = ["nombre_original", "nombre_emparejado", "cod_divipola_mpio", "score"]

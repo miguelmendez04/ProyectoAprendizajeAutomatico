@@ -76,10 +76,8 @@ def construir_dataset_desde_tablas(
             # la tasa de cada IES se asigna a su municipio sede
             base = unir_con_perdida(base, sede_ies[["cod_ies", "cod_divipola_mpio"]], ["cod_ies"], "sede_ies", log)
             base = base.dropna(subset=["cod_divipola_mpio"])
-            n_ies = ("cod_ies", "nunique")
-        else:
-            n_ies = ("tasa_desercion", "size")
-        base = base.groupby(LLAVE_MPIO, as_index=False).agg(tasa_desercion=("tasa_desercion", "mean"), n_ies=n_ies)
+        # No se conserva el número de IES: se calcula con el objetivo del año t y sería fuga
+        base = base.groupby(LLAVE_MPIO, as_index=False).agg(tasa_desercion=("tasa_desercion", "mean"))
 
     # Variables municipales (todas rezagadas t-1)
     cols_saber = [c for c in saber_mpio.columns if c not in LLAVE_MPIO]
@@ -113,7 +111,8 @@ def construir_dataset(
     from src.extract.dane import leer_manual
     from src.extract.spadies import leer_spadies
     from src.homologation.divipola import cargar_divipola
-    from src.integrate.aggregate import agregar_saber11_municipio
+    from src.homologation.divipola import aplicar_cambios_codigo
+    from src.integrate.aggregate import agregar_saber11_municipio, excluir_anios_incompletos
     from src.transform.dane import transformar_dane, transformar_terridata
     from src.transform.saber11 import leer_saber11
     from src.transform.snies import (
@@ -127,17 +126,28 @@ def construir_dataset(
     interim.mkdir(parents=True, exist_ok=True)
 
     divipola = cargar_divipola(raw / "dane" / "divipola.csv")
-    saber = agregar_saber11_municipio(leer_saber11(raw / "saber11" / "saber11.csv"))
+    # Códigos de municipio que cambiaron: se aplican a cada fuente antes de agregar/unir
+    cambios = {str(k).zfill(5): str(v).zfill(5) for k, v in cfg.get("cambios_codigo", {}).items()}
+
+    def con_cambios(tabla, col="cod_divipola_mpio"):
+        return aplicar_cambios_codigo(tabla, col, cambios) if cambios and tabla is not None else tabla
+
+    saber_est = con_cambios(leer_saber11(raw / "saber11" / "saber11.csv", notas=notas))
+    sin_codigo = int(saber_est["cod_divipola_mpio"].isna().sum())
+    if sin_codigo:
+        notas.append(f"Saber 11: {sin_codigo} fila(s) sin código de municipio válido descartada(s)")
+    saber = excluir_anios_incompletos(agregar_saber11_municipio(saber_est), notas)
     crudo_mpio = pd.read_csv(raw / "snies" / "matricula_mpio.csv", dtype=str)
     crudo_prog = pd.read_csv(raw / "snies" / "matricula_programa.csv", dtype=str)
-    snies_mpio = transformar_snies_matricula(crudo_mpio)
-    snies_programa = transformar_snies_matricula_programa(crudo_prog)
+    snies_mpio = con_cambios(transformar_snies_matricula(crudo_mpio, notas))
+    snies_programa = transformar_snies_matricula_programa(crudo_prog, notas)
     catalogo = transformar_snies_catalogo(crudo_prog)
+    catalogo = con_cambios(con_cambios(catalogo), "cod_divipola_mpio_programa")
 
     crudo_dane = leer_manual(cfg["manual"]["dane"])
-    dane = transformar_dane(crudo_dane, divipola, reportes) if crudo_dane is not None else None
+    dane = con_cambios(transformar_dane(crudo_dane, divipola, reportes, notas)) if crudo_dane is not None else None
     crudo_td = leer_manual(cfg["manual"]["terridata"])
-    terridata = transformar_terridata(crudo_td) if crudo_td is not None else None
+    terridata = con_cambios(transformar_terridata(crudo_td)) if crudo_td is not None else None
     for nombre, tabla in (("DANE", dane), ("TerriData", terridata)):
         if tabla is None:
             notas.append(f"{nombre}: no hay archivo manual en data/raw; la fuente no se integró")

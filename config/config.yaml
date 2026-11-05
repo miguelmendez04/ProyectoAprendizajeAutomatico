@@ -7,6 +7,9 @@ unidad_analisis: municipio
 # Ventana temporal común a todas las fuentes (objetivo y matrícula SNIES: 2015-2021).
 anios: [2015, 2016, 2017, 2018, 2019, 2020, 2021]
 
+# Códigos DIVIPOLA que cambiaron (viejo: nuevo), ej. "94663": "94663". Se completa con el histórico de DANE (Fase 0 d).
+cambios_codigo: {}
+
 rutas:
   raw: data/raw
   interim: data/interim

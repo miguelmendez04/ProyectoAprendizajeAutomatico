@@ -72,3 +72,20 @@ def test_emparejar_sin_departamento_coincidente_queda_nulo(divipola):
     df = pd.DataFrame({"mpio": ["San Antonio"], "dpto": ["Atlantico"]})
     out, _ = emparejar_por_nombre(df, divipola, "mpio", "dpto")
     assert out["cod_divipola_mpio"].isna().all()
+
+
+def test_emparejar_departamento_con_otra_puntuacion_o_nombre_largo(divipola):
+    divipola = pd.concat([divipola, pd.DataFrame({
+        "cod_divipola_mpio": ["88001"], "cod_depto": ["88"], "municipio_norm": ["SAN ANDRES"],
+        "depto_norm": ["ARCHIPIELAGO DE SAN ANDRES, PROVIDENCIA Y SANTA CATALINA"]})], ignore_index=True)
+    df = pd.DataFrame({"mpio": ["Bogotá D.C.", "San Andrés"], "dpto": ["Bogotá D.C.", "San Andrés"]})
+    out, _ = emparejar_por_nombre(df, divipola, "mpio", "dpto")
+    assert out["cod_divipola_mpio"].tolist() == ["11001", "88001"]
+
+
+def test_emparejar_no_emparejados_quedan_en_el_reporte(divipola):
+    df = pd.DataFrame({"mpio": ["Atlantida"], "dpto": ["Antioquia"]})
+    out, reporte = emparejar_por_nombre(df, divipola, "mpio", "dpto")
+    assert out["cod_divipola_mpio"].isna().all()
+    assert len(reporte) == 1 and reporte.iloc[0]["nombre_original"] == "Atlantida"
+    assert pd.isna(reporte.iloc[0]["cod_divipola_mpio"])

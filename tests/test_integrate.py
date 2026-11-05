@@ -124,7 +124,8 @@ def test_municipio_agrega_la_tasa_de_las_ies_del_municipio():
     t["objetivo"] = pd.DataFrame({"cod_ies": ["1101", "2833"], "anio": [2018, 2018], "tasa_desercion": [0.10, 0.30]})
     df, _ = construir_dataset_desde_tablas("municipio", [2018], **t)
     fila = df[df["cod_divipola_mpio"] == "05001"].iloc[0]
-    assert fila["tasa_desercion"] == pytest.approx(0.20) and fila["n_ies"] == 2
+    assert fila["tasa_desercion"] == pytest.approx(0.20)
+    assert "n_ies" not in df.columns  # se calcula con el objetivo del año t: sería fuga
 
 
 def test_programa_requiere_codigo_de_programa_en_el_objetivo():
@@ -149,3 +150,25 @@ def test_sin_objetivo_genera_esqueleto_con_tasa_nula():
 def test_filtra_a_la_ventana_de_anios():
     df, _ = construir_dataset_desde_tablas("ies", [2019], **_tablas())
     assert set(df["anio"]) == {2019}
+
+
+def test_n_estudiantes_cuenta_solo_estudiantes_con_puntaje():
+    df = pd.DataFrame(
+        {"anio": [2014] * 3, "cod_divipola_mpio": ["05001"] * 3, "punt_global": [200.0, np.nan, 300.0],
+         "estrato": pd.array([1, 1, 1], dtype="Int64"), "colegio_oficial": [True, True, True]}
+    )
+    assert agregar_saber11_municipio(df).iloc[0]["n_estudiantes"] == 2
+
+
+def test_anios_con_cobertura_incompleta_se_detectan_y_se_excluyen():
+    from src.integrate.aggregate import anios_saber_incompletos, excluir_anios_incompletos
+
+    def agregado(anio, n):
+        return {"cod_divipola_mpio": "05001", "anio": anio, "punt_global_media": 250.0, "n_estudiantes": n}
+
+    saber = pd.DataFrame([agregado(2017, 540_000), agregado(2018, 32_000), agregado(2019, 560_000), agregado(2020, 15_000)])
+    assert anios_saber_incompletos(saber) == [2018, 2020]  # solo calendario B
+    notas = []
+    limpio = excluir_anios_incompletos(saber, notas)
+    assert set(limpio["anio"]) == {2017, 2019}
+    assert any("2018" in n and "2020" in n for n in notas)

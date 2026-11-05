@@ -24,7 +24,7 @@ def _escribir_crudos(raw):
 
     # Saber 11 (periodo 2017 -> predice 2018); códigos sin cero a la izquierda
     pd.DataFrame(
-        {"periodo": ["20172"] * 4, "cole_cod_mcpio_ubicacion": ["5001", "5001", "76001", "0"],
+        {"estu_consecutivo": ["a", "b", "c", "d"], "periodo": ["20172"] * 4, "cole_cod_mcpio_ubicacion": ["5001", "5001", "76001", "0"],
          "punt_global": [250, 270, 300, 200], "fami_estratovivienda": ["Estrato 1", "Estrato 4", "Estrato 2", "Sin Estrato"],
          "cole_naturaleza": ["OFICIAL", "NO OFICIAL", "OFICIAL", "OFICIAL"]}
     ).to_csv(raw / "saber11" / "saber11.csv", index=False)
@@ -90,6 +90,7 @@ def test_pipeline_end_to_end_con_fixtures(tmp_path, unidad, col_llave):
     assert df["punt_global_media_t1"].notna().all()  # Saber 2017 llegó como variable t-1
     log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
     assert "| saber11 |" in log and "filas_sin_match" in log
+    assert "Saber 11: 1 fila(s) sin código de municipio válido" in log  # el código "0" se cuenta, no se pierde en silencio
     assert (tmp_path / "reports" / "data_dictionary.md").exists()
 
 
@@ -125,3 +126,17 @@ def test_bitacora_conserva_notas_manuales_entre_corridas(tmp_path):
     texto = bitacora.read_text(encoding="utf-8")
     assert texto.count("Decisión manual: ventana 2015-2021.") == 1
     assert texto.count("| saber11 |") == 1  # el bloque automático se reemplaza, no se acumula
+
+
+def test_cambios_de_codigo_se_aplican_a_todas_las_fuentes(tmp_path):
+    ruta, raw = _config(tmp_path, "municipio")
+    cfg = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    cfg["cambios_codigo"] = {"76001": "76002"}  # municipio con código cambiado
+    ruta.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    _escribir_crudos(raw)
+    _spadies(raw, con_programa=False)
+
+    df = pd.read_csv(pipeline.main(str(ruta), saltar_extract=True), dtype={"cod_divipola_mpio": str})
+
+    assert set(df["cod_divipola_mpio"]) == {"05001", "76002"}
+    assert df["punt_global_media_t1"].notna().all()  # Saber 11 y SNIES siguieron al municipio renombrado

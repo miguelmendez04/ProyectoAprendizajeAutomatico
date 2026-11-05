@@ -84,3 +84,18 @@ def test_diccionario_contiene_todas_las_columnas(tmp_path):
         assert texto.count(f"| `{col}` |") == 1
     assert "0.0%" in texto  # % de nulos
     assert "Saber 11" in texto  # fuente inferida de las columnas conocidas
+
+
+@pytest.mark.parametrize("codigo", ["5001", "abc", "050011"])
+def test_codigo_de_municipio_mal_formado_falla(codigo):
+    df = _valido()
+    df.loc[0, "cod_divipola_mpio"] = codigo
+    with pytest.raises(SchemaErrors):
+        validar(df, "municipio", max_nulos_pct=0.5)
+
+
+def test_un_solo_objetivo_nulo_falla_cuando_es_obligatorio():
+    df = _valido()
+    df.loc[0, "tasa_desercion"] = float("nan")
+    with pytest.raises(SchemaErrors):
+        validar(df, "municipio", max_nulos_pct=0.5)

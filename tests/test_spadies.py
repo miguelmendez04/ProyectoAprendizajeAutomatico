@@ -1,4 +1,4 @@
-"""Pruebas del lector de exports manuales de SPADIES."""
+﻿"""Pruebas del lector de exports manuales de SPADIES."""
 import json
 import shutil
 
@@ -35,7 +35,7 @@ def test_escribe_metadata_junto_al_archivo(tmp_path):
     ruta = tmp_path / "spadies.csv"
     shutil.copy("tests/fixtures/spadies_ies.csv", ruta)
     leer_spadies(ruta, CFG)
-    meta = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))
+    meta = json.loads((tmp_path / "spadies.metadata.json").read_text(encoding="utf-8"))
     assert meta["filas"] == 4
 
 
@@ -83,3 +83,18 @@ def test_columna_opcional_presente_se_conserva(tmp_path):
     cfg = {"spadies": {**CFG["spadies"], "columnas": {**CFG["spadies"]["columnas"], "codigo_programa": "cod_snies_programa"}}}
     ruta = _csv(tmp_path, "codigo_ies,codigo_programa,anio,tasa_desercion\n1101,10,2015,5\n1101,11,2015,6\n")
     assert leer_spadies(ruta, cfg)["cod_snies_programa"].tolist() == ["10", "11"]
+
+
+
+def test_bandera_porcentaje_con_datos_en_proporcion_falla(tmp_path):
+    """tasa_en_porcentaje=true con valores 0-1 dejaría el objetivo dividido por 100 sin avisar."""
+    ruta = _csv(tmp_path, "codigo_ies,anio,tasa_desercion\n1101,2015,\"0,125\"\n2833,2015,\"0,2\"\n")
+    with pytest.raises(ValueError, match="tasa_en_porcentaje"):
+        leer_spadies(ruta, CFG)
+
+
+def test_bandera_proporcion_con_datos_en_porcentaje_falla(tmp_path):
+    cfg = {"spadies": {**CFG["spadies"], "tasa_en_porcentaje": False}}
+    ruta = _csv(tmp_path, "codigo_ies,anio,tasa_desercion\n1101,2015,12.5\n")
+    with pytest.raises(ValueError, match="tasa_en_porcentaje"):
+        leer_spadies(ruta, cfg)

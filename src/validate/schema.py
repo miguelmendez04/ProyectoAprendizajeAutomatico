@@ -36,7 +36,12 @@ def construir_esquema(unidad: str, max_nulos_pct: float, objetivo_obligatorio: b
 
     return pa.DataFrameSchema(
         columns={
-            "tasa_desercion": pa.Column(float, pa.Check.in_range(0, 1), required=False, nullable=True),
+            "tasa_desercion": pa.Column(
+                float, pa.Check.in_range(0, 1), required=False, nullable=not objetivo_obligatorio
+            ),
+            "cod_divipola_mpio": pa.Column(
+                checks=pa.Check.str_matches(r"^\d{5}$"), required=False, nullable=False
+            ),  # código DANE de 5 dígitos con ceros a la izquierda
             r"^punt_global_(media|mediana)_t\d+$": col(checks=pa.Check.in_range(0, PUNTAJE_MAX_SABER11)),
             r"^pct_.*": col(checks=pa.Check.in_range(0, 1)),
             r"^nbi_pct$": col(checks=pa.Check.in_range(0, 100)),

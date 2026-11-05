@@ -26,11 +26,14 @@ def transformar_dane(
     df: pd.DataFrame,
     divipola: pd.DataFrame | None = None,
     reportes: list[pd.DataFrame] | None = None,
+    notas: list[str] | None = None,
 ) -> pd.DataFrame:
     """Población y NBI por municipio (sin año). Entrada: cod_mpio, municipio, departamento, poblacion, nbi.
 
     Si falta el código pero hay nombre + departamento y se pasa `divipola`, se resuelve por nombre;
-    los emparejamientos no exactos se agregan a `reportes`.
+    los emparejamientos no exactos (y los fallidos) se agregan a `reportes`. Las filas que no se
+    pueden identificar se cuentan en `notas`. Si un municipio aparece más de una vez (p. ej. un
+    archivo con población por año) se lanza ValueError: la tabla es estática por municipio.
     """
     codigo = df["cod_mpio"].map(normalizar_codigo)
     sin_codigo = codigo.isna()
@@ -46,4 +49,10 @@ def transformar_dane(
             "nbi_pct": pd.to_numeric(df["nbi"], errors="coerce"),
         }
     )
-    return out.dropna(subset=["cod_divipola_mpio"]).drop_duplicates("cod_divipola_mpio").reset_index(drop=True)
+    descartadas = int(out["cod_divipola_mpio"].isna().sum())
+    if notas is not None and descartadas:
+        notas.append(f"DANE: {descartadas} fila(s) sin municipio identificable descartada(s)")
+    out = out.dropna(subset=["cod_divipola_mpio"])
+    if out["cod_divipola_mpio"].duplicated().any():
+        raise ValueError("DANE: municipios duplicados; la tabla debe traer una fila por municipio (estática)")
+    return out.reset_index(drop=True)

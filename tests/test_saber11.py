@@ -55,3 +55,26 @@ def test_leer_saber11_por_chunks_equivale_a_una_pasada(crudo):
 
     por_chunks = leer_saber11("tests/fixtures/saber11_muestra.csv", chunksize=7)
     pd.testing.assert_frame_equal(por_chunks, estandarizar_saber11(crudo))
+
+
+def test_leer_saber11_elimina_estudiantes_repetidos_entre_chunks():
+    """kgxf-xxbe trae el periodo 20194 con cada estudiante dos veces (mismo estu_consecutivo)."""
+    from src.transform.saber11 import leer_saber11
+
+    original = pd.read_csv("tests/fixtures/saber11_muestra.csv", dtype=str)
+    duplicado = pd.concat([original, original.iloc[:5]], ignore_index=True)
+    ruta = "tests/fixtures/_saber11_duplicado.tmp.csv"
+    duplicado.to_csv(ruta, index=False)
+    try:
+        notas = []
+        out = leer_saber11(ruta, chunksize=7, notas=notas)  # los duplicados caen en chunks distintos
+    finally:
+        import os
+        os.remove(ruta)
+    assert len(out) == len(original)
+    assert any("5 fila(s)" in n for n in notas)
+
+
+def test_columna_estu_consecutivo_es_obligatoria(crudo):
+    with pytest.raises(KeyError, match="estu_consecutivo"):
+        estandarizar_saber11(crudo.drop(columns=["estu_consecutivo"]))

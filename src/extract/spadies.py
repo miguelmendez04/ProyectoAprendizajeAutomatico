@@ -43,8 +43,14 @@ def leer_spadies(path: Path, cfg: dict) -> pd.DataFrame:
     tasa = pd.to_numeric(df["tasa_desercion"].str.replace(",", ".", regex=False), errors="coerce")
 
     tope = 100 if cfg_s.get("tasa_en_porcentaje", False) else 1
+    maximo = tasa.max()
+    # La bandera debe ser coherente con los datos: si no, el objetivo quedaría mal escalado sin avisar
+    if tope == 1 and 1 < maximo <= 100 and tasa.min() >= 0:
+        raise ValueError("SPADIES: tasa_en_porcentaje=false pero hay tasas mayores que 1; ¿vienen en porcentaje?")
     if tasa.isna().any() or ((tasa < 0) | (tasa > tope)).any():
         raise ValueError(f"SPADIES: tasa_desercion fuera de rango [0, {tope}] o no numérica")
+    if tope == 100 and 0 < maximo <= 1:
+        raise ValueError("SPADIES: tasa_en_porcentaje=true pero todas las tasas están entre 0 y 1; ¿vienen como proporción?")
     df["tasa_desercion"] = tasa / tope
 
     llave = [c for c in ("cod_ies", "cod_snies_programa", "cod_divipola_mpio", "anio") if c in df.columns]

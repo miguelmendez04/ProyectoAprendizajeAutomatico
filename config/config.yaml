@@ -43,6 +43,14 @@ spadies:
 # el promedio de los dos semestres). Con denominadores chicos la tasa es muy inestable (hay tasas cercanas a 100 %).
 min_matriculados_t2: 100
 
+# Posible cierre: una IES que dejó de reportar a SPADIES antes del final del archivo tiene tasas anómalas en sus últimos
+# semestres (los 2 previos al último reporte, y ese reporte). Con true esas filas se excluyen; la bandera `posible_cierre`
+# queda siempre en el dataset.
+excluir_posible_cierre: true
+
+# Las IES-año con tasa mayor que este umbral (tras el mínimo) se listan en reports/tasas_altas.csv
+umbral_tasa_alta: 0.5
+
 # Años de rezago de las variables de matrícula SNIES (2 = mismo desfase que el denominador de la tasa).
 # Saber 11 y TerriData se rezagan 1 año.
 rezago_matricula: 2
@@ -51,6 +59,10 @@ rezago_matricula: 2
 max_nulos_pct: 0.5
 
 # Partición para la fase de modelado (src/modelado/particion.py)
+modelado:
+  transformacion_objetivo: ninguna   # ninguna | logit  (src/modelado/objetivo.py)
+  epsilon_logit: 0.001               # la tasa se recorta a [epsilon, 1 - epsilon] antes del logit
+
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021

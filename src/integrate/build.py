@@ -170,6 +170,47 @@ def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: 
     return df
 
 
+def escribir_tasas_altas(cfg: dict, dataset: pd.DataFrame, destino: Path, notas: list[str]) -> pd.DataFrame:
+    """Lista las IES-año con tasa > `umbral_tasa_alta` tras el denominador mínimo y las escribe en `destino`.
+
+    Columnas: código, nombre (catálogo oficial), año, tasa, matrícula t-2 de SPADIES (denominador) y de SNIES,
+    último periodo reportado por la IES y la bandera de posible cierre. La lista se hace antes de excluir los
+    posibles cierres, para poder verlos.
+    """
+    from src.extract.spadies import leer_diferenciado, tabla_tasas_altas, tasas_semestrales
+
+    umbral = cfg.get("umbral_tasa_alta", 0.5)
+    anios = cfg["anios"]
+    largo = leer_diferenciado(Path(cfg["spadies"]["archivo"]))
+    semestrales = tasas_semestrales(largo)
+    semestrales.loc[semestrales["tasa_desercion"] > 1, "tasa_desercion"] = float("nan")
+    tabla = tabla_tasas_altas(semestrales, largo, umbral, cfg.get("min_matriculados_t2", 100),
+                              cfg["spadies"].get("periodicidad", "anual"))
+    tabla = tabla[tabla["anio"].between(min(anios), max(anios))]
+
+    catalogo = Path(cfg["rutas"]["raw"]) / "snies" / "ies_catalogo.csv"
+    if catalogo.exists():
+        nombres = pd.read_csv(catalogo, dtype=str).rename(columns={"c_digo_instituci_n": "cod_ies", "nombre_instituci_n": "nombre"})
+        tabla = tabla.merge(nombres[["cod_ies", "nombre"]].drop_duplicates("cod_ies"), on="cod_ies", how="left")
+    else:
+        tabla["nombre"] = pd.NA
+    llave = [c for c in ("cod_ies", "anio", "semestre") if c in tabla.columns]
+    if "matriculados_ies_t2" in dataset.columns:
+        tabla = tabla.merge(dataset[llave + ["matriculados_ies_t2"]].rename(columns={"matriculados_ies_t2": "matriculados_t2_snies"}),
+                            on=llave, how="left")
+    primeras = ["cod_ies", "nombre", "anio"] + (["semestre"] if "semestre" in tabla.columns else [])
+    resto = [c for c in tabla.columns if c not in primeras]
+    tabla = tabla[primeras + resto]
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    tabla.to_csv(destino, index=False, encoding="utf-8-sig")
+    en_cierre = int(tabla["posible_cierre"].sum())
+    notas.append(
+        f"SPADIES: {len(tabla)} IES-año de {tabla['cod_ies'].nunique()} IES con tasa > {umbral:.0%} tras el denominador mínimo "
+        f"(lista en {destino.as_posix()}); {en_cierre} en la ventana de posible cierre"
+    )
+    return tabla
+
+
 def hay_export_spadies(cfg: dict) -> bool:
     """True si existe el export de SPADIES configurado (`spadies.archivo`)."""
     return Path(cfg["spadies"]["archivo"]).is_file()
@@ -253,4 +294,7 @@ def construir_dataset(
         cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
         objetivo=objetivo, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
     )
-    return depurar_terridata(df, terridata, cfg["unidad_analisis"], cfg["max_nulos_pct"], notas), log
+    df = depurar_terridata(df, terridata, cfg["unidad_analisis"], cfg["max_nulos_pct"], notas)
+    if objetivo is not None:
+        escribir_tasas_altas(cfg, df, Path(cfg["rutas"].get("reports", "reports")) / "tasas_altas.csv", notas)
+    return df, log

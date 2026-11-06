@@ -140,15 +140,19 @@ from src.extract.spadies import leer_spadies
 minimo = cfg.get("min_matriculados_t2", 100)
 # Las rutas de config.yaml son relativas a la raíz del proyecto, no a notebooks/
 spadies_abs = {k: (str(ROOT / v) if k in ("archivo", "nacional") else v) for k, v in cfg["spadies"].items()}
-sin_filtro = leer_spadies({**cfg, "spadies": spadies_abs, "min_matriculados_t2": 0}, [])
-sin_filtro = sin_filtro[sin_filtro["anio"].between(min(cfg["anios"]), max(cfg["anios"]))]
+base = {**cfg, "spadies": spadies_abs, "excluir_posible_cierre": False}  # el efecto de los posibles cierres se ve aparte
+ventana = lambda t: t[t["anio"].between(min(cfg["anios"]), max(cfg["anios"]))]
+sin_filtro = ventana(leer_spadies({**base, "min_matriculados_t2": 0}, []))
+con_minimo = ventana(leer_spadies({**base, "min_matriculados_t2": minimo}, []))
 llave = ["cod_ies", "anio"]
-quitadas = sin_filtro.merge(df[llave], on=llave, how="left", indicator=True).query("_merge == 'left_only'")
+quitadas = sin_filtro.merge(con_minimo[llave], on=llave, how="left", indicator=True).query("_merge == 'left_only'")
 
 print(f"Mínimo de matrícula t-2: {minimo}")
-print(f"IES-año sin filtro: {len(sin_filtro):,} · con filtro: {len(df):,} · eliminadas: {len(quitadas):,} "
+print(f"IES-año sin filtro: {len(sin_filtro):,} · con el mínimo: {len(con_minimo):,} · eliminadas: {len(quitadas):,} "
       f"({len(quitadas) / len(sin_filtro):.1%}) · IES que desaparecen por completo: "
-      f"{sin_filtro['cod_ies'].nunique() - df['cod_ies'].nunique()}")
+      f"{sin_filtro['cod_ies'].nunique() - con_minimo['cod_ies'].nunique()}")
+print(f"Después se excluyen {len(con_minimo) - len(df):,} IES-año por posible cierre (excluir_posible_cierre = "
+      f"{cfg.get('excluir_posible_cierre', True)}): dataset final {len(df):,} filas, {df['cod_ies'].nunique()} IES")
 
 def resumen(serie):
     return pd.Series({"filas": len(serie), "media": serie.mean(), "mediana": serie.median(), "desv. est.": serie.std(),
@@ -156,19 +160,34 @@ def resumen(serie):
                       "filas con tasa > 50 %": int((serie > 0.5).sum())})
 
 comparacion = pd.DataFrame({"sin filtro": resumen(sin_filtro["tasa_desercion"]),
-                            "con filtro": resumen(df["tasa_desercion"]),
-                            "eliminadas": resumen(quitadas["tasa_desercion"])})
+                            "con el mínimo": resumen(con_minimo["tasa_desercion"]),
+                            "eliminadas por el mínimo": resumen(quitadas["tasa_desercion"]),
+                            "dataset final": resumen(df["tasa_desercion"])})
 display(comparacion.round(3))
 
 fig, ax = plt.subplots(figsize=(9, 3.8))
 bins = np.linspace(0, 1, 51)
 ax.hist(sin_filtro["tasa_desercion"], bins=bins, color=NARANJA, alpha=0.55, label="sin filtro")
-ax.hist(df["tasa_desercion"], bins=bins, color=AZUL, alpha=0.8, label="con filtro")
+ax.hist(con_minimo["tasa_desercion"], bins=bins, color=AZUL, alpha=0.8, label="con el mínimo")
 ax.set(title="Distribución de la tasa con y sin denominador mínimo", xlabel="tasa de deserción", ylabel="IES-año")
 ax.xaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
 ax.legend(frameon=False)
 plt.tight_layout()
 plt.show()
+"""),
+    md("""
+### IES-año con tasa > 50 % y posible cierre
+
+`reports/tasas_altas.csv` (lo escribe el pipeline) lista las IES-año con tasa mayor que `umbral_tasa_alta` tras el denominador
+mínimo, con el denominador de SPADIES, la matrícula t-2 de SNIES y el último periodo que reportó la IES. `posible_cierre` marca
+las filas que caen en los 2 semestres previos al último reporte (o en ese reporte) de una IES que dejó de reportar antes del final del archivo.
+"""),
+    code("""
+tasas_altas = pd.read_csv(ROOT / cfg["rutas"]["reports"] / "tasas_altas.csv", dtype={"cod_ies": str})
+display(tasas_altas.round({"tasa_desercion": 3, "matriculados_t2_spadies": 0}))
+print(f"{len(tasas_altas)} IES-año de {tasas_altas['cod_ies'].nunique()} IES · en ventana de posible cierre: "
+      f"{int(tasas_altas['posible_cierre'].sum())} · IES con último reporte 2024-2 (siguen activas): "
+      f"{(tasas_altas.drop_duplicates('cod_ies')['ultimo_periodo'] == '2024-2').sum()} de {tasas_altas['cod_ies'].nunique()}")
 """),
     md("## 3. Evolución 2015–2021"),
     code("""

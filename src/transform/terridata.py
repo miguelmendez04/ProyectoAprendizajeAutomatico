@@ -4,8 +4,9 @@ Cada indicador seleccionado se identifica por (dimensión, subcategoría, indica
 llevarlo al año t de la fila:
 - `anual`: el valor de ese año; si no hay dato queda nulo (no se arrastran valores viejos).
 - `censo`: el último censo ya levantado (NBI e IPM existen solo en 2005 y 2018): se arrastra hacia adelante.
-- `poblacion`: proyección DANE con base en el censo 2018, disponible desde 2018; para años anteriores se
-  completa hacia atrás con el primer dato (la población municipal cambia lento, pero es una aproximación).
+- `poblacion`: proyección DANE con base en el censo 2018 (Dim 2), disponible desde 2018. Para los años anteriores se usa
+  la proyección con base en el censo 2005 (Dim 25, columnas `*_b05`, 1985–2020): hay un cambio de base entre 2017 y 2018.
+  Si un municipio no está en la base 2005 se completa hacia atrás con su primer dato 2018 (aproximación).
 Las columnas salen con prefijo `td_`; el rezago t-1 lo aplica la integración.
 """
 import pandas as pd
@@ -27,6 +28,15 @@ INDICADORES = [
          "Porcentaje de población de 15 a 19 años", "poblacion", True),
     _ind("pct_pob_20_24", 2, "Población total por grupos quinquenales de edad", "Porcentaje de población entre los 20 y 24 años",
          "Porcentaje de población de 20 a 24 años", "poblacion", True),
+    # Población, proyecciones con base en el censo 2005 (Dim 25): solo se usan para los años sin base 2018
+    _ind("poblacion_hombres_b05", 25, "Población desagregada por sexo", "Población total de hombres", "Población de hombres (base 2005)", "base2005"),
+    _ind("poblacion_mujeres_b05", 25, "Población desagregada por sexo", "Población total de mujeres", "Población de mujeres (base 2005)", "base2005"),
+    _ind("poblacion_rural_b05", 25, "Población desagregada por área", "Población rural", "Población rural (base 2005)", "base2005"),
+    _ind("poblacion_urbana_b05", 25, "Población desagregada por área", "Población urbana", "Población urbana (base 2005)", "base2005"),
+    _ind("hombres_15_19_b05", 25, "Población de hombres", "Población de hombres de 15-19", "Hombres de 15 a 19 años (base 2005)", "base2005"),
+    _ind("mujeres_15_19_b05", 25, "Población de mujeres", "Población de mujeres de 15-19", "Mujeres de 15 a 19 años (base 2005)", "base2005"),
+    _ind("hombres_20_24_b05", 25, "Población de hombres", "Población de hombres de 20-24", "Hombres de 20 a 24 años (base 2005)", "base2005"),
+    _ind("mujeres_20_24_b05", 25, "Población de mujeres", "Población de mujeres de 20-24", "Mujeres de 20 a 24 años (base 2005)", "base2005"),
     # Educación (Dim 4)
     _ind("cob_bruta_total", 4, "Acceso a la educación", "Cobertura bruta en educación - Total", "Cobertura bruta en educación (preescolar a media), %"),
     _ind("cob_bruta_media", 4, "Acceso a la educación", "Cobertura bruta en educación media", "Cobertura bruta en educación media, %"),
@@ -93,6 +103,34 @@ def _completar(ancho: pd.DataFrame, columnas: list[str], hacia_atras: bool) -> p
     return ancho
 
 
+def _sumar(ancho: pd.DataFrame, *columnas: str) -> pd.Series:
+    """Suma de columnas; nula si falta alguna (o la columna no existe)."""
+    if any(c not in ancho for c in columnas):
+        return pd.Series(float("nan"), index=ancho.index)
+    return ancho[list(columnas)].sum(axis=1, min_count=len(columnas))
+
+
+def _derivar_poblacion(ancho: pd.DataFrame) -> pd.DataFrame:
+    """Arma población total, % rural y % de 15–19 y 20–24 años; usa la base 2018 y, donde falta, la base 2005."""
+    b05_total = _sumar(ancho, "poblacion_hombres_b05", "poblacion_mujeres_b05")
+    derivadas = {
+        "poblacion_total": (_sumar(ancho, "poblacion_hombres", "poblacion_mujeres"), b05_total),
+        "pct_poblacion_rural": (ancho.get("pct_poblacion_rural"),
+                                100 * ancho.get("poblacion_rural_b05", float("nan")) / _sumar(ancho, "poblacion_rural_b05", "poblacion_urbana_b05")),
+        "pct_pob_15_19": (ancho.get("pct_pob_15_19"), 100 * _sumar(ancho, "hombres_15_19_b05", "mujeres_15_19_b05") / b05_total),
+        "pct_pob_20_24": (ancho.get("pct_pob_20_24"), 100 * _sumar(ancho, "hombres_20_24_b05", "mujeres_20_24_b05") / b05_total),
+    }
+    hay_poblacion = {"poblacion_hombres", "poblacion_mujeres"} & set(ancho.columns) or any(c.endswith("_b05") for c in ancho)
+    ancho = ancho.drop(columns=[c for c in ancho.columns if c.endswith("_b05") or c in ("poblacion_hombres", "poblacion_mujeres")])
+    if not hay_poblacion:
+        return ancho
+    for columna, (base2018, base2005) in derivadas.items():
+        if base2018 is None and base2005.isna().all():
+            continue  # el indicador no está en ninguna de las dos bases
+        ancho[columna] = base2018.combine_first(base2005) if base2018 is not None else base2005
+    return ancho
+
+
 def transformar_terridata(largo: pd.DataFrame, anios: list[int]) -> pd.DataFrame:
     """Formato largo (cod_divipola_mpio, anio, columna, valor) -> ancho `td_*` por municipio x año.
 
@@ -104,13 +142,8 @@ def transformar_terridata(largo: pd.DataFrame, anios: list[int]) -> pd.DataFrame
     ancho = largo.pivot_table(index=["cod_divipola_mpio", "anio"], columns="columna", values="valor", aggfunc="mean")
     ancho.columns.name = None
     modos = {i["columna"]: i["modo"] for i in INDICADORES}
-    if {"poblacion_hombres", "poblacion_mujeres"} & set(ancho.columns):
-        for c in ("poblacion_hombres", "poblacion_mujeres"):
-            if c not in ancho:
-                ancho[c] = float("nan")
-        ancho["poblacion_total"] = ancho["poblacion_hombres"] + ancho["poblacion_mujeres"]
-        ancho = ancho.drop(columns=["poblacion_hombres", "poblacion_mujeres"])
-        modos["poblacion_total"] = "poblacion"
+    ancho = _derivar_poblacion(ancho)
+    modos.update({c: "poblacion" for c in ("poblacion_total", "pct_poblacion_rural", "pct_pob_15_19", "pct_pob_20_24")})
     # malla completa municipio x año para poder arrastrar valores entre años
     municipios = ancho.index.get_level_values(0).unique()
     anios_malla = sorted(set(ancho.index.get_level_values(1)) | set(origen))

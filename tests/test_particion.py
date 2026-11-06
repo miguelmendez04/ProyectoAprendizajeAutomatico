@@ -69,3 +69,8 @@ def test_cargar_dataset_conserva_codigos_como_texto(tmp_path):
     cfg = {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}}
     df = cargar_dataset(cfg)
     assert df["cod_divipola_mpio"].iloc[0] == "05001" and df["sector"].iloc[0] == "2" and df["cod_ies"].iloc[0] == "1830"
+
+
+def test_la_bandera_posible_cierre_no_es_explicativa():
+    df = _df().assign(posible_cierre=False)
+    assert "posible_cierre" not in columnas_explicativas(df)

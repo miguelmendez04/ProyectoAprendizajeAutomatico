@@ -1,5 +1,6 @@
 ﻿"""Pruebas del lector de SPADIES (export "IES: Diferenciado": `IES;TIPO;1998-1;…`, dos filas por IES)."""
 import json
+import os
 
 import pandas as pd
 import pytest
@@ -120,7 +121,7 @@ def test_tasa_anual_es_ponderada_por_el_denominador_y_exige_ambos_semestres(tmp_
 def test_leer_spadies_anual_y_semestral(tmp_path):
     _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
     anual = leer_spadies(_cfg(tmp_path), [])
-    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion"} and len(anual) == 2
+    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion", "posible_cierre"} and len(anual) == 2
     sem = leer_spadies(_cfg(tmp_path, "semestre"), [])
     assert {"cod_ies", "anio", "semestre", "tasa_desercion"} <= set(sem.columns) and len(sem) == 6
     assert sem["tasa_desercion"].between(0, 1).all()
@@ -229,3 +230,66 @@ def test_notas_explican_las_ies_que_no_llegan(tmp_path):
     notas: list[str] = []
     leer_spadies(cfg, notas)
     assert any("1 de 2 IES de SPADIES no tienen tasa anual en 2015–2016" in n and "8888" in n for n in notas)
+
+
+# ---- posible cierre y tasas altas ------------------------------------------------------------------
+
+def _largo_cierre():
+    """A reporta hasta 2018-2 (posible cierre); B reporta hasta el final (2020-2)."""
+    p = _periodos(2016, 2020)
+    a = _serie("A", p[:6], [30] * 6, [100] * 6)  # 2016-1 … 2018-2
+    b = _serie("B", p, [30] * 10, [100] * 10)
+    return pd.concat([a, b], ignore_index=True)
+
+
+def test_ultimo_reporte_es_el_ultimo_periodo_con_matricula():
+    from src.extract.spadies import ultimo_reporte
+
+    ultimo, global_ = ultimo_reporte(_largo_cierre())
+    assert ultimo["A"] == 2018 * 2 + 1 and ultimo["B"] == 2020 * 2 + 1 and global_ == 2020 * 2 + 1
+
+
+def test_posible_cierre_marca_los_ultimos_semestres_de_una_ies_que_dejo_de_reportar():
+    from src.extract.spadies import marcar_posible_cierre, ultimo_reporte
+
+    sem = tasas_semestrales(_largo_cierre())
+    ultimo, global_ = ultimo_reporte(_largo_cierre())
+    marcado = marcar_posible_cierre(sem, ultimo, global_).set_index(["ies", "periodo"])["posible_cierre"]
+    assert marcado[("A", "2018-2")] and marcado[("A", "2018-1")] and marcado[("A", "2017-2")]  # último semestre y los 2 previos
+    assert not marcado[("A", "2017-1")]
+    assert not marcado[[("B", p) for p in _periodos(2016, 2020)]].any()  # B sigue activa: el último reporte es el del corte
+
+
+def test_leer_spadies_excluye_posible_cierre_por_defecto_y_conserva_la_bandera(tmp_path):
+    p = _periodos(2016, 2020)
+    ruta = tmp_path / "spadies_diferenciado.csv"
+    # A reporta 2016-1 … 2018-2 y después las celdas vienen vacías; B reporta todo
+    filas = ["IES;TIPO;" + ";".join(p),
+             "A;DESERTORES;" + ";".join(["30"] * 6 + [""] * 4), "A;MATRICULADOS;" + ";".join(["100"] * 6 + [""] * 4),
+             "B;DESERTORES;" + ";".join(["30"] * 10), "B;MATRICULADOS;" + ";".join(["100"] * 10)]
+    ruta.write_text(os.linesep.join(filas) + os.linesep, encoding="utf-8-sig")
+    cfg = _cfg(tmp_path, "semestre")
+    notas: list[str] = []
+    out = leer_spadies(cfg, notas)
+    assert "posible_cierre" in out.columns and not out["posible_cierre"].any()
+    # de A solo sobrevive 2017-1: 2017-2, 2018-1 y 2018-2 caen en la ventana de cierre
+    assert out.loc[out["cod_ies"] == "A", ["anio", "semestre"]].values.tolist() == [[2017, 1]]
+    assert any("posible cierre" in n and "excluye" in n for n in notas)
+    cfg["excluir_posible_cierre"] = False
+    con = leer_spadies(cfg, [])
+    assert con.loc[con["cod_ies"] == "A", "posible_cierre"].sum() == 3
+
+
+def test_tabla_tasas_altas_lista_las_filas_sobre_el_umbral_con_su_ultimo_reporte(tmp_path):
+    from src.extract.spadies import tabla_tasas_altas
+
+    p = _periodos(2016, 2020)
+    alta = _serie("A", p[:6], [90] * 6, [100] * 6)  # tasa 0,9; deja de reportar en 2018-2
+    normal = _serie("B", p, [10] * 10, [100] * 10)
+    largo = pd.concat([alta, normal], ignore_index=True)
+    tabla = tabla_tasas_altas(tasas_semestrales(largo), largo, umbral=0.5, min_matriculados_t2=0, periodicidad="anual")
+    assert list(tabla.columns) == ["cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies", "ultimo_periodo", "posible_cierre"]
+    assert set(tabla["cod_ies"]) == {"A"}
+    fila = tabla.set_index("anio")
+    assert fila.loc[2017, "ultimo_periodo"] == "2018-2" and fila.loc[2017, "matriculados_t2_spadies"] == 100
+    assert fila.loc[2018, "posible_cierre"] and fila.loc[2017, "posible_cierre"]

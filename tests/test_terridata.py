@@ -111,3 +111,42 @@ def test_salida_cubre_los_anios_de_origen_del_rezago_t1():
     out = transformar_terridata(largo, anios=[2015, 2016])
     assert sorted(out["anio"].unique()) == [2014, 2015]  # t-1 de 2015 y 2016
     assert list(out.columns[:2]) == ["cod_divipola_mpio", "anio"] and out.columns[2:].tolist() == ["td_cob_superior"]
+
+
+# ---- población con la base 2005 (Dim 25) -----------------------------------------------------------
+
+def _b05(mpio, anio, **valores):
+    return [(mpio, anio, col, v) for col, v in valores.items()]
+
+
+def test_poblacion_anterior_a_2018_sale_de_la_base_2005_y_desde_2018_de_la_base_2018():
+    filas = []
+    for anio in range(2014, 2021):
+        filas += _b05("76001", anio, poblacion_hombres_b05=100.0 + anio - 2014, poblacion_mujeres_b05=110.0 + anio - 2014)
+    filas += _b05("76001", 2018, poblacion_hombres=200.0, poblacion_mujeres=210.0)
+    filas += _b05("76001", 2019, poblacion_hombres=202.0, poblacion_mujeres=212.0)
+    out = transformar_terridata(_largo(filas), anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")["td_poblacion_total"]
+    assert out.loc[2015] == 100 + 1 + 110 + 1 and out.loc[2017] == 100 + 3 + 110 + 3  # base 2005
+    assert out.loc[2018] == 410 and out.loc[2019] == 414  # base 2018 cuando existe (aunque la 2005 también tenga el año)
+
+
+def test_pct_rural_y_edades_se_derivan_de_los_conteos_de_la_base_2005():
+    filas = _b05("76001", 2016, poblacion_hombres_b05=50.0, poblacion_mujeres_b05=50.0, poblacion_rural_b05=20.0,
+                 poblacion_urbana_b05=80.0, hombres_15_19_b05=5.0, mujeres_15_19_b05=3.0,
+                 hombres_20_24_b05=4.0, mujeres_20_24_b05=6.0)
+    out = transformar_terridata(_largo(filas), anios=[2017]).iloc[0]
+    assert out["td_pct_poblacion_rural"] == pytest.approx(20.0)
+    assert out["td_pct_pob_15_19"] == pytest.approx(8.0) and out["td_pct_pob_20_24"] == pytest.approx(10.0)
+
+
+def test_las_columnas_de_la_base_2005_no_salen_en_el_resultado():
+    filas = _b05("76001", 2016, poblacion_hombres_b05=50.0, poblacion_mujeres_b05=50.0)
+    out = transformar_terridata(_largo(filas), anios=[2017])
+    assert not any(c.endswith("_b05") for c in out.columns) and "td_poblacion_total" in out.columns
+
+
+def test_lee_la_dimension_25(tmp_path):
+    h = _col("poblacion_hombres_b05")
+    _zip(tmp_path, 25, [_fila("76001", "Cali", h["subcategoria"], h["indicador"], "1.234,00", 2016, dim="25")])
+    largo = leer_terridata(tmp_path, dimensiones=[25])
+    assert largo[["columna", "valor", "anio"]].values.tolist() == [["poblacion_hombres_b05", 1234.0, 2016]]

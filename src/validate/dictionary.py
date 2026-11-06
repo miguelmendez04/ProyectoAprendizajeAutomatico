@@ -10,6 +10,7 @@ from src.transform.terridata import descripcion_columna
 _CATALOGO = {
     "tasa_desercion": ("SPADIES (MEN)", "Tasa de deserción anual como proporción 0-1. Variable objetivo"),
     "cod_divipola_mpio": ("DIVIPOLA (DANE)", "Código DANE del municipio, 5 dígitos con ceros a la izquierda"),
+    "posible_cierre": ("SPADIES (MEN)", "Bandera de diagnóstico: la fila cae en los 2 semestres previos al último reporte de una IES que dejó de reportar. No es explicativa"),
     "cod_ies": ("SNIES (MEN)", "Código de la institución de educación superior"),
     "cod_snies_programa": ("SNIES (MEN)", "Código SNIES del programa académico"),
     "anio": ("—", "Año del objetivo (t). Las variables explicativas son del año t-1"),

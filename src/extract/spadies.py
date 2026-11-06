@@ -90,19 +90,46 @@ def tasas_semestrales(largo: pd.DataFrame) -> pd.DataFrame:
     return out.drop(columns="_idx")
 
 
-def tasa_anual(semestrales: pd.DataFrame) -> pd.DataFrame:
+def tasa_anual(semestrales: pd.DataFrame, min_denominador: float = 0) -> pd.DataFrame:
     """Tasa anual = suma de desertores / suma de matriculados t-2 de los dos semestres del año.
 
     Equivale al promedio de las tasas semestrales ponderado por su denominador. Sin los dos
-    semestres no hay tasa anual.
+    semestres no hay tasa anual. Con `min_denominador` se excluyen los años cuyo denominador
+    anual (promedio de los dos semestres) es menor.
     """
     validas = semestrales.dropna(subset=["tasa_desercion"])
     g = validas.groupby(["ies", "anio"], as_index=False).agg(
         desertores=("desertores", "sum"), denominador=("matriculados_t2", "sum"), n=("semestre", "nunique")
     )
-    g = g[g["n"] == 2].rename(columns={"ies": "cod_ies"})
+    g = g[(g["n"] == 2) & (g["denominador"] / 2 >= min_denominador)].rename(columns={"ies": "cod_ies"})
     g["tasa_desercion"] = g["desertores"] / g["denominador"]
     return g[["cod_ies", "anio", "tasa_desercion"]].reset_index(drop=True)
+
+
+MOTIVO_ANTIGUA = "dejó de reportar antes de {desde}"
+MOTIVO_NUEVA = "empezó a reportar tan tarde que su primera tasa anual es posterior a {hasta}"
+MOTIVO_SIN_TASA = "sin ninguna tasa anual (menos de dos semestres con denominador)"
+MOTIVO_HUECO = "tiene tasa anual solo fuera de la ventana, con un vacío dentro de ella"
+
+
+def clasificar_ies_sin_tasa(semestrales: pd.DataFrame, anios: list[int]) -> dict[str, list[str]]:
+    """Motivo por el que cada IES de SPADIES no tiene ninguna tasa anual dentro de `anios` (sin mínimo de matrícula)."""
+    desde, hasta = min(anios), max(anios)
+    anual = tasa_anual(semestrales)
+    con_tasa = set(anual.loc[anual["anio"].between(desde, hasta), "cod_ies"])
+    motivos: dict[str, list[str]] = {}
+    for ies in sorted(set(semestrales["ies"]) - con_tasa):
+        anios_ies = anual.loc[anual["cod_ies"] == ies, "anio"]
+        if anios_ies.empty:
+            motivo = MOTIVO_SIN_TASA
+        elif anios_ies.max() < desde:
+            motivo = MOTIVO_ANTIGUA.format(desde=desde)
+        elif anios_ies.min() > hasta:
+            motivo = MOTIVO_NUEVA.format(hasta=hasta)
+        else:
+            motivo = MOTIVO_HUECO
+        motivos.setdefault(motivo, []).append(ies)
+    return motivos
 
 
 def validar_contra_nacional(largo_ies: pd.DataFrame, nacional: pd.DataFrame) -> list[str]:
@@ -150,7 +177,36 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
     if excesivas:
         notas.append(f"SPADIES: {excesivas} tasa(s) semestral(es) mayor que 1 (desertores > matrícula t-2); se descartan")
         semestrales.loc[semestrales["tasa_desercion"] > 1, "tasa_desercion"] = float("nan")
-    if periodicidad == "anual":
-        return tasa_anual(semestrales)
-    out = semestrales.dropna(subset=["tasa_desercion"]).rename(columns={"ies": "cod_ies"})
-    return out[["cod_ies", "anio", "semestre", "tasa_desercion"]].reset_index(drop=True)
+
+    anios = cfg.get("anios")
+    if anios:
+        motivos = clasificar_ies_sin_tasa(semestrales, anios)
+        total = largo["ies"].nunique()
+        n_sin = sum(len(v) for v in motivos.values())
+        if n_sin:
+            detalle = "; ".join(f"{m} ({len(c)}: {', '.join(c)})" for m, c in motivos.items())
+            notas.append(f"SPADIES: {n_sin} de {total} IES de SPADIES no tienen tasa anual en {min(anios)}–{max(anios)}: {detalle}")
+
+    minimo = cfg.get("min_matriculados_t2", 100)
+
+    def filas(minimo_t2: float) -> pd.DataFrame:
+        if periodicidad == "anual":
+            return tasa_anual(semestrales, minimo_t2)
+        fil = semestrales.dropna(subset=["tasa_desercion"])
+        fil = fil[fil["matriculados_t2"] >= minimo_t2].rename(columns={"ies": "cod_ies"})
+        return fil[["cod_ies", "anio", "semestre", "tasa_desercion"]].reset_index(drop=True)
+
+    def en_ventana(tabla: pd.DataFrame) -> pd.DataFrame:
+        return tabla[tabla["anio"].between(min(anios), max(anios))] if anios else tabla
+
+    out = filas(minimo)
+    if minimo > 0:
+        antes, despues = en_ventana(filas(0)), en_ventana(out)
+        quitadas = len(antes) - len(despues)
+        sin_filas = sorted(set(antes["cod_ies"]) - set(despues["cod_ies"]))
+        notas.append(
+            f"SPADIES: min_matriculados_t2={minimo} excluye {quitadas} IES-año ({quitadas / max(len(antes), 1):.1%} de {len(antes)}) "
+            f"con denominador menor; {len(sin_filas)} IES quedan sin ninguna fila"
+            + (f" ({', '.join(sin_filas[:15])}{', …' if len(sin_filas) > 15 else ''})" if sin_filas else "")
+        )
+    return out

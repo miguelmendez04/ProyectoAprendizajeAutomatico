@@ -165,3 +165,67 @@ def test_tasa_mayor_que_uno_se_senala_en_las_notas(tmp_path):
     notas: list[str] = []
     leer_spadies(_cfg(tmp_path, "semestre"), notas)
     assert any("mayor que 1" in n for n in notas)
+
+
+# ---- IES que no llegan al dataset y denominador mínimo ------------------------------------------
+
+def _serie(ies, periodos, desertores, matriculados):
+    return pd.DataFrame({"ies": ies, "periodo": periodos, "desertores": desertores, "matriculados": matriculados})
+
+
+def _periodos(desde, hasta):
+    return [f"{a}-{s}" for a in range(desde, hasta + 1) for s in (1, 2)]
+
+
+def test_ies_sin_tasa_en_la_ventana_se_clasifican_por_motivo():
+    from src.extract.spadies import clasificar_ies_sin_tasa
+
+    p = _periodos(2000, 2022)
+    n = len(p)
+    antigua = _serie("A", p[:18], [5] * 18, [100] * 18)  # reporta hasta 2008-2
+    nueva = _serie("B", p[-4:], [5] * 4, [100] * 4)  # primer dato en 2021-1: su primera tasa anual es la de 2022
+    un_semestre = _serie("C", p[-6:-3], [5] * 3, [100] * 3)  # datos 2020-1…2021-1: solo 2021-1 tiene denominador
+    normal = _serie("D", p, [5] * n, [100] * n)
+    largo = pd.concat([antigua, nueva, un_semestre, normal], ignore_index=True)
+    motivos = clasificar_ies_sin_tasa(tasas_semestrales(largo), anios=[2015, 2016, 2017, 2018, 2019, 2020, 2021])
+    assert motivos["dejó de reportar antes de 2015"] == ["A"]
+    assert motivos["empezó a reportar tan tarde que su primera tasa anual es posterior a 2021"] == ["B"]
+    assert motivos["sin ninguna tasa anual (menos de dos semestres con denominador)"] == ["C"]
+    assert "D" not in sum(motivos.values(), [])
+
+
+def test_min_matriculados_t2_excluye_ies_anio_con_denominador_pequeno(tmp_path):
+    chica = ([5, 5, 5, 5, 5], [10, 10, 10, 10, 10])  # denominador 10
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "9999": chica})
+    cfg = _cfg(tmp_path)
+    cfg["min_matriculados_t2"] = 100
+    notas: list[str] = []
+    out = leer_spadies(cfg, notas)
+    assert set(out["cod_ies"]) == {"1830"}
+    assert any("min_matriculados_t2" in n and "1 IES-año" in n and "9999" in n for n in notas)
+    cfg["min_matriculados_t2"] = 0
+    assert set(leer_spadies(cfg, [])["cod_ies"]) == {"1830", "9999"}
+
+
+def test_min_matriculados_t2_por_defecto_es_100(tmp_path):
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "9999": ([5] * 5, [10] * 5)})
+    assert set(leer_spadies(_cfg(tmp_path), [])["cod_ies"]) == {"1830"}  # sin la clave en la configuración
+
+
+def test_min_matriculados_t2_en_semestral_filtra_cada_fila(tmp_path):
+    # el denominador de 2015-1 es 99 (matrícula de 2014-1) y el de 2015-2 es 110
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": ([10, 12, 20, 30, 40], [99, 110, 200, 200, 300])})
+    cfg = _cfg(tmp_path, "semestre")
+    cfg["min_matriculados_t2"] = 100
+    out = leer_spadies(cfg, [])
+    assert out[["anio", "semestre"]].values.tolist() == [[2015, 2], [2016, 1]]  # 2015-1 queda fuera (99 < 100)
+
+
+def test_notas_explican_las_ies_que_no_llegan(tmp_path):
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": ([10, 12, 20, 30, 40], [100, 110, 200, 200, 300]),
+                                                          "8888": ([0, 0, 0, 0, 0], [0, 0, 0, 0, 5])})
+    cfg = _cfg(tmp_path)
+    cfg["anios"] = [2015, 2016]
+    notas: list[str] = []
+    leer_spadies(cfg, notas)
+    assert any("1 de 2 IES de SPADIES no tienen tasa anual en 2015–2016" in n and "8888" in n for n in notas)

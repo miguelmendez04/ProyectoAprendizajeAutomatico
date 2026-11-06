@@ -1,0 +1,71 @@
+"""Utilidades de partición para la fase de modelado."""
+import numpy as np
+import pandas as pd
+import pytest
+
+from src.modelado.particion import (
+    COLUMNAS_CATEGORICAS,
+    cargar_dataset,
+    columnas_explicativas,
+    particion_group_kfold,
+    particion_temporal,
+)
+
+
+def _df():
+    """10 IES x 2015-2021; 'cod_ies' como texto."""
+    filas = [{"cod_ies": str(i), "anio": a, "tasa_desercion": 0.1 + 0.01 * i, "x_t1": float(i + a)}
+             for i in range(10) for a in range(2015, 2022)]
+    return pd.DataFrame(filas)
+
+
+def test_group_kfold_nunca_reparte_una_ies_entre_entrenamiento_y_prueba():
+    df = _df()
+    for entrena, prueba in particion_group_kfold(df, n_splits=5):
+        assert set(df.iloc[entrena]["cod_ies"]).isdisjoint(set(df.iloc[prueba]["cod_ies"]))
+
+
+def test_group_kfold_cada_fila_es_de_prueba_exactamente_una_vez():
+    df = _df()
+    pruebas = np.concatenate([p for _, p in particion_group_kfold(df, n_splits=5)])
+    assert sorted(pruebas) == list(range(len(df)))
+
+
+def test_group_kfold_es_determinista_y_devuelve_n_particiones():
+    df = _df()
+    a = [p.tolist() for _, p in particion_group_kfold(df, n_splits=5)]
+    b = [p.tolist() for _, p in particion_group_kfold(df, n_splits=5)]
+    assert a == b and len(a) == 5
+
+
+def test_group_kfold_con_mas_particiones_que_ies_falla_con_mensaje_claro():
+    with pytest.raises(ValueError, match="IES"):
+        list(particion_group_kfold(_df(), n_splits=11))
+
+
+def test_temporal_entrena_hasta_2019_y_prueba_2020_2021():
+    df = _df()
+    entrena, prueba = particion_temporal(df, ultimo_anio_entrenamiento=2019)
+    assert set(df.iloc[entrena]["anio"]) == {2015, 2016, 2017, 2018, 2019}
+    assert set(df.iloc[prueba]["anio"]) == {2020, 2021}
+    assert len(entrena) + len(prueba) == len(df) and set(entrena).isdisjoint(prueba)
+
+
+def test_temporal_sin_filas_de_prueba_falla():
+    with pytest.raises(ValueError, match="prueba"):
+        particion_temporal(_df(), ultimo_anio_entrenamiento=2021)
+
+
+def test_columnas_explicativas_excluye_llaves_objetivo_y_texto():
+    df = _df().assign(sector="1", cod_divipola_mpio="05001")
+    assert columnas_explicativas(df) == ["x_t1"]
+    assert COLUMNAS_CATEGORICAS == ["sector", "caracter"]
+
+
+def test_cargar_dataset_conserva_codigos_como_texto(tmp_path):
+    ruta = tmp_path / "dataset_ies.csv"
+    pd.DataFrame({"cod_ies": ["1830"], "anio": [2018], "tasa_desercion": [0.1], "cod_divipola_mpio": ["05001"],
+                  "sector": [2], "caracter": [4]}).to_csv(ruta, index=False)
+    cfg = {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}}
+    df = cargar_dataset(cfg)
+    assert df["cod_divipola_mpio"].iloc[0] == "05001" and df["sector"].iloc[0] == "2" and df["cod_ies"].iloc[0] == "1830"

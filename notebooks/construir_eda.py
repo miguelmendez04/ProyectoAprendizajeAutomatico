@@ -127,6 +127,49 @@ display(altas[["cod_ies", "anio", "departamento", "naturaleza", "tasa_desercion"
 print("Matrícula t-2 mediana de las IES-año con tasa > 50 %:", altas["matriculados_ies_t2"].median(),
       "· del resto:", df.loc[df["tasa_desercion"] <= 0.5, "matriculados_ies_t2"].median())
 """),
+    md("""
+### Efecto del denominador mínimo (`min_matriculados_t2`)
+
+La tasa es desertores sobre la matrícula de dos semestres atrás; con denominadores chicos es muy inestable. El ETL excluye las
+IES-año cuyo denominador (promedio de los dos semestres de t-2) es menor que `min_matriculados_t2` de `config.yaml`. Aquí se
+compara el dataset sin ese filtro (mínimo = 0) con el que se usa.
+"""),
+    code("""
+from src.extract.spadies import leer_spadies
+
+minimo = cfg.get("min_matriculados_t2", 100)
+# Las rutas de config.yaml son relativas a la raíz del proyecto, no a notebooks/
+spadies_abs = {k: (str(ROOT / v) if k in ("archivo", "nacional") else v) for k, v in cfg["spadies"].items()}
+sin_filtro = leer_spadies({**cfg, "spadies": spadies_abs, "min_matriculados_t2": 0}, [])
+sin_filtro = sin_filtro[sin_filtro["anio"].between(min(cfg["anios"]), max(cfg["anios"]))]
+llave = ["cod_ies", "anio"]
+quitadas = sin_filtro.merge(df[llave], on=llave, how="left", indicator=True).query("_merge == 'left_only'")
+
+print(f"Mínimo de matrícula t-2: {minimo}")
+print(f"IES-año sin filtro: {len(sin_filtro):,} · con filtro: {len(df):,} · eliminadas: {len(quitadas):,} "
+      f"({len(quitadas) / len(sin_filtro):.1%}) · IES que desaparecen por completo: "
+      f"{sin_filtro['cod_ies'].nunique() - df['cod_ies'].nunique()}")
+
+def resumen(serie):
+    return pd.Series({"filas": len(serie), "media": serie.mean(), "mediana": serie.median(), "desv. est.": serie.std(),
+                      "p95": serie.quantile(0.95), "máximo": serie.max(), "asimetría": stats.skew(serie),
+                      "filas con tasa > 50 %": int((serie > 0.5).sum())})
+
+comparacion = pd.DataFrame({"sin filtro": resumen(sin_filtro["tasa_desercion"]),
+                            "con filtro": resumen(df["tasa_desercion"]),
+                            "eliminadas": resumen(quitadas["tasa_desercion"])})
+display(comparacion.round(3))
+
+fig, ax = plt.subplots(figsize=(9, 3.8))
+bins = np.linspace(0, 1, 51)
+ax.hist(sin_filtro["tasa_desercion"], bins=bins, color=NARANJA, alpha=0.55, label="sin filtro")
+ax.hist(df["tasa_desercion"], bins=bins, color=AZUL, alpha=0.8, label="con filtro")
+ax.set(title="Distribución de la tasa con y sin denominador mínimo", xlabel="tasa de deserción", ylabel="IES-año")
+ax.xaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
+ax.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+"""),
     md("## 3. Evolución 2015–2021"),
     code("""
 por_anio = df.groupby("anio")["tasa_desercion"].agg(

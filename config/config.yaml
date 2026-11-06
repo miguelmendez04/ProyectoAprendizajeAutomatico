@@ -39,9 +39,19 @@ spadies:
   nacional: data/raw/spadies/spadies_nacional.csv   # solo contexto y control de sumas
   periodicidad: anual                                 # anual | semestre
 
+# Denominador mínimo de la tasa: se excluyen las IES-año cuya matrícula de SPADIES en t-2 es menor (en la tasa anual,
+# el promedio de los dos semestres). Con denominadores chicos la tasa es muy inestable (hay tasas cercanas a 100 %).
+min_matriculados_t2: 100
+
 # Años de rezago de las variables de matrícula SNIES (2 = mismo desfase que el denominador de la tasa).
 # Saber 11 y TerriData se rezagan 1 año.
 rezago_matricula: 2
 
 # Máximo de nulos tolerado por columna en la validación (proporción 0-1).
 max_nulos_pct: 0.5
+
+# Partición para la fase de modelado (src/modelado/particion.py)
+particion:
+  n_splits: 5                  # GroupKFold por cod_ies
+  ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021
+

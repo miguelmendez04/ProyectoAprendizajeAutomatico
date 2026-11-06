@@ -1,10 +1,12 @@
-pandas
+pandas>=3.0
 requests
-pandera
+pandera>=0.24
 pyyaml
 pytest
 openpyxl
 matplotlib
-jupyter
-# opcional, solo para el mapa coroplético del EDA
-geopandas
+scipy
+scikit-learn
+nbformat
+nbconvert
+ipykernel

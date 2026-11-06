@@ -54,7 +54,7 @@ def _config(tmp_path, unidad, periodicidad="anual"):
         "rutas": {"raw": str(raw), "interim": str(tmp_path / "data" / "interim"),
                   "processed": str(tmp_path / "data" / "processed"), "reports": str(tmp_path / "reports")},
         "datasets": {},
-        "manual": {"dane": str(raw / "dane" / "dane.csv"), "terridata": str(raw / "terridata" / "terridata.csv")},
+        "terridata": {"directorio": str(raw / "terridata")},
         "spadies": {"archivo": str(raw / "spadies" / "spadies_diferenciado.csv"),
                     "nacional": str(raw / "spadies" / "spadies_nacional.csv"), "periodicidad": periodicidad},
         "max_nulos_pct": 0.5,
@@ -177,3 +177,45 @@ def test_ies_con_varias_sedes_se_asigna_a_la_de_mas_programas_y_se_senala(tmp_pa
     assert df.set_index("cod_ies").loc["1101", "cod_divipola_mpio"] == "76001"  # 2 programas en Cali contra 1 en Medellín
     log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
     assert "IES con programas en más de un municipio (1: 1101)" in log
+
+
+def _terridata(raw):
+    """TerriData solo para Cali (76001): cobertura superior 2017 y población 2018; Medellín no aparece."""
+    from tests.test_terridata import _col, _fila, _zip
+
+    (raw / "terridata").mkdir()
+    cob, hom, muj = _col("cob_superior"), _col("poblacion_hombres"), _col("poblacion_mujeres")
+    _zip(raw / "terridata", 4, [_fila("76001", "Cali", cob["subcategoria"], cob["indicador"], "56,70", 2017)])
+    _zip(raw / "terridata", 2, [
+        _fila("76001", "Cali", hom["subcategoria"], hom["indicador"], "1.000,00", 2018),
+        _fila("76001", "Cali", muj["subcategoria"], muj["indicador"], "1.100,00", 2018),
+    ])
+
+
+def test_pipeline_integra_terridata_con_rezago_t1_y_reporta_ies_sin_match(tmp_path):
+    ruta, raw = _config(tmp_path, "ies")
+    _escribir_crudos(raw)
+    _spadies(raw)
+    _terridata(raw)
+
+    df = pd.read_csv(pipeline.main(str(ruta), saltar_extract=True), dtype={"cod_ies": str}).set_index("cod_ies")
+
+    assert df.loc["2833", "td_cob_superior_t1"] == pytest.approx(56.7)  # dato de 2017 para el objetivo 2018
+    assert df.loc["2833", "td_poblacion_total_t1"] == 2100  # 2018 completado hacia atrás para 2017
+    assert pd.isna(df.loc["1101", "td_cob_superior_t1"])  # Medellín no está en TerriData
+    log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
+    assert "TerriData: 1 de 2 IES sin municipio sede en TerriData (1101→05001)" in log
+    assert "| terridata |" in log
+
+
+def test_variables_terridata_con_demasiados_nulos_se_descartan_y_se_anotan(tmp_path):
+    from src.integrate.build import depurar_terridata
+
+    df = pd.DataFrame({"cod_ies": ["1", "2", "3"], "cod_divipola_mpio": ["05001", "76001", "76001"],
+                       "td_a_t1": [1.0, None, None], "td_b_t1": [1.0, 2.0, 3.0]})
+    td = pd.DataFrame({"cod_divipola_mpio": ["76001"], "anio": [2017], "td_a": [1.0]})
+    notas: list[str] = []
+    out = depurar_terridata(df, td, "ies", max_nulos_pct=0.5, notas=notas)
+    assert "td_a_t1" not in out.columns and "td_b_t1" in out.columns
+    assert any("td_a_t1 (67%)" in n for n in notas)
+    assert any("1 de 3 IES sin municipio sede" in n for n in notas)

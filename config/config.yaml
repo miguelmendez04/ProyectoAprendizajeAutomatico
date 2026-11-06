@@ -25,11 +25,10 @@ datasets:
   snies_ies: n5yy-8nav                 # catálogo oficial de IES (nombre, sector, principal/seccional)
   divipola_municipios: gdxc-w37w       # catálogo oficial de municipios
 
-# Archivos descargados a mano (DANE: cod_mpio, municipio, departamento, poblacion, nbi;
-# TerriData en formato largo: cod_municipio, anio, indicador, valor). Si no existen, se omiten.
-manual:
-  dane: data/raw/dane/dane_poblacion_nbi.csv
-  terridata: data/raw/terridata/terridata.csv
+# TerriData (DNP): zips TerriData_Dim<N>.txt.zip descargados a mano (dimensiones 2, 4, 7, 8, 14 y 16). Es la fuente
+# de población, NBI/IPM, cobertura educativa, desempeño fiscal/municipal y mercado laboral; reemplaza los archivos del DANE.
+terridata:
+  directorio: data/raw/terridata
 
 # Export de SPADIES (Analíticas > Deserción Anual > tipo de cálculo IES > IES: Diferenciado): `;`, BOM UTF-8,
 # columnas IES;TIPO;1998-1..2024-2 y dos filas por IES (DESERTORES, MATRICULADOS). El código SNIES va en `IES`.

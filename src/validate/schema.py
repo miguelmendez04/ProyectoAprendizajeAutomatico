@@ -48,6 +48,7 @@ def construir_esquema(
             r"^pct_.*": col(checks=pa.Check.in_range(0, 1)),
             r"^nbi_pct$": col(checks=pa.Check.in_range(0, 100)),
             r"^(n_estudiantes|n_ies|matriculados|mpio_|poblacion).*": col(checks=pa.Check.ge(0)),
+            r"^td_(poblacion_total|pct_|nbi_pct|miseria_pct|ipm_censo|cob_|desercion_|repitencia_|transito_).*": col(checks=pa.Check.ge(0)),
         },
         checks=[
             pa.Check(nulos_dentro_del_tope, error=f"alguna columna supera {max_nulos_pct:.0%} de nulos"),

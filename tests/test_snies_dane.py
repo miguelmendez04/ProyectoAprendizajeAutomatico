@@ -2,7 +2,6 @@
 import pandas as pd
 import pytest
 
-from src.transform.dane import transformar_dane, transformar_terridata
 from src.transform.snies import (
     transformar_snies_catalogo,
     transformar_snies_matricula,
@@ -69,33 +68,6 @@ def test_matricula_programa_anual_es_el_maximo_semestral():
     assert out.iloc[0]["anio"] == 2019
 
 
-def test_terridata_pivotea_indicadores_con_prefijo_td():
-    largo = pd.DataFrame(
-        {
-            "cod_municipio": ["5001", "5001", "11001"],
-            "anio": [2018, 2018, 2018],
-            "indicador": ["cobertura_neta", "pobreza_mpi", "cobertura_neta"],
-            "valor": [90.5, 12.1, 85.0],
-        }
-    )
-    out = transformar_terridata(largo)
-    assert {"td_cobertura_neta", "td_pobreza_mpi"} <= set(out.columns)
-    assert not out.duplicated(["cod_divipola_mpio", "anio"]).any()
-    assert out.loc[out["cod_divipola_mpio"] == "05001", "td_cobertura_neta"].iloc[0] == 90.5
-
-
-def test_dane_resuelve_municipio_solo_con_nombre():
-    divipola = pd.DataFrame(
-        {"cod_divipola_mpio": ["05001"], "cod_depto": ["05"], "depto_norm": ["ANTIOQUIA"], "municipio_norm": ["MEDELLIN"]}
-    )
-    crudo = pd.DataFrame(
-        {"cod_mpio": [None], "municipio": ["Medelin"], "departamento": ["Antioquia"], "poblacion": ["2500000"], "nbi": ["10.5"]}
-    )
-    out = transformar_dane(crudo, divipola=divipola)
-    assert out["cod_divipola_mpio"].tolist() == ["05001"]
-    assert out["poblacion"].iloc[0] == 2500000 and out["nbi_pct"].iloc[0] == pytest.approx(10.5)
-
-
 def test_matricula_municipio_no_duplica_filas_que_solo_difieren_en_el_nombre():
     """y9ga-zwzy trae cada municipio-año dos veces ("BOGOTÁ D.C." / "BOGOTA D.C.")."""
     df = _matricula_mpio().iloc[[2]].copy()
@@ -130,22 +102,3 @@ def test_filas_con_codigo_de_municipio_nulo_se_cuentan_en_las_notas():
     notas = []
     transformar_snies_matricula(_matricula_mpio(), notas=notas)  # trae una fila con código "0"
     assert any("1 fila" in n and "código" in n for n in notas)
-
-
-def test_dane_con_poblacion_repetida_por_municipio_falla_en_voz_alta():
-    crudo = pd.DataFrame({"cod_mpio": ["5001", "5001"], "municipio": ["M", "M"], "departamento": ["A", "A"],
-                          "poblacion": ["1", "2"], "nbi": ["1", "2"]})
-    with pytest.raises(ValueError, match="duplicad"):
-        transformar_dane(crudo)
-
-
-def test_dane_cuenta_filas_sin_municipio_y_reporta_no_emparejados():
-    divipola = pd.DataFrame({"cod_divipola_mpio": ["11001"], "cod_depto": ["11"], "depto_norm": ["BOGOTA, D.C."],
-                             "municipio_norm": ["BOGOTA, D.C."]})
-    crudo = pd.DataFrame({"cod_mpio": [None, None], "municipio": ["Bogotá D.C.", "Inexistente"],
-                          "departamento": ["Bogotá D.C.", "Bogotá D.C."], "poblacion": ["7", "1"], "nbi": ["9", "1"]})
-    reportes, notas = [], []
-    out = transformar_dane(crudo, divipola=divipola, reportes=reportes, notas=notas)
-    assert out["cod_divipola_mpio"].tolist() == ["11001"]  # departamento con otra puntuación empareja igual
-    assert any("1 fila" in n for n in notas)
-    assert reportes and (reportes[0]["cod_divipola_mpio"].isna()).any()  # el no emparejado queda en el reporte

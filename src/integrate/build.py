@@ -56,7 +56,6 @@ def construir_dataset_desde_tablas(
     snies_programa: pd.DataFrame,
     catalogo: pd.DataFrame,
     objetivo: pd.DataFrame | None = None,
-    dane: pd.DataFrame | None = None,
     terridata: pd.DataFrame | None = None,
     rezago_matricula: int = 2,
 ) -> tuple[pd.DataFrame, list[dict]]:
@@ -106,9 +105,69 @@ def construir_dataset_desde_tablas(
     if terridata is not None:
         cols_td = [c for c in terridata.columns if c not in LLAVE_MPIO]
         base = _unir_rezagada(base, terridata, LLAVE_MPIO, cols_td, "terridata", log)
-    if dane is not None:
-        base = unir_con_perdida(base, dane, ["cod_divipola_mpio"], "dane", log)
     return base.reset_index(drop=True), log
+
+
+def _cargar_terridata(cfg: dict, interim: Path, notas: list[str]) -> pd.DataFrame | None:
+    """Lee los zips de TerriData (con caché en `interim`) y devuelve la tabla ancha municipio x año, o None."""
+    from src.extract.terridata import leer_terridata
+    from src.transform import terridata as catalogo_td
+    from src.transform.terridata import transformar_terridata
+
+    directorio = Path(cfg["terridata"]["directorio"])
+    zips = sorted(directorio.glob("TerriData_Dim*.txt.zip")) if directorio.is_dir() else []
+    if not zips:
+        notas.append(f"TerriData: no hay zips TerriData_Dim<N>.txt.zip en {directorio}; la fuente no se integró")
+        return None
+    cache = interim / "terridata_largo.csv"
+    # la lectura pesa ~1 min (la dimensión 2 son ~1 GB): se reutiliza mientras ni los zips ni el catálogo cambien
+    vigente = cache.exists() and cache.stat().st_mtime > max(
+        [z.stat().st_mtime for z in zips] + [Path(catalogo_td.__file__).stat().st_mtime]
+    )
+    if vigente:
+        largo = pd.read_csv(cache, dtype={"cod_divipola_mpio": str})
+    else:
+        largo = leer_terridata(directorio, notas=notas)
+        largo.to_csv(cache, index=False)
+    if largo.empty:
+        notas.append("TerriData: ningún indicador del catálogo con datos municipales; la fuente no se integró")
+        return None
+    return transformar_terridata(largo, cfg["anios"])
+
+
+def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: str, max_nulos_pct: float,
+                      notas: list[str]) -> pd.DataFrame:
+    """Descarta las variables `td_*` con más nulos que el tope y anota las unidades sin municipio en TerriData.
+
+    Una variable con tanta falta no aporta y haría fallar la validación. Se informa cuántas IES (o municipios)
+    tienen un municipio sede que no existe en TerriData.
+    """
+    if terridata is None:
+        return df
+    td_cols = [c for c in df.columns if c.startswith("td_")]
+    nulos = df[td_cols].isna().mean()
+    altos = nulos[nulos > max_nulos_pct]
+    if len(altos):
+        detalle = ", ".join(f"{c} ({v:.0%})" for c, v in altos.items())
+        notas.append(
+            f"TerriData: {len(altos)} de {len(td_cols)} variable(s) descartada(s) por superar {max_nulos_pct:.0%} de nulos "
+            f"tras el rezago: {detalle}"
+        )
+        df = df.drop(columns=list(altos.index))
+    conocidos = set(terridata["cod_divipola_mpio"])
+    unidad_col = "cod_ies" if unidad == "ies" else "cod_divipola_mpio"
+    etiqueta = "IES" if unidad == "ies" else "municipios"
+    if "cod_divipola_mpio" in df.columns and unidad_col in df.columns:
+        por_unidad = df.drop_duplicates(unidad_col).set_index(unidad_col)["cod_divipola_mpio"]
+        sin = por_unidad[~por_unidad.isin(conocidos)]
+        detalle = ""
+        if len(sin):
+            detalle = " (" + ", ".join(f"{k}→{v}" for k, v in list(sin.items())[:15]) + (", …" if len(sin) > 15 else "") + ")"
+        notas.append(
+            f"TerriData: {len(sin)} de {len(por_unidad)} {etiqueta} sin municipio sede en TerriData{detalle}; "
+            f"quedan con sus variables td_* nulas"
+        )
+    return df
 
 
 def hay_export_spadies(cfg: dict) -> bool:
@@ -132,12 +191,10 @@ def construir_dataset(
     `reportes` recibe los emparejamientos no exactos de municipios; `notas` recibe observaciones
     de calidad (códigos fuera de DIVIPOLA, SPADIES ausente) para la bitácora.
     """
-    from src.extract.dane import leer_manual
     from src.extract.spadies import leer_spadies
     from src.homologation.divipola import cargar_divipola
     from src.homologation.divipola import aplicar_cambios_codigo
     from src.integrate.aggregate import agregar_saber11_municipio, excluir_anios_incompletos
-    from src.transform.dane import transformar_dane, transformar_terridata
     from src.transform.saber11 import leer_saber11
     from src.transform.snies import (
         transformar_snies_catalogo,
@@ -168,13 +225,7 @@ def construir_dataset(
     catalogo = transformar_snies_catalogo(crudo_prog)
     catalogo = con_cambios(con_cambios(catalogo), "cod_divipola_mpio_programa")
 
-    crudo_dane = leer_manual(cfg["manual"]["dane"])
-    dane = con_cambios(transformar_dane(crudo_dane, divipola, reportes, notas)) if crudo_dane is not None else None
-    crudo_td = leer_manual(cfg["manual"]["terridata"])
-    terridata = con_cambios(transformar_terridata(crudo_td)) if crudo_td is not None else None
-    for nombre, tabla in (("DANE", dane), ("TerriData", terridata)):
-        if tabla is None:
-            notas.append(f"{nombre}: no hay archivo manual en data/raw; la fuente no se integró")
+    terridata = con_cambios(_cargar_terridata(cfg, interim, notas))
 
     for nombre, tabla in (("saber11_municipio", saber), ("snies_matricula_mpio", snies_mpio)):
         fuera = codigos_fuera_de_divipola(tabla, divipola)
@@ -198,7 +249,8 @@ def construir_dataset(
         objetivo = None
         notas.append(f"SPADIES: no existe {cfg['spadies']['archivo']}; dataset preliminar con tasa_desercion nula")
 
-    return construir_dataset_desde_tablas(
+    df, log = construir_dataset_desde_tablas(
         cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
-        objetivo=objetivo, dane=dane, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
+        objetivo=objetivo, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
     )
+    return depurar_terridata(df, terridata, cfg["unidad_analisis"], cfg["max_nulos_pct"], notas), log

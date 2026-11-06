@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.transform.terridata import descripcion_columna
+
 # nombre base de la variable -> (fuente, descripción)
 _CATALOGO = {
     "tasa_desercion": ("SPADIES (MEN)", "Tasa de deserción anual como proporción 0-1. Variable objetivo"),
@@ -22,8 +24,6 @@ _CATALOGO = {
     "mpio_ies_con_oferta": ("SNIES (MEN)", "IES con oferta en el municipio"),
     "matriculados_ies": ("SNIES (MEN)", "Matrícula anual de la IES (suma de sus programas)"),
     "matriculados_programa": ("SNIES (MEN)", "Matrícula anual del programa (máximo semestral)"),
-    "poblacion": ("DANE", "Población del municipio"),
-    "nbi_pct": ("DANE", "Necesidades básicas insatisfechas (%)"),
 }
 _REZAGO = re.compile(r"^(?P<base>.+)_t(?P<k>\d+)$")
 
@@ -35,7 +35,7 @@ def describir_columnas(columnas: list[str]) -> tuple[dict[str, str], dict[str, s
         m = _REZAGO.match(c)
         base, sufijo = (m["base"], f" (año t-{m['k']})") if m else (c, "")
         if base.startswith("td_"):
-            fuentes[c], descripciones[c] = "TerriData (DNP)", f"Indicador territorial {base[3:]}{sufijo}"
+            fuentes[c], descripciones[c] = "TerriData (DNP)", f"{descripcion_columna(base[3:]) or 'Indicador territorial ' + base[3:]}{sufijo}"
         elif base in _CATALOGO:
             fuente, desc = _CATALOGO[base]
             fuentes[c], descripciones[c] = fuente, desc + sufijo

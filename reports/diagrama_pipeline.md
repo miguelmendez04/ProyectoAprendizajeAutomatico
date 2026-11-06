@@ -8,7 +8,7 @@ flowchart LR
         S11[Saber 11 · ICFES<br/>datos.gov.co kgxf-xxbe]
         SN[SNIES · MEN<br/>matrícula y catálogo IES/programas]
         DV[DIVIPOLA · DANE]
-        DA[DANE / TerriData<br/>descarga manual]
+        DA[TerriData (DNP)<br/>zips manuales]
         SP[SPADIES · MEN<br/>export manual = variable objetivo]
     end
 

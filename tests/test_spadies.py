@@ -1,13 +1,13 @@
-﻿"""Pruebas del lector de exports de SPADIES (formato real: `;`, una columna por semestre)."""
+﻿"""Pruebas del lector de SPADIES (export "IES: Diferenciado": `IES;TIPO;1998-1;…`, dos filas por IES)."""
 import json
 
 import pandas as pd
 import pytest
 
 from src.extract.spadies import (
+    leer_diferenciado,
     leer_nacional,
     leer_spadies,
-    leer_spadies_ies,
     tasa_anual,
     tasas_semestrales,
     validar_contra_nacional,
@@ -16,134 +16,152 @@ from src.extract.spadies import (
 PERIODOS = ["2014-1", "2014-2", "2015-1", "2015-2", "2016-1"]
 
 
-def _export(ruta, desertores, matriculados, periodos=PERIODOS):
-    texto = "TIPO;" + ";".join(periodos) + "\n"
-    texto += "DESERTORES;" + ";".join(map(str, desertores)) + "\n"
-    texto += "MATRICULADOS;" + ";".join(map(str, matriculados)) + "\n"
+def _diferenciado(ruta, ies: dict, periodos=PERIODOS):
+    """`ies`: {codigo: (desertores, matriculados)}. Con BOM, como el export real."""
+    texto = "IES;TIPO;" + ";".join(periodos) + "\n"
+    for cod, (des, mat) in ies.items():
+        texto += f"{cod};DESERTORES;" + ";".join(map(str, des)) + "\n"
+        texto += f"{cod};MATRICULADOS;" + ";".join(map(str, mat)) + "\n"
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    ruta.write_text(texto, encoding="utf-8")
+    ruta.write_text(texto, encoding="utf-8-sig")
+    return ruta
+
+
+def _nacional(ruta, des, mat, periodos=PERIODOS):
+    ruta.write_text("TIPO;" + ";".join(periodos) + "\nDESERTORES;" + ";".join(map(str, des))
+                    + "\nMATRICULADOS;" + ";".join(map(str, mat)) + "\n", encoding="utf-8")
     return ruta
 
 
 def _cfg(tmp_path, periodicidad="anual"):
-    return {"spadies": {"directorio": str(tmp_path / "spadies"), "nacional": str(tmp_path / "spadies" / "spadies_nacional.csv"),
-                        "periodicidad": periodicidad}}
+    return {"spadies": {"archivo": str(tmp_path / "spadies_diferenciado.csv"),
+                        "nacional": str(tmp_path / "spadies_nacional.csv"), "periodicidad": periodicidad}}
 
 
-def _dos_ies(tmp_path):
-    d = tmp_path / "spadies"
-    _export(d / "spadies_1830_UNIVERSIDAD_AUTONOMA_DE_OCCIDENTE.csv", [10, 12, 20, 30, 40], [100, 100, 200, 200, 300])
-    _export(d / "spadies_1101_UNIVERSIDAD_NACIONAL.csv", [50, 50, 60, 70, 80], [1000, 1000, 1000, 1000, 1000])
-    _export(d / "spadies_nacional.csv", [100, 100, 100, 110, 130], [2000, 2000, 2000, 2000, 2000])
-    return d
+UAO = ([10, 12, 20, 30, 40], [100, 110, 200, 200, 300])
+UNAL = ([50, 50, 60, 70, 80], [1000, 1000, 1000, 1000, 1000])
 
 
-def test_formato_largo_con_codigo_tomado_del_nombre_del_archivo(tmp_path):
-    ruta = _export(tmp_path / "spadies_1830_UAO.csv", [10, 12, 20, 30, 40], [100, 100, 200, 200, 300])
-    out = leer_spadies_ies(tmp_path)
+def test_formato_largo_con_bom_y_codigo_en_la_columna_ies(tmp_path):
+    ruta = _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
+    out = leer_diferenciado(ruta)
     assert list(out.columns) == ["ies", "periodo", "desertores", "matriculados"]
-    assert set(out["ies"]) == {"1830"} and len(out) == 5
-    assert out.loc[out["periodo"] == "2015-1", ["desertores", "matriculados"]].iloc[0].tolist() == [20, 200]
-    assert ruta.exists()
-
-
-def test_archivo_que_no_cumple_el_patron_se_ignora_y_el_nacional_no_es_una_ies(tmp_path):
-    _export(tmp_path / "spadies_1830_UAO.csv", [1] * 5, [10] * 5)
-    _export(tmp_path / "spadies_nacional.csv", [9] * 5, [90] * 5)
-    _export(tmp_path / "SPADIES-OTRA.csv", [9] * 5, [90] * 5)
-    assert set(leer_spadies_ies(tmp_path)["ies"]) == {"1830"}
-
-
-def test_directorio_sin_exports_de_ies_error_claro(tmp_path):
-    with pytest.raises(FileNotFoundError, match="spadies_<codigo>_<nombre>.csv"):
-        leer_spadies_ies(tmp_path)
-
-
-def test_columnas_o_filas_faltantes_error_claro(tmp_path):
-    (tmp_path / "spadies_1830_UAO.csv").write_text("TIPO;2015-1\nDESERTORES;5\n", encoding="utf-8")
-    with pytest.raises(KeyError, match="MATRICULADOS"):
-        leer_spadies_ies(tmp_path)
-
-
-def test_valor_no_numerico_error(tmp_path):
-    (tmp_path / "spadies_1830_UAO.csv").write_text("TIPO;2015-1\nDESERTORES;x\nMATRICULADOS;5\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="no numéric"):
-        leer_spadies_ies(tmp_path)
+    assert set(out["ies"]) == {"1830", "1101"} and len(out) == 10
+    fila = out[(out["ies"] == "1830") & (out["periodo"] == "2015-1")].iloc[0]
+    assert (fila["desertores"], fila["matriculados"]) == (20, 200)
 
 
 def test_ceros_iniciales_de_desertores_son_dato_faltante_no_cero(tmp_path):
-    _export(tmp_path / "spadies_1830_UAO.csv", [0, 0, 20, 0, 40], [100, 100, 200, 200, 300])
-    out = leer_spadies_ies(tmp_path).set_index("periodo")
+    ruta = _diferenciado(tmp_path / "d.csv", {"1830": ([0, 0, 20, 0, 40], [100, 100, 200, 200, 300])})
+    out = leer_diferenciado(ruta).set_index("periodo")
     assert out.loc[["2014-1", "2014-2"], "desertores"].isna().all()
     assert out.loc["2015-2", "desertores"] == 0  # un cero posterior al primer dato sí es real
 
 
-def test_tasa_semestral_usa_matriculados_dos_periodos_atras(tmp_path):
-    _export(tmp_path / "spadies_1830_UAO.csv", [10, 12, 20, 30, 40], [100, 110, 200, 200, 300])
-    sem = tasas_semestrales(leer_spadies_ies(tmp_path)).set_index("periodo")
-    # 2015-1: 20 desertores / 100 matriculados de 2014-1 (dos semestres antes)
-    assert sem.loc["2015-1", "tasa_desercion"] == pytest.approx(20 / 100)
+def test_ies_sin_desertores_en_ningun_periodo_queda_sin_datos(tmp_path):
+    ruta = _diferenciado(tmp_path / "d.csv", {"9999": ([0] * 5, [10] * 5)})
+    assert leer_diferenciado(ruta)["desertores"].isna().all()
+
+
+def test_falta_una_fila_de_una_ies_error_claro(tmp_path):
+    ruta = tmp_path / "d.csv"
+    ruta.write_text("IES;TIPO;2015-1\n1830;DESERTORES;5\n", encoding="utf-8")
+    with pytest.raises(KeyError, match="1830.*MATRICULADOS"):
+        leer_diferenciado(ruta)
+
+
+def test_columna_faltante_o_fila_duplicada_error(tmp_path):
+    ruta = tmp_path / "d.csv"
+    ruta.write_text("TIPO;2015-1\nDESERTORES;5\n", encoding="utf-8")
+    with pytest.raises(KeyError, match="IES"):
+        leer_diferenciado(ruta)
+    ruta.write_text("IES;TIPO;2015-1\n1830;DESERTORES;5\n1830;DESERTORES;6\n1830;MATRICULADOS;9\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicad"):
+        leer_diferenciado(ruta)
+
+
+def test_valor_no_numerico_error(tmp_path):
+    ruta = tmp_path / "d.csv"
+    ruta.write_text("IES;TIPO;2015-1\n1830;DESERTORES;x\n1830;MATRICULADOS;5\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="no numéric"):
+        leer_diferenciado(ruta)
+
+
+def test_tasa_semestral_usa_matriculados_dos_periodos_atras_y_los_conserva(tmp_path):
+    sem = tasas_semestrales(leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO}))).set_index("periodo")
+    assert sem.loc["2015-1", "tasa_desercion"] == pytest.approx(20 / 100)  # matrícula de 2014-1
     assert sem.loc["2015-2", "tasa_desercion"] == pytest.approx(30 / 110)
     assert sem.loc["2016-1", "tasa_desercion"] == pytest.approx(40 / 200)
+    assert sem.loc["2015-1", "matriculados_t2"] == 100
     assert pd.isna(sem.loc["2014-1", "tasa_desercion"])  # no hay periodo -2
     assert sem.loc["2015-1", ["anio", "semestre"]].tolist() == [2015, 1]
 
 
+def test_tasa_semestral_no_cruza_ies(tmp_path):
+    sem = tasas_semestrales(leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO, "1101": UNAL})))
+    un = sem[(sem["ies"] == "1101") & (sem["periodo"] == "2015-1")].iloc[0]
+    assert un["tasa_desercion"] == pytest.approx(60 / 1000)
+
+
 def test_tasa_semestral_sin_denominador_valido_es_nula(tmp_path):
-    _export(tmp_path / "spadies_1830_UAO.csv", [5, 5, 5, 5, 5], [0, 100, 100, 100, 100])
-    sem = tasas_semestrales(leer_spadies_ies(tmp_path)).set_index("periodo")
+    ruta = _diferenciado(tmp_path / "d.csv", {"1830": ([5] * 5, [0, 100, 100, 100, 100])})
+    sem = tasas_semestrales(leer_diferenciado(ruta)).set_index("periodo")
     assert pd.isna(sem.loc["2015-1", "tasa_desercion"])  # matriculados(2014-1) = 0
 
 
-def test_tasa_anual_promedia_los_dos_semestres_y_exige_ambos(tmp_path):
-    _export(tmp_path / "spadies_1830_UAO.csv", [10, 12, 20, 30, 40], [100, 100, 200, 200, 300])
-    anual = tasa_anual(tasas_semestrales(leer_spadies_ies(tmp_path)))
+def test_tasa_anual_es_ponderada_por_el_denominador_y_exige_ambos_semestres(tmp_path):
+    anual = tasa_anual(tasas_semestrales(leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO}))))
     assert list(anual.columns) == ["cod_ies", "anio", "tasa_desercion"]
-    fila = anual[anual["anio"] == 2015].iloc[0]
-    assert fila["tasa_desercion"] == pytest.approx((20 / 100 + 30 / 100) / 2)
-    assert 2016 not in anual["anio"].tolist()  # solo existe 2016-1: el año queda sin tasa
+    # (20 + 30) / (100 + 110): no es el promedio simple de 0,2000 y 0,2727
+    assert anual.loc[anual["anio"] == 2015, "tasa_desercion"].iloc[0] == pytest.approx(50 / 210)
+    assert 2016 not in anual["anio"].tolist()  # solo existe 2016-1
 
 
 def test_leer_spadies_anual_y_semestral(tmp_path):
-    _dos_ies(tmp_path)
-    notas: list[str] = []
-    anual = leer_spadies(_cfg(tmp_path), notas)
-    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion"}
-    assert set(anual["cod_ies"]) == {"1830", "1101"} and set(anual["anio"]) == {2015}
-    sem = leer_spadies(_cfg(tmp_path, "semestre"), notas)
-    assert {"cod_ies", "anio", "semestre", "tasa_desercion"} <= set(sem.columns)
-    assert len(sem) == 6  # 2 IES x (2015-1, 2015-2, 2016-1); 2014 no tiene periodo -2
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
+    anual = leer_spadies(_cfg(tmp_path), [])
+    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion"} and len(anual) == 2
+    sem = leer_spadies(_cfg(tmp_path, "semestre"), [])
+    assert {"cod_ies", "anio", "semestre", "tasa_desercion"} <= set(sem.columns) and len(sem) == 6
     assert sem["tasa_desercion"].between(0, 1).all()
 
 
 def test_periodicidad_invalida_error(tmp_path):
-    _dos_ies(tmp_path)
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO})
     with pytest.raises(ValueError, match="periodicidad"):
         leer_spadies(_cfg(tmp_path, "trimestre"), [])
 
 
 def test_escribe_metadata(tmp_path):
-    _dos_ies(tmp_path)
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
     leer_spadies(_cfg(tmp_path), [])
-    meta = json.loads((tmp_path / "spadies" / "spadies_1830_UNIVERSIDAD_AUTONOMA_DE_OCCIDENTE.metadata.json").read_text(encoding="utf-8"))
-    assert meta["filas"] == 5  # 5 periodos en formato largo
+    meta = json.loads((tmp_path / "spadies_diferenciado.metadata.json").read_text(encoding="utf-8"))
+    assert meta["filas"] == 10
 
 
 def test_suma_de_ies_dentro_del_total_nacional_no_genera_notas(tmp_path):
-    _dos_ies(tmp_path)
-    assert validar_contra_nacional(leer_spadies_ies(tmp_path / "spadies"), leer_nacional(tmp_path / "spadies" / "spadies_nacional.csv")) == []
+    largo = leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO, "1101": UNAL}))
+    nac = leer_nacional(_nacional(tmp_path / "n.csv", [100, 100, 100, 110, 130], [2000] * 5))
+    assert validar_contra_nacional(largo, nac) == []
 
 
 def test_suma_de_ies_mayor_que_el_nacional_se_senala(tmp_path):
-    d = _dos_ies(tmp_path)
-    _export(d / "spadies_nacional.csv", [100, 100, 100, 100, 100], [2000, 2000, 2000, 2000, 2000])
-    notas = validar_contra_nacional(leer_spadies_ies(d), leer_nacional(d / "spadies_nacional.csv"))
-    assert len(notas) == 1 and "2016-1" in notas[0] and "desertores" in notas[0]  # 40 + 80 = 120 > 100; 2015-2 suma 100, no supera
+    largo = leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO, "1101": UNAL}))
+    nac = leer_nacional(_nacional(tmp_path / "n.csv", [100] * 5, [2000] * 5))
+    notas = validar_contra_nacional(largo, nac)
+    assert len(notas) == 1 and "2016-1" in notas[0] and "desertores" in notas[0]  # 40 + 80 = 120 > 100
 
 
 def test_leer_spadies_agrega_notas_de_cobertura_y_validacion(tmp_path):
-    d = _dos_ies(tmp_path)
-    _export(d / "spadies_nacional.csv", [1] * 5, [1] * 5)
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
+    _nacional(tmp_path / "spadies_nacional.csv", [1] * 5, [1] * 5)
     notas: list[str] = []
     leer_spadies(_cfg(tmp_path), notas)
     assert any("2 IES" in n for n in notas) and any("supera" in n for n in notas)
+
+
+def test_tasa_mayor_que_uno_se_senala_en_las_notas(tmp_path):
+    _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": ([5, 5, 500, 5, 5], [10] * 5)})
+    notas: list[str] = []
+    leer_spadies(_cfg(tmp_path, "semestre"), notas)
+    assert any("mayor que 1" in n for n in notas)

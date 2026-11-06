@@ -10,7 +10,7 @@ NIVELES = ["tecnica_profesional", "tecnologica", "universitaria", "especializaci
 
 
 def _escribir_crudos(raw):
-    """Crea data/raw mínimo: 2 municipios (Medellín 05001, Cali 76001), 2 IES, años 2017-2018."""
+    """Crea data/raw mínimo: 2 municipios (Medellín 05001, Cali 76001), 2 IES, años 2016-2018."""
     (raw / "dane").mkdir(parents=True)
     (raw / "snies").mkdir()
     (raw / "saber11").mkdir()
@@ -30,14 +30,14 @@ def _escribir_crudos(raw):
     ).to_csv(raw / "saber11" / "saber11.csv", index=False)
 
     filas = []
-    for anio in ("2017", "2018"):
+    for anio in ("2016", "2017", "2018"):
         for cod, nombre in (("5001", "MEDELLÍN"), ("76001", "CALI")):
             filas.append({"a_o": anio, "c_digo_delmunicipio": cod, "nombre_del_municipio": nombre,
                           **{n: "10" for n in NIVELES}, "ies_con_oferta": "5"})
     pd.DataFrame(filas).to_csv(raw / "snies" / "matricula_mpio.csv", index=False)
 
     prog = []
-    for anio in ("2017", "2018"):
+    for anio in ("2016", "2017", "2018"):
         for ies, programa, mpio in (("1101", "10", "5001"), ("2833", "20", "76001")):
             prog.append({"c_digo_de_la_instituci_n": ies, "c_digo_snies_delprograma": programa,
                          "c_digo_del_municipio_ies": mpio, "c_digo_del_municipio_programa": mpio,
@@ -55,8 +55,8 @@ def _config(tmp_path, unidad, periodicidad="anual"):
                   "processed": str(tmp_path / "data" / "processed"), "reports": str(tmp_path / "reports")},
         "datasets": {},
         "manual": {"dane": str(raw / "dane" / "dane.csv"), "terridata": str(raw / "terridata" / "terridata.csv")},
-        "spadies": {"directorio": str(raw / "spadies"), "nacional": str(raw / "spadies" / "spadies_nacional.csv"),
-                    "periodicidad": periodicidad},
+        "spadies": {"archivo": str(raw / "spadies" / "spadies_diferenciado.csv"),
+                    "nacional": str(raw / "spadies" / "spadies_nacional.csv"), "periodicidad": periodicidad},
         "max_nulos_pct": 0.5,
     }
     ruta = tmp_path / "config.yaml"
@@ -65,12 +65,13 @@ def _config(tmp_path, unidad, periodicidad="anual"):
 
 
 def _spadies(raw):
-    """Un export por IES (2016-1 a 2018-2); la tasa anual de 2018 es 0,105 (IES 1101) y 0,2 (IES 2833)."""
+    """Export diferenciado 2016-1 a 2018-2; la tasa anual de 2018 es 0,105 (IES 1101) y 0,2 (IES 2833)."""
     periodos = ["2016-1", "2016-2", "2017-1", "2017-2", "2018-1", "2018-2"]
-    for ies, nombre, desertores in (("1101", "NACIONAL", 105), ("2833", "OCCIDENTE", 200)):
-        texto = "TIPO;" + ";".join(periodos) + "\nDESERTORES;" + ";".join([str(desertores)] * 6)
-        texto += "\nMATRICULADOS;" + ";".join(["1000"] * 6) + "\n"
-        (raw / "spadies" / f"spadies_{ies}_{nombre}.csv").write_text(texto, encoding="utf-8")
+    filas = ["IES;TIPO;" + ";".join(periodos)]
+    for ies, desertores in (("1101", 105), ("2833", 200)):
+        filas.append(f"{ies};DESERTORES;" + ";".join([str(desertores)] * 6))
+        filas.append(f"{ies};MATRICULADOS;" + ";".join(["1000"] * 6))
+    (raw / "spadies" / "spadies_diferenciado.csv").write_text("\n".join(filas) + "\n", encoding="utf-8-sig")
 
 
 @pytest.mark.parametrize("unidad", ["municipio", "ies"])
@@ -86,6 +87,7 @@ def test_pipeline_end_to_end_con_fixtures(tmp_path, unidad):
     validar(df, unidad, max_nulos_pct=0.5)
     assert df["tasa_desercion"].round(3).tolist() in ([0.105, 0.2], [0.2, 0.105])
     assert df["punt_global_media_t1"].notna().all()  # Saber 2017 llegó como variable t-1
+    assert df["tasa_desercion"].notna().all() and df["mpio_matriculados_t2"].notna().all()  # matrícula 2016 = t-2
     log = (tmp_path / "reports" / "etl_log.md").read_text(encoding="utf-8")
     assert "| saber11 |" in log and "filas_sin_match" in log
     assert "Saber 11: 1 fila(s) sin código de municipio válido" in log  # el código "0" se cuenta, no se pierde en silencio

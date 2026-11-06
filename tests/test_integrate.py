@@ -107,7 +107,7 @@ def test_municipio_sin_saber11_queda_nulo_no_cero():
 
 def test_unidad_ies_y_municipio_tienen_llaves_unicas_y_distintas():
     t = _tablas()
-    ies, _ = construir_dataset_desde_tablas("ies", [2018, 2019], **t)
+    ies, _ = construir_dataset_desde_tablas("ies", [2018, 2019], rezago_matricula=1, **t)
     mpio, _ = construir_dataset_desde_tablas("municipio", [2018, 2019], **t)
     assert not ies.duplicated(["cod_ies", "anio"]).any() and len(ies) == 4
     assert not mpio.duplicated(["cod_divipola_mpio", "anio"]).any() and len(mpio) == 4
@@ -136,7 +136,7 @@ def test_programa_requiere_codigo_de_programa_en_el_objetivo():
 def test_programa_con_objetivo_por_programa():
     t = _tablas()
     t["objetivo"] = pd.DataFrame({"cod_ies": ["1101"], "cod_snies_programa": ["10"], "anio": [2018], "tasa_desercion": [0.1]})
-    df, _ = construir_dataset_desde_tablas("programa", [2018], **t)
+    df, _ = construir_dataset_desde_tablas("programa", [2018], rezago_matricula=1, **t)
     assert df.iloc[0]["matriculados_programa_t1"] == 100 and df.iloc[0]["cod_divipola_mpio"] == "05001"
 
 
@@ -172,3 +172,12 @@ def test_anios_con_cobertura_incompleta_se_detectan_y_se_excluyen():
     limpio = excluir_anios_incompletos(saber, notas)
     assert set(limpio["anio"]) == {2017, 2019}
     assert any("2018" in n and "2020" in n for n in notas)
+
+
+def test_variables_de_matricula_se_rezagan_dos_anios_por_defecto_y_saber11_uno():
+    df, _ = construir_dataset_desde_tablas("ies", [2019], **_tablas())
+    fila = df[df["cod_ies"] == "1101"].iloc[0]
+    assert fila["matriculados_ies_t2"] == 150 and fila["mpio_matriculados_t2"] == 1000  # matrícula de 2017
+    assert fila["mpio_ies_con_oferta_t2"] == 48
+    assert not any(c.startswith(("matriculados_ies", "mpio_")) and c.endswith("_t1") for c in df.columns)
+    assert "punt_global_media_t1" in df.columns  # Saber 11 sigue en t-1

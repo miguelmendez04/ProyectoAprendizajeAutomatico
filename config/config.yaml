@@ -31,13 +31,18 @@ manual:
   dane: data/raw/dane/dane_poblacion_nbi.csv
   terridata: data/raw/terridata/terridata.csv
 
-# Exports manuales de la consulta pública de SPADIES (separador `;`, una columna por semestre,
-# filas DESERTORES y MATRICULADOS). Un archivo por IES: spadies_<codigo SNIES>_<nombre>.csv.
-# tasa_desercion_t = desertores_t / matriculados_(t-2 semestres); la anual promedia los dos semestres.
+# Export de SPADIES (Analíticas > Deserción Anual > tipo de cálculo IES > IES: Diferenciado): `;`, BOM UTF-8,
+# columnas IES;TIPO;1998-1..2024-2 y dos filas por IES (DESERTORES, MATRICULADOS). El código SNIES va en `IES`.
+# tasa_desercion_t = desertores_t / matriculados_(t-2 semestres); la anual = suma de desertores / suma de
+# matriculados t-2 de los dos semestres (promedio ponderado por el denominador).
 spadies:
-  directorio: data/raw/spadies
+  archivo: data/raw/spadies/spadies_diferenciado.csv
   nacional: data/raw/spadies/spadies_nacional.csv   # solo contexto y control de sumas
   periodicidad: anual                                 # anual | semestre
+
+# Años de rezago de las variables de matrícula SNIES (2 = mismo desfase que el denominador de la tasa).
+# Saber 11 y TerriData se rezagan 1 año.
+rezago_matricula: 2
 
 # Máximo de nulos tolerado por columna en la validación (proporción 0-1).
 max_nulos_pct: 0.5

@@ -42,9 +42,9 @@ def sede_por_ies(catalogo: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return sede.reset_index(drop=True), sorted(multisede[multisede > 1].index)
 
 
-def _unir_rezagada(base, tabla, llave, cols, nombre, log):
-    """Une `tabla` con sus columnas `cols` desplazadas un año (t-1)."""
-    lag = rezagar_features(tabla, llave, cols, rezago=1)
+def _unir_rezagada(base, tabla, llave, cols, nombre, log, rezago=1):
+    """Une `tabla` con sus columnas `cols` desplazadas `rezago` años (t-1 por defecto)."""
+    lag = rezagar_features(tabla, llave, cols, rezago=rezago)
     return unir_con_perdida(base, lag, llave, nombre, log)
 
 
@@ -58,8 +58,12 @@ def construir_dataset_desde_tablas(
     objetivo: pd.DataFrame | None = None,
     dane: pd.DataFrame | None = None,
     terridata: pd.DataFrame | None = None,
+    rezago_matricula: int = 2,
 ) -> tuple[pd.DataFrame, list[dict]]:
     """Devuelve (dataset, log de joins) para la unidad `ies | programa | municipio`.
+
+    Las variables de matrícula SNIES se rezagan `rezago_matricula` años (2 = el denominador de la tasa
+    de SPADIES); Saber 11 y TerriData, un año.
 
     Si `objetivo` es None se genera un esqueleto con `tasa_desercion` nula.
     """
@@ -73,7 +77,7 @@ def construir_dataset_desde_tablas(
         base = unir_con_perdida(base, sede_ies, ["cod_ies"], "catalogo_ies", log)
         mat = snies_programa.groupby(["cod_ies", "anio"], as_index=False)["matriculados"].sum()
         mat = mat.rename(columns={"matriculados": "matriculados_ies"})
-        base = _unir_rezagada(base, mat, ["cod_ies", "anio"], ["matriculados_ies"], "matricula_ies", log)
+        base = _unir_rezagada(base, mat, ["cod_ies", "anio"], ["matriculados_ies"], "matricula_ies", log, rezago_matricula)
     elif unidad == "programa":
         if "cod_snies_programa" not in base.columns:
             raise ValueError(
@@ -84,7 +88,7 @@ def construir_dataset_desde_tablas(
         base = unir_con_perdida(base, prog, ["cod_ies", "cod_snies_programa"], "catalogo_programa", log)
         mat = snies_programa.rename(columns={"matriculados": "matriculados_programa"})
         llave = ["cod_ies", "cod_snies_programa", "anio"]
-        base = _unir_rezagada(base, mat, llave, ["matriculados_programa"], "matricula_programa", log)
+        base = _unir_rezagada(base, mat, llave, ["matriculados_programa"], "matricula_programa", log, rezago_matricula)
     else:  # municipio
         if "cod_divipola_mpio" not in base.columns:
             # la tasa de cada IES se asigna a su municipio sede
@@ -98,7 +102,7 @@ def construir_dataset_desde_tablas(
     cols_saber = [c for c in saber_mpio.columns if c not in LLAVE_MPIO]
     base = _unir_rezagada(base, saber_mpio, LLAVE_MPIO, cols_saber, "saber11", log)
     mpio = snies_mpio.rename(columns={"matriculados": "mpio_matriculados", "ies_con_oferta": "mpio_ies_con_oferta"})
-    base = _unir_rezagada(base, mpio, LLAVE_MPIO, ["mpio_matriculados", "mpio_ies_con_oferta"], "snies_municipio", log)
+    base = _unir_rezagada(base, mpio, LLAVE_MPIO, ["mpio_matriculados", "mpio_ies_con_oferta"], "snies_municipio", log, rezago_matricula)
     if terridata is not None:
         cols_td = [c for c in terridata.columns if c not in LLAVE_MPIO]
         base = _unir_rezagada(base, terridata, LLAVE_MPIO, cols_td, "terridata", log)
@@ -107,11 +111,9 @@ def construir_dataset_desde_tablas(
     return base.reset_index(drop=True), log
 
 
-def hay_exports_spadies(directorio: Path) -> bool:
-    """True si el directorio tiene al menos un export `spadies_<codigo>_<nombre>.csv`."""
-    from src.extract.spadies import PATRON_ARCHIVO
-
-    return directorio.is_dir() and any(PATRON_ARCHIVO.match(p.name) for p in directorio.glob("*.csv"))
+def hay_export_spadies(cfg: dict) -> bool:
+    """True si existe el export de SPADIES configurado (`spadies.archivo`)."""
+    return Path(cfg["spadies"]["archivo"]).is_file()
 
 
 def codigos_fuera_de_divipola(df: pd.DataFrame, divipola: pd.DataFrame) -> int:
@@ -182,8 +184,7 @@ def construir_dataset(
     snies_programa.to_csv(interim / "snies_matricula_programa.csv", index=False)
     catalogo.to_csv(interim / "snies_catalogo.csv", index=False)
 
-    dir_spadies = Path(cfg["spadies"]["directorio"])
-    if hay_exports_spadies(dir_spadies):
+    if hay_export_spadies(cfg):
         objetivo = leer_spadies(cfg, notas)
         objetivo.to_csv(interim / "spadies.csv", index=False)
         _, multisede = sede_por_ies(catalogo)
@@ -195,9 +196,9 @@ def construir_dataset(
             )
     else:
         objetivo = None
-        notas.append(f"SPADIES: no hay exports en {dir_spadies}; dataset preliminar con tasa_desercion nula")
+        notas.append(f"SPADIES: no existe {cfg['spadies']['archivo']}; dataset preliminar con tasa_desercion nula")
 
     return construir_dataset_desde_tablas(
         cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
-        objetivo=objetivo, dane=dane, terridata=terridata,
+        objetivo=objetivo, dane=dane, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
     )

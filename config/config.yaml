@@ -48,6 +48,15 @@ min_matriculados_t2: 100
 # queda siempre en el dataset.
 excluir_posible_cierre: true
 
+# Inconsistencia entre fuentes: ratio_spadies_snies = denominador de SPADIES (matrícula t-2) / matrícula SNIES t-2.
+# Se marca `inconsistencia_fuentes` si el ratio es > umbral o < 1/umbral, o si SNIES no tiene dato dentro de su cobertura.
+excluir_inconsistencias: true
+umbral_ratio_inconsistencia: 3
+
+# Régimen especial: escuelas militares y policiales (códigos 2106, 29xx, 39xx, 910x y nombres con ESCUELA MILITAR,
+# POLICIA, NAVAL o FAC). La bandera `regimen_especial` queda siempre en el dataset.
+excluir_regimen_especial: true
+
 # Las IES-año con tasa mayor que este umbral (tras el mínimo) se listan en reports/tasas_altas.csv
 umbral_tasa_alta: 0.5
 
@@ -60,6 +69,9 @@ max_nulos_pct: 0.5
 
 # Partición para la fase de modelado (src/modelado/particion.py)
 modelado:
+  # Variables que no entran como explicativas (ver src/modelado/particion.py). La población absoluta queda fuera hasta
+  # contar con las retroproyecciones del DANE con base 2018 (cambio de base 2005 -> 2018 entre 2017 y 2018).
+  excluir_variables: [td_poblacion_total_t1, ratio_spadies_snies]
   transformacion_objetivo: ninguna   # ninguna | logit  (src/modelado/objetivo.py)
   epsilon_logit: 0.001               # la tasa se recorta a [epsilon, 1 - epsilon] antes del logit
 

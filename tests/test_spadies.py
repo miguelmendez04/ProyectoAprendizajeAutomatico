@@ -112,7 +112,8 @@ def test_tasa_semestral_sin_denominador_valido_es_nula(tmp_path):
 
 def test_tasa_anual_es_ponderada_por_el_denominador_y_exige_ambos_semestres(tmp_path):
     anual = tasa_anual(tasas_semestrales(leer_diferenciado(_diferenciado(tmp_path / "d.csv", {"1830": UAO}))))
-    assert list(anual.columns) == ["cod_ies", "anio", "tasa_desercion"]
+    assert list(anual.columns) == ["cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies"]
+    assert anual.loc[anual["anio"] == 2015, "matriculados_t2_spadies"].iloc[0] == pytest.approx(105)  # (100 + 110) / 2
     # (20 + 30) / (100 + 110): no es el promedio simple de 0,2000 y 0,2727
     assert anual.loc[anual["anio"] == 2015, "tasa_desercion"].iloc[0] == pytest.approx(50 / 210)
     assert 2016 not in anual["anio"].tolist()  # solo existe 2016-1
@@ -121,7 +122,7 @@ def test_tasa_anual_es_ponderada_por_el_denominador_y_exige_ambos_semestres(tmp_
 def test_leer_spadies_anual_y_semestral(tmp_path):
     _diferenciado(tmp_path / "spadies_diferenciado.csv", {"1830": UAO, "1101": UNAL})
     anual = leer_spadies(_cfg(tmp_path), [])
-    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion", "posible_cierre"} and len(anual) == 2
+    assert set(anual.columns) == {"cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies", "posible_cierre"} and len(anual) == 2
     sem = leer_spadies(_cfg(tmp_path, "semestre"), [])
     assert {"cod_ies", "anio", "semestre", "tasa_desercion"} <= set(sem.columns) and len(sem) == 6
     assert sem["tasa_desercion"].between(0, 1).all()

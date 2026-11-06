@@ -6,7 +6,9 @@ import pytest
 from src.modelado.particion import (
     COLUMNAS_CATEGORICAS,
     cargar_dataset,
+    EXCLUIDAS_POR_DEFECTO,
     columnas_explicativas,
+    columnas_explicativas_desde_config,
     particion_group_kfold,
     particion_temporal,
 )
@@ -74,3 +76,19 @@ def test_cargar_dataset_conserva_codigos_como_texto(tmp_path):
 def test_la_bandera_posible_cierre_no_es_explicativa():
     df = _df().assign(posible_cierre=False)
     assert "posible_cierre" not in columnas_explicativas(df)
+
+
+def test_poblacion_total_y_ratio_quedan_fuera_por_defecto_pero_las_relativas_entran():
+    df = _df().assign(td_poblacion_total_t1=1.0, td_pct_poblacion_rural_t1=2.0, td_pct_pob_15_19_t1=3.0, ratio_spadies_snies=1.0)
+    cols = columnas_explicativas(df)
+    assert "td_poblacion_total_t1" not in cols and "ratio_spadies_snies" not in cols
+    assert {"td_pct_poblacion_rural_t1", "td_pct_pob_15_19_t1", "x_t1"} <= set(cols)
+    assert set(EXCLUIDAS_POR_DEFECTO) == {"td_poblacion_total_t1", "ratio_spadies_snies"}
+
+
+def test_se_puede_cambiar_la_lista_de_exclusion():
+    df = _df().assign(td_poblacion_total_t1=1.0)
+    assert "td_poblacion_total_t1" in columnas_explicativas(df, excluir=[])
+    cfg = {"modelado": {"excluir_variables": ["x_t1"]}}
+    assert "x_t1" not in columnas_explicativas_desde_config(df, cfg) and "td_poblacion_total_t1" in columnas_explicativas_desde_config(df, cfg)
+    assert "td_poblacion_total_t1" not in columnas_explicativas_desde_config(df, {})  # sin sección: lista por defecto

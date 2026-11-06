@@ -10,6 +10,9 @@ from src.transform.terridata import descripcion_columna
 _CATALOGO = {
     "tasa_desercion": ("SPADIES (MEN)", "Tasa de deserción anual como proporción 0-1. Variable objetivo"),
     "cod_divipola_mpio": ("DIVIPOLA (DANE)", "Código DANE del municipio, 5 dígitos con ceros a la izquierda"),
+    "ratio_spadies_snies": ("SPADIES / SNIES", "Denominador de la tasa (matrícula SPADIES t-2) dividido por la matrícula SNIES t-2 de la IES. Diagnóstico, no explicativa"),
+    "inconsistencia_fuentes": ("SPADIES / SNIES", "Bandera: ratio_spadies_snies > 3 o < 1/3, o SNIES sin dato dentro de su cobertura. Diagnóstico"),
+    "regimen_especial": ("SNIES (MEN)", "Bandera: escuela militar o policial (códigos 2106, 29xx, 39xx, 910x o nombre del catálogo). Diagnóstico"),
     "posible_cierre": ("SPADIES (MEN)", "Bandera de diagnóstico: la fila cae en los 2 semestres previos al último reporte de una IES que dejó de reportar. No es explicativa"),
     "cod_ies": ("SNIES (MEN)", "Código de la institución de educación superior"),
     "cod_snies_programa": ("SNIES (MEN)", "Código SNIES del programa académico"),

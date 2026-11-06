@@ -113,7 +113,7 @@ def tasa_anual(semestrales: pd.DataFrame, min_denominador: float = 0) -> pd.Data
     """
     g = _anual_completo(semestrales)
     g = g[g["matriculados_t2_spadies"] >= min_denominador]
-    columnas = ["cod_ies", "anio", "tasa_desercion"] + (["posible_cierre"] if "posible_cierre" in g.columns else [])
+    columnas = ["cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies"] + (["posible_cierre"] if "posible_cierre" in g.columns else [])
     return g[columnas].reset_index(drop=True)
 
 
@@ -211,7 +211,8 @@ def validar_contra_nacional(largo_ies: pd.DataFrame, nacional: pd.DataFrame) -> 
 
 
 def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
-    """Objetivo para el ETL: cod_ies, anio, [semestre], tasa_desercion (0-1), según `spadies.periodicidad`.
+    """Objetivo para el ETL: cod_ies, anio, [semestre], tasa_desercion (0-1), matriculados_t2_spadies (denominador) y
+    posible_cierre, según `spadies.periodicidad`. El denominador sirve para las banderas de calidad y no entra al dataset.
 
     Registra en `notas` la cobertura de IES, las inconsistencias contra el total nacional y las
     tasas semestrales mayores que 1 (desertores superiores a la matrícula t-2).
@@ -259,8 +260,8 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
             fil = tasa_anual(semestrales, minimo_t2)
         else:
             fil = semestrales.dropna(subset=["tasa_desercion"])
-            fil = fil[fil["matriculados_t2"] >= minimo_t2].rename(columns={"ies": "cod_ies"})
-            fil = fil[["cod_ies", "anio", "semestre", "tasa_desercion", "posible_cierre"]]
+            fil = fil[fil["matriculados_t2"] >= minimo_t2].rename(columns={"ies": "cod_ies", "matriculados_t2": "matriculados_t2_spadies"})
+            fil = fil[["cod_ies", "anio", "semestre", "tasa_desercion", "matriculados_t2_spadies", "posible_cierre"]]
         if quitar_cierre and excluir_cierre:
             fil = fil[~fil["posible_cierre"]]
         return fil.reset_index(drop=True)

@@ -42,7 +42,7 @@ def _escribir_crudos(raw):
             prog.append({"c_digo_de_la_instituci_n": ies, "c_digo_snies_delprograma": programa,
                          "c_digo_del_municipio_ies": mpio, "c_digo_del_municipio_programa": mpio,
                          "id_sector": "1", "id_caracter": "4", "a_o": anio, "semestre": "1",
-                         "id_g_nero": "1", "matriculados_2015": "30"})
+                         "id_g_nero": "1", "matriculados_2015": "1500"})
     pd.DataFrame(prog).to_csv(raw / "snies" / "matricula_programa.csv", index=False)
 
 
@@ -65,12 +65,12 @@ def _config(tmp_path, unidad, periodicidad="anual"):
 
 
 def _spadies(raw):
-    """Export diferenciado 2016-1 a 2018-2; la tasa anual de 2018 es 0,105 (IES 1101) y 0,2 (IES 2833)."""
+    """Export diferenciado 2016-1 a 2018-2; la tasa anual de 2018 es 0,105 (IES 1101) y 0,2 (IES 2833); matrícula de referencia 2000 frente a 1500 de SNIES (ratio 1,3)."""
     periodos = ["2016-1", "2016-2", "2017-1", "2017-2", "2018-1", "2018-2"]
     filas = ["IES;TIPO;" + ";".join(periodos)]
-    for ies, desertores in (("1101", 105), ("2833", 200)):
+    for ies, desertores in (("1101", 210), ("2833", 400)):
         filas.append(f"{ies};DESERTORES;" + ";".join([str(desertores)] * 6))
-        filas.append(f"{ies};MATRICULADOS;" + ";".join(["1000"] * 6))
+        filas.append(f"{ies};MATRICULADOS;" + ";".join(["2000"] * 6))
     (raw / "spadies" / "spadies_diferenciado.csv").write_text("\n".join(filas) + "\n", encoding="utf-8-sig")
 
 

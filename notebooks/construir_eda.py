@@ -151,8 +151,16 @@ print(f"Mínimo de matrícula t-2: {minimo}")
 print(f"IES-año sin filtro: {len(sin_filtro):,} · con el mínimo: {len(con_minimo):,} · eliminadas: {len(quitadas):,} "
       f"({len(quitadas) / len(sin_filtro):.1%}) · IES que desaparecen por completo: "
       f"{sin_filtro['cod_ies'].nunique() - con_minimo['cod_ies'].nunique()}")
-print(f"Después se excluyen {len(con_minimo) - len(df):,} IES-año por posible cierre (excluir_posible_cierre = "
-      f"{cfg.get('excluir_posible_cierre', True)}): dataset final {len(df):,} filas, {df['cod_ies'].nunique()} IES")
+# Efecto de los posibles cierres: la misma lectura del mínimo, con la opción de la configuración
+con_cierre = ventana(leer_spadies({**base, "min_matriculados_t2": minimo,
+                                   "excluir_posible_cierre": cfg.get("excluir_posible_cierre", True)}, []))
+n_cierre = len(con_minimo) - len(con_cierre)
+calidad = pd.read_csv(ROOT / cfg["rutas"]["reports"] / "exclusiones_calidad.csv", dtype={"cod_ies": str})
+n_calidad = int(calidad["excluida"].sum())
+print(f"Después se excluyen {n_cierre:,} IES-año por posible cierre (excluir_posible_cierre = {cfg.get('excluir_posible_cierre', True)}) "
+      f"y {n_calidad:,} por calidad (inconsistencia entre fuentes / régimen especial): "
+      f"dataset final {len(df):,} filas, {df['cod_ies'].nunique()} IES")
+assert len(con_minimo) - n_cierre - n_calidad == len(df), "las exclusiones no cuadran con el dataset final"
 
 def resumen(serie):
     return pd.Series({"filas": len(serie), "media": serie.mean(), "mediana": serie.median(), "desv. est.": serie.std(),
@@ -188,6 +196,37 @@ display(tasas_altas.round({"tasa_desercion": 3, "matriculados_t2_spadies": 0}))
 print(f"{len(tasas_altas)} IES-año de {tasas_altas['cod_ies'].nunique()} IES · en ventana de posible cierre: "
       f"{int(tasas_altas['posible_cierre'].sum())} · IES con último reporte 2024-2 (siguen activas): "
       f"{(tasas_altas.drop_duplicates('cod_ies')['ultimo_periodo'] == '2024-2').sum()} de {tasas_altas['cod_ies'].nunique()}")
+"""),
+    md("""
+### Exclusiones por calidad: inconsistencia entre fuentes y régimen especial
+
+- `ratio_spadies_snies` = denominador de SPADIES (matrícula t-2) / matrícula SNIES t-2 de la IES; `inconsistencia_fuentes` se activa
+  si el ratio es > 3 o < 1/3, o si SNIES no tiene dato dentro de su cobertura (SNIES por programa empieza en 2015: para los años
+  cuyo t-2 es anterior no se marca, porque si no se perderían 2015 y 2016 enteros).
+- `regimen_especial`: escuelas militares y policiales (códigos 2106, 29xx, 39xx, 910x y nombres con ESCUELA MILITAR, POLICIA, NAVAL o FAC).
+- `excluir_inconsistencias` y `excluir_regimen_especial` (por defecto activas) las sacan del dataset; el detalle está en `reports/exclusiones_calidad.csv`.
+"""),
+    code("""
+resumen_calidad = pd.DataFrame({
+    "IES-año marcadas": [int(calidad["inconsistencia_fuentes"].sum()), int(calidad["regimen_especial"].sum()), len(calidad)],
+    "IES": [calidad.loc[calidad["inconsistencia_fuentes"], "cod_ies"].nunique(), calidad.loc[calidad["regimen_especial"], "cod_ies"].nunique(),
+            calidad["cod_ies"].nunique()],
+    "IES-año excluidas": [int((calidad["inconsistencia_fuentes"] & cfg.get("excluir_inconsistencias", True)).sum()),
+                          int((calidad["regimen_especial"] & cfg.get("excluir_regimen_especial", True)).sum()), n_calidad],
+}, index=["inconsistencia_fuentes", "regimen_especial", "unión"])
+display(resumen_calidad)
+
+# Qué pasa con las tasas > 50 %: cuántas de las 20 filas elimina cada bandera
+altas = pd.read_csv(ROOT / cfg["rutas"]["reports"] / "tasas_altas.csv", dtype={"cod_ies": str})
+altas[["inconsistencia_fuentes", "regimen_especial"]] = altas[["inconsistencia_fuentes", "regimen_especial"]].fillna(False).astype(bool)
+print(f"Tasas > 50 % tras el mínimo: {len(altas)}")
+print(f"  eliminadas por inconsistencia_fuentes: {int(altas['inconsistencia_fuentes'].sum())}")
+print(f"  eliminadas por regimen_especial: {int(altas['regimen_especial'].sum())}")
+print(f"  eliminadas por alguna: {int((altas['inconsistencia_fuentes'] | altas['regimen_especial']).sum())} · quedan {int((~(altas['inconsistencia_fuentes'] | altas['regimen_especial'])).sum())}")
+
+print()
+print("Ratio SPADIES / SNIES en el dataset final (IES-año con ambos datos):")
+display(df["ratio_spadies_snies"].describe().round(2).to_frame("ratio").T)
 """),
     md("## 3. Evolución 2015–2021"),
     code("""
@@ -283,8 +322,11 @@ en vez de usar una muestra sesgada.
 """),
     md("## 7. Correlaciones de las variables explicativas con la tasa"),
     code("""
-excluir = {"tasa_desercion", "anio"}
-numericas = [c for c in df.select_dtypes("number").columns if c not in excluir]
+from src.modelado.particion import EXCLUIDAS_POR_DEFECTO, columnas_explicativas
+
+# Las mismas variables que usará el modelado: sin la población absoluta (cambio de base 2005 -> 2018) ni el ratio de diagnóstico
+numericas = columnas_explicativas(df)
+print("Fuera de las explicativas por defecto:", EXCLUIDAS_POR_DEFECTO)
 X = df[numericas].copy()
 X["privada"] = (df["naturaleza"] == "Privada").astype(int)
 

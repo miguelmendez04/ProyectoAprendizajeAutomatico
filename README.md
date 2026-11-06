@@ -4,10 +4,11 @@ Proyecto del curso Aprendizaje Automático (Maestría IA y Ciencia de Datos, UAO
 Especificación: `guia_etl_desercion.md` · Bitácora de decisiones y calidad de datos: `reports/etl_log.md`.
 
 ## Autores
-- **Simón Colonia** — rol: *[por completar]*
-- **Miguel Ángel Méndez** — rol: *[por completar]*
+- **Miguel Ángel Méndez Rodríguez** — Data Engineer y Project Manager.
+- **Simón Colonia** — Model Developer y Evaluation Lead.
+- **Reporting Lead** — compartido.
 
-Seguimiento del proyecto: *[enlace a Trello por completar]*
+Seguimiento del proyecto: [tablero de Trello](https://trello.com/b/sgxvalz4/proyecto-ml-deserci%C3%B3n-en-ies-uao).
 
 ## Uso
 ```

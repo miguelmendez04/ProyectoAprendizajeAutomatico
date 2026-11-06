@@ -411,6 +411,66 @@ for linea in log.splitlines():
 y el rezago es de dos años). Las de Saber 11 vienen de los años con cobertura incompleta del calendario A, que el ETL excluye
 en vez de usar una muestra sesgada.
 """),
+    md("""
+### Nulos por bloques de años, no al azar
+
+Los nulos de las explicativas no son dispersos: vienen en **bloques de años** por la forma en que se construye cada fuente. El ETL los
+marca con tres indicadores 0/1 (`falta_saber11`, `falta_mdm`, `falta_snies`) para que el modelo pueda distinguirlos:
+
+- **MDM** (medición de desempeño municipal) empieza en 2016, así que con el rezago t-1 faltan **2015 y 2016**.
+- **SNIES** (matrícula por programa) empieza en 2015, así que con el rezago t-2 faltan **2015 y 2016**.
+- **Saber 11** pierde los años cuya cobertura del calendario A es incompleta (2018, 2020 y 2021), así que con el rezago t-1 faltan **2019 y 2021**.
+"""),
+    code("""
+bloques = {"Saber 11": "falta_saber11", "MDM": "falta_mdm", "SNIES (matrícula t-2)": "falta_snies"}
+por_anio = pd.DataFrame({nombre: 100 * df.groupby("anio")[col].mean() for nombre, col in bloques.items()}).T.round(0)
+por_anio.index.name = "% de IES-año sin dato"
+display(por_anio)
+
+fig, ax = plt.subplots(figsize=(7, 2.4))
+im = ax.imshow(por_anio.values, cmap=LinearSegmentedColormap.from_list("nulos", ["#fcfcfb", "#eb6834"]), vmin=0, vmax=100, aspect="auto")
+ax.set_xticks(range(len(por_anio.columns)), por_anio.columns)
+ax.set_yticks(range(len(por_anio)), por_anio.index)
+for i in range(por_anio.shape[0]):
+    for j in range(por_anio.shape[1]):
+        ax.text(j, i, f"{por_anio.values[i, j]:.0f}", ha="center", va="center", fontsize=9)
+ax.grid(False)
+ax.set_title("Porcentaje de IES-año sin dato, por bloque y año")
+plt.tight_layout()
+plt.show()
+"""),
+    md("""
+**Efecto en la partición temporal.** Con entrenamiento 2015–2019 y prueba 2020–2021: MDM y SNIES faltan solo en el entrenamiento (2015–2016) y la
+prueba los tiene completos, de modo que el modelo aprende con una parte de filas imputadas pero se evalúa sobre datos completos; Saber 11 falta en
+2019 (entrenamiento) y en **2021 (la mitad de la prueba)**, así que la mitad de la prueba se predice con Saber 11 imputado por la mediana del entrenamiento. La
+sensibilidad `ventana_modelado = (2017, 2021)` quita los años donde faltan MDM y SNIES; entrena con 2017–2019.
+"""),
+    code("""
+from src.modelado.particion import particion_temporal
+
+filas = []
+for ventana in ((2015, 2021), (2017, 2021)):
+    sub = df[df["anio"].between(*ventana)].reset_index(drop=True)
+    entrena, prueba = particion_temporal(sub, 2019)
+    for etapa, idx in (("entrenamiento", entrena), ("prueba", prueba)):
+        parte = sub.iloc[idx]
+        filas.append({"ventana": f"{ventana[0]}–{ventana[1]}", "conjunto": f"{etapa} ({int(parte['anio'].min())}–{int(parte['anio'].max())})", "filas": len(parte),
+                      "% sin Saber 11": 100 * parte["falta_saber11"].mean(), "% sin MDM": 100 * parte["falta_mdm"].mean(),
+                      "% sin SNIES t-2": 100 * parte["falta_snies"].mean()})
+display(pd.DataFrame(filas).set_index(["ventana", "conjunto"]).round(1))
+"""),
+    md("""
+### Tamaño de la IES: denominador de SPADIES frente a matrícula de SNIES
+
+`log_matriculados_spadies_t2` (log1p del denominador de la tasa; información de t-2, no fuga) es la variable de tamaño por defecto: viene
+**completa en 2015–2021**. `log_matriculados_ies_t2` (SNIES) queda como alternativa: es casi la misma cosa (correlación ~0,99) pero falta en 2015–2016.
+Las dos guardan una relación mecánica con la tasa porque el denominador es el de la propia tasa.
+"""),
+    code("""
+tam = df[["log_matriculados_spadies_t2", "log_matriculados_ies_t2", "tasa_desercion"]]
+display(pd.DataFrame({"% nulos": 100 * tam.isna().mean(), "rho con la tasa": tam.corr(method="spearman")["tasa_desercion"],
+                      "rho entre las dos": [tam.corr(method="spearman").loc["log_matriculados_spadies_t2", "log_matriculados_ies_t2"]] * 3}).iloc[:2].round(3))
+"""),
     md("## 7. Correlaciones de las variables explicativas con la tasa"),
     code("""
 from src.modelado.particion import EXCLUIDAS_POR_DEFECTO, columnas_explicativas

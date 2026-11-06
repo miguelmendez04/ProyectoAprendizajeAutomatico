@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Filas: 1928 · Columnas: 43
+Filas: 1928 · Columnas: 47
 
 | Variable | Tipo | Fuente | Descripción | % nulos | Rango |
 |---|---|---|---|---|---|
@@ -12,6 +12,7 @@ Filas: 1928 · Columnas: 43
 | `inconsistencia_fuentes` | bool | SPADIES / SNIES | Bandera: ratio_spadies_snies > 3 o < 1/3, o SNIES sin dato dentro de su cobertura. Diagnóstico | 0.0% | 1 valores distintos |
 | `regimen_especial` | bool | SNIES (MEN) | Bandera: escuela militar o policial (lista explícita de 16 códigos SNIES). Diagnóstico | 0.0% | 1 valores distintos |
 | `es_sena` | bool | SNIES (MEN) | Bandera: la IES es el SENA (código 9110). Diagnóstico | 0.0% | 2 valores distintos |
+| `log_matriculados_spadies_t2` | float64 | SPADIES (MEN) | Logaritmo natural de 1 + el denominador de la tasa (matrícula SPADIES de hace dos semestres, promedio de los dos del año). Tamaño por defecto; información de t-2, completa 2015–2021 (año t-2) | 0.0% | 4.635 – 12.87 |
 | `cod_divipola_mpio` | str | DIVIPOLA (DANE) | Código DANE del municipio, 5 dígitos con ceros a la izquierda | 0.0% | 67 valores distintos |
 | `sector` | str | SNIES (MEN) | Sector de la IES (id_sector: oficial/privada) | 0.0% | 2 valores distintos |
 | `caracter` | str | SNIES (MEN) | Carácter académico de la IES (id_caracter) | 0.0% | 4 valores distintos |
@@ -47,3 +48,6 @@ Filas: 1928 · Columnas: 43
 | `td_transito_superior_t1` | float64 | TerriData (DNP) | Tasa de tránsito inmediato a la educación superior, % (año t-1) | 0.2% | 13.82 – 72.88 |
 | `td_poblacion_total_t1` | float64 | TerriData (DNP) | Indicador territorial poblacion_total (año t-1) | 0.2% | 1.859e+04 – 8.081e+06 |
 | `log_matriculados_ies_t2` | float64 | SNIES (MEN) | Logaritmo natural de 1 + matrícula anual de la IES (log1p); versión explicativa de la matrícula (año t-2) | 29.0% | 3.689 – 13.06 |
+| `falta_saber11` | bool | ETL | Indicador: la fila no tiene variables de Saber 11 (años con cobertura incompleta del calendario A: 2019 y 2021) | 0.0% | 2 valores distintos |
+| `falta_mdm` | bool | ETL | Indicador: la fila no tiene la medición de desempeño municipal (MDM empieza en 2016: faltan 2015–2016) | 0.0% | 2 valores distintos |
+| `falta_snies` | bool | ETL | Indicador: la fila no tiene matrícula SNIES t-2 (SNIES por programa empieza en 2015: faltan 2015–2016) | 0.0% | 2 valores distintos |

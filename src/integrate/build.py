@@ -94,6 +94,8 @@ def construir_dataset_desde_tablas(
             sale |= base["regimen_especial"]
         if excluir_sena:
             sale |= base["es_sena"]
+        # Tamaño según SPADIES: log1p del denominador de la tasa. Es información de t-2 (no fuga) y está completa 2015-2021
+        base["log_matriculados_spadies_t2"] = np.log1p(base["matriculados_t2_spadies"])
         base = base[~sale].drop(columns=["matriculados_t2_spadies", "matriculados_t2_snies"]).reset_index(drop=True)
 
     sede_ies, _ = sede_por_ies(catalogo)
@@ -134,6 +136,11 @@ def construir_dataset_desde_tablas(
     # La matrícula de la IES es muy asimétrica (SENA ~430 mil frente a una mediana de ~3,7 mil): su logaritmo es la versión explicativa
     for col in [c for c in base.columns if re.fullmatch(r"matriculados_ies_t\d+", c)]:
         base[f"log_{col}"] = np.log1p(base[col])
+    # Indicadores de nulo por bloques de años: Saber 11 (2019 y 2021), MDM y SNIES (2015-2016)
+    for indicador, col in (("falta_saber11", "punt_global_media_t1"), ("falta_mdm", "td_mdm_t1"),
+                           ("falta_snies", f"matriculados_ies_t{rezago_matricula}")):
+        if col in base.columns:
+            base[indicador] = base[col].isna()
     return base.reset_index(drop=True), log
 
 

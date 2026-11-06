@@ -83,7 +83,7 @@ def test_poblacion_total_y_ratio_quedan_fuera_por_defecto_pero_las_relativas_ent
     cols = columnas_explicativas(df)
     assert "td_poblacion_total_t1" not in cols and "ratio_spadies_snies" not in cols
     assert {"td_pct_poblacion_rural_t1", "td_pct_pob_15_19_t1", "x_t1"} <= set(cols)
-    assert set(EXCLUIDAS_POR_DEFECTO) == {"td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2"}
+    assert set(EXCLUIDAS_POR_DEFECTO) == {"td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2", "log_matriculados_ies_t2"}
 
 
 def test_se_puede_cambiar_la_lista_de_exclusion():
@@ -94,12 +94,12 @@ def test_se_puede_cambiar_la_lista_de_exclusion():
     assert "td_poblacion_total_t1" not in columnas_explicativas_desde_config(df, {})  # sin sección: lista por defecto
 
 
-def test_matricula_bruta_queda_fuera_y_su_logaritmo_entra_por_defecto():
-    df = _df().assign(matriculados_ies_t2=100.0, log_matriculados_ies_t2=4.6, td_poblacion_total_t1=1.0)
+def test_tamano_por_defecto_es_el_log_del_denominador_spadies_y_el_de_snies_es_la_alternativa():
+    df = _df().assign(matriculados_ies_t2=100.0, log_matriculados_ies_t2=4.6, log_matriculados_spadies_t2=5.0, td_poblacion_total_t1=1.0)
     cols = columnas_explicativas(df)
-    assert "matriculados_ies_t2" not in cols and "log_matriculados_ies_t2" in cols
-    assert "matriculados_ies_t2" in EXCLUIDAS_POR_DEFECTO
-    assert "matriculados_ies_t2" in columnas_explicativas(df, excluir=[])  # sigue en el dataset
+    assert "log_matriculados_spadies_t2" in cols
+    assert "matriculados_ies_t2" not in cols and "log_matriculados_ies_t2" not in cols
+    assert {"matriculados_ies_t2", "log_matriculados_ies_t2"} <= set(columnas_explicativas(df, excluir=[]))  # siguen en el dataset
 
 
 def test_cargar_dataset_con_excluir_sena_para_el_analisis_de_sensibilidad(tmp_path):
@@ -112,3 +112,89 @@ def test_cargar_dataset_con_excluir_sena_para_el_analisis_de_sensibilidad(tmp_pa
     cfg["modelado"] = {"excluir_sena": True}
     assert cargar_dataset(cfg)["cod_ies"].tolist() == ["1830"]  # opción de la configuración
     assert len(cargar_dataset(cfg, excluir_sena=False)) == 3  # el argumento manda sobre la configuración
+
+
+# ---- variables categóricas, preprocesador y ventana ----------------------------------------------------
+
+def _df_cat():
+    df = _df().assign(sector=["1", "2"] * 35, caracter=["4", "3", "2", "1", "4"] * 14, log_matriculados_spadies_t2=5.0,
+                      log_matriculados_ies_t2=5.1, falta_saber11=False, falta_mdm=False, falta_snies=True)
+    df.loc[0, "x_t1"] = np.nan
+    return df
+
+
+def test_columnas_categoricas_son_sector_y_caracter_si_existen():
+    from src.modelado.particion import columnas_categoricas
+
+    assert columnas_categoricas(_df_cat()) == ["sector", "caracter"]
+    assert columnas_categoricas(_df()) == []
+
+
+def test_etiquetas_de_sector_y_caracter_segun_snies():
+    from src.modelado.particion import ETIQUETAS_CARACTER, ETIQUETAS_SECTOR, etiquetar_categoricas
+
+    assert ETIQUETAS_SECTOR == {"1": "oficial", "2": "privada"}
+    assert ETIQUETAS_CARACTER == {"1": "técnica profesional", "2": "tecnológica", "3": "institución universitaria", "4": "universidad"}
+    out = etiquetar_categoricas(pd.DataFrame({"sector": ["1", "2", "9"], "caracter": ["4", "1", None]}))
+    assert out["sector"].tolist() == ["oficial", "privada", "desconocido"]
+    assert out["caracter"].tolist()[:2] == ["universidad", "técnica profesional"] and out["caracter"].iloc[2] == "desconocido"
+
+
+def test_variables_modelado_separa_numericas_y_categoricas_con_el_tamano_spadies_por_defecto():
+    from src.modelado.particion import variables_modelado
+
+    numericas, categoricas = variables_modelado(_df_cat())
+    assert categoricas == ["sector", "caracter"]
+    assert "log_matriculados_spadies_t2" in numericas and "log_matriculados_ies_t2" not in numericas  # la de SNIES es la alternativa
+    assert {"falta_saber11", "falta_mdm", "falta_snies"} <= set(numericas) and "x_t1" in numericas
+    assert not set(numericas) & set(categoricas)
+    sin_falta, _ = variables_modelado(_df_cat(), incluir_indicadores_falta=False)
+    assert not any(c.startswith("falta_") for c in sin_falta)
+    alternativa, _ = variables_modelado(_df_cat(), excluir=["log_matriculados_spadies_t2"])
+    assert "log_matriculados_ies_t2" in alternativa and "log_matriculados_spadies_t2" not in alternativa
+
+
+def test_preprocesador_one_hot_imputa_y_tolera_categorias_nuevas():
+    from src.modelado.particion import construir_preprocesador, preparar_x, variables_modelado
+
+    df = _df_cat()
+    numericas, categoricas = variables_modelado(df)
+    X = preparar_x(df, numericas, categoricas)
+    assert X["sector"].isin(["oficial", "privada"]).all() and X["falta_snies"].dtype.kind in "iu"
+    pre = construir_preprocesador(numericas, categoricas)
+    M = pre.fit_transform(X)
+    assert not np.isnan(M).any()  # el nulo de x_t1 se imputó
+    assert M.shape[1] == len(numericas) + 2 + 4  # 2 sectores + 4 caracteres en one-hot
+    nuevo = X.head(1).assign(caracter="categoría nunca vista")
+    assert pre.transform(nuevo).shape[1] == M.shape[1]  # handle_unknown="ignore"
+
+
+def test_ventana_modelado_filtra_los_anios(tmp_path):
+    ruta = tmp_path / "dataset_ies.csv"
+    pd.DataFrame({"cod_ies": ["1"] * 7, "anio": list(range(2015, 2022)), "tasa_desercion": 0.1}).to_csv(ruta, index=False)
+    cfg = {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}}
+    assert cargar_dataset(cfg)["anio"].tolist() == list(range(2015, 2022))  # por defecto 2015–2021
+    assert cargar_dataset(cfg, ventana_modelado=(2017, 2021))["anio"].tolist() == [2017, 2018, 2019, 2020, 2021]
+    cfg["modelado"] = {"ventana_modelado": [2017, 2021]}
+    assert cargar_dataset(cfg)["anio"].min() == 2017
+    entrena, prueba = particion_temporal(cargar_dataset(cfg), 2019)
+    assert len(entrena) == 3 and len(prueba) == 2  # con la ventana 2017–2021 se entrena con 2017–2019
+
+
+def test_ventana_invalida_error_claro(tmp_path):
+    ruta = tmp_path / "dataset_ies.csv"
+    pd.DataFrame({"cod_ies": ["1"], "anio": [2018], "tasa_desercion": 0.1}).to_csv(ruta, index=False)
+    cfg = {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}}
+    with pytest.raises(ValueError, match="ventana_modelado"):
+        cargar_dataset(cfg, ventana_modelado=(2021, 2017))
+
+
+def test_variables_modelado_desde_config_usa_las_opciones_de_la_configuracion():
+    from src.modelado.particion import variables_modelado_desde_config
+
+    df = _df_cat()
+    num, cat = variables_modelado_desde_config(df, {})
+    assert "log_matriculados_spadies_t2" in num and "falta_mdm" in num and cat == ["sector", "caracter"]
+    cfg = {"modelado": {"excluir_variables": ["log_matriculados_spadies_t2"], "incluir_indicadores_falta": False}}
+    num, _ = variables_modelado_desde_config(df, cfg)
+    assert "log_matriculados_spadies_t2" not in num and "log_matriculados_ies_t2" in num and not any(c.startswith("falta_") for c in num)

@@ -133,3 +133,39 @@ def test_las_opciones_de_exclusion_se_pueden_apagar_por_separado():
 def test_en_unidad_municipio_las_exclusiones_se_aplican_antes_de_agregar():
     df, _ = construir_dataset_desde_tablas("municipio", [2018], **_tablas())
     assert df["tasa_desercion"].tolist() == [0.1]  # solo la IES 1 entra al promedio municipal
+
+
+# ---- tamaño según SPADIES e indicadores de falta ---------------------------------------------------------
+
+def test_log_matriculados_spadies_t2_es_log1p_del_denominador_y_no_tiene_nulos():
+    df, _ = construir_dataset_desde_tablas("ies", [2018], **_tablas())
+    fila = df.set_index("cod_ies").loc["1"]
+    assert fila["log_matriculados_spadies_t2"] == pytest.approx(np.log1p(100.0))
+    assert df["log_matriculados_spadies_t2"].notna().all()  # completo aunque SNIES no tenga t-2 para ese año
+    assert "matriculados_t2_spadies" not in df.columns  # solo entra el logaritmo
+
+
+def test_el_logaritmo_spadies_no_existe_en_la_unidad_municipio():
+    df, _ = construir_dataset_desde_tablas("municipio", [2018], **_tablas())
+    assert "log_matriculados_spadies_t2" not in df.columns
+
+
+def test_indicadores_falta_marcan_los_bloques_sin_dato():
+    t = _tablas()
+    t["terridata"] = pd.DataFrame({"cod_divipola_mpio": ["05001"], "anio": [2017], "td_mdm": [70.0]})
+    obj = pd.DataFrame({"cod_ies": ["1", "1"], "anio": [2018, 2019], "tasa_desercion": [0.1, 0.1], "matriculados_t2_spadies": [100.0, 100.0]})
+    t["objetivo"] = obj
+    t["snies_programa"] = pd.concat([t["snies_programa"], pd.DataFrame({"cod_ies": ["1"], "cod_snies_programa": "p", "anio": [2017], "matriculados": 100})])
+    df, _ = construir_dataset_desde_tablas("ies", [2018, 2019], **t)
+    df = df.set_index("anio")
+    # 2018: Saber 2017 y MDM 2017 existen, SNIES t-2 (2016) existe; 2019: Saber 2018 y MDM 2018 no, SNIES t-2 (2017) sí
+    assert not df.loc[2018, "falta_saber11"] and not df.loc[2018, "falta_mdm"] and not df.loc[2018, "falta_snies"]
+    assert df.loc[2019, "falta_saber11"] and df.loc[2019, "falta_mdm"] and not df.loc[2019, "falta_snies"]
+    assert df["falta_saber11"].dtype == bool
+
+
+def test_falta_snies_es_verdadera_cuando_no_hay_matricula_t2():
+    t = _tablas()
+    t["objetivo"] = pd.DataFrame({"cod_ies": ["1"], "anio": [2017], "tasa_desercion": [0.1], "matriculados_t2_spadies": [100.0]})
+    df, _ = construir_dataset_desde_tablas("ies", [2017], **t)  # t-2 = 2015: SNIES de prueba empieza en 2016
+    assert df["falta_snies"].all() and df["falta_saber11"].all()

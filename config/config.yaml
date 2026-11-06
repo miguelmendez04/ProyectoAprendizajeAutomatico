@@ -25,7 +25,8 @@ datasets:
   snies_ies: n5yy-8nav                 # catálogo oficial de IES (nombre, sector, principal/seccional)
   divipola_municipios: gdxc-w37w       # catálogo oficial de municipios
 
-# TerriData (DNP): zips TerriData_Dim<N>.txt.zip descargados a mano (dimensiones 2, 4, 7, 8, 14 y 16). Es la fuente
+# TerriData (DNP): zips TerriData_Dim<N>.txt.zip descargados a mano (dimensiones 2, 4, 7, 8, 14, 16 y 25; la 25 trae las
+# proyecciones de población con base en el censo 2005 que se usan para 2015-2017). Es la fuente
 # de población, NBI/IPM, cobertura educativa, desempeño fiscal/municipal y mercado laboral; reemplaza los archivos del DANE.
 terridata:
   directorio: data/raw/terridata
@@ -76,9 +77,14 @@ max_nulos_pct: 0.5
 modelado:
   # Variables que no entran como explicativas (ver src/modelado/particion.py). La población absoluta queda fuera hasta
   # contar con las retroproyecciones del DANE con base 2018 (cambio de base 2005 -> 2018 entre 2017 y 2018).
-  excluir_variables: [td_poblacion_total_t1, ratio_spadies_snies, matriculados_ies_t2]
+  # El tamaño por defecto es log_matriculados_spadies_t2; log_matriculados_ies_t2 (SNIES) es la alternativa.
+  excluir_variables: [td_poblacion_total_t1, ratio_spadies_snies, matriculados_ies_t2, log_matriculados_ies_t2]
   # Sensibilidad para el paper: true quita las filas del SENA al cargar el dataset (cargar_dataset), sin rehacer el pipeline.
   excluir_sena: false
+  # Años del modelado: (2015, 2021) por defecto; [2017, 2021] es la sensibilidad sin los años donde faltan MDM y SNIES
+  ventana_modelado: [2015, 2021]
+  # Incluye falta_saber11, falta_mdm y falta_snies como variables 0/1 (marcan los bloques de años sin dato)
+  incluir_indicadores_falta: true
   transformacion_objetivo: ninguna   # ninguna | logit  (src/modelado/objetivo.py)
   epsilon_logit: 0.001               # la tasa se recorta a [epsilon, 1 - epsilon] antes del logit
 

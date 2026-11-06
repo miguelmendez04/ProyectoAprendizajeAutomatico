@@ -3,7 +3,6 @@
 Llave canónica: código de 5 dígitos como str con ceros a la izquierda.
 Módulo central: lo usan todas las fuentes y se reutiliza en la tesis.
 """
-import difflib
 import re
 import unicodedata
 from pathlib import Path
@@ -61,53 +60,3 @@ def aplicar_cambios_codigo(df: pd.DataFrame, col: str, cambios: dict[str, str]) 
     out = df.copy()
     out[col] = out[col].replace(cambios)
     return out
-
-
-def _resolver_depto(depto_norm: str, departamentos: list[str]) -> str | None:
-    """Encuentra el departamento del catálogo: exacto, contenido ("SAN ANDRES") o parecido."""
-    if depto_norm in departamentos:
-        return depto_norm
-    if len(depto_norm) >= 4:
-        contenidos = [d for d in departamentos if depto_norm in d or d in depto_norm]
-        if len(contenidos) == 1:
-            return contenidos[0]
-    cercano = difflib.get_close_matches(depto_norm, departamentos, n=1, cutoff=0.8)
-    return cercano[0] if cercano else None
-
-
-def emparejar_por_nombre(
-    df: pd.DataFrame,
-    divipola: pd.DataFrame,
-    col_municipio: str,
-    col_depto: str,
-    umbral: float = 0.9,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Asigna `cod_divipola_mpio` por nombre normalizado + departamento.
-
-    Primero exacto; difflib solo como último recurso y dentro del mismo
-    departamento. Devuelve (df con el código, reporte de emparejamientos no exactos).
-    """
-    # Índice departamento -> {municipio_norm: código}
-    por_depto = {
-        depto: dict(zip(g["municipio_norm"], g["cod_divipola_mpio"]))
-        for depto, g in divipola.groupby("depto_norm")
-    }
-    codigos, reporte = [], []
-    for nombre, depto in zip(df[col_municipio], df[col_depto]):
-        candidatos = por_depto.get(_resolver_depto(normalizar_texto(depto), list(por_depto)), {})
-        norm = normalizar_texto(nombre)
-        if norm in candidatos:
-            codigos.append(candidatos[norm])
-            continue
-        cercano = difflib.get_close_matches(norm, list(candidatos), n=1, cutoff=umbral)
-        if cercano:
-            score = difflib.SequenceMatcher(None, norm, cercano[0]).ratio()
-            codigos.append(candidatos[cercano[0]])
-            reporte.append((nombre, cercano[0], candidatos[cercano[0]], score))
-        else:
-            codigos.append(None)
-            reporte.append((nombre, None, None, float("nan")))  # sin pareja: también se reporta
-    out = df.copy()
-    out["cod_divipola_mpio"] = codigos
-    columnas = ["nombre_original", "nombre_emparejado", "cod_divipola_mpio", "score"]
-    return out, pd.DataFrame(reporte, columns=columnas)

@@ -125,13 +125,11 @@ Naturaleza según el catálogo de SNIES (sector de la sede de la IES). Etapas: s
 - `config.yaml: modelado.transformacion_objetivo` (`ninguna` por defecto | `logit`) y `epsilon_logit` (0,001). Utilidades en `src/modelado/objetivo.py`: `transformar_objetivo`, `invertir_objetivo` y `objetivo_para_modelado(df, cfg)`. El logit recorta la tasa a [ε, 1 − ε] y devuelve log(p / (1 − p)); las predicciones hay que devolverlas a la escala de tasa con `invertir_objetivo` antes de evaluar. No se escribe en el dataset: se aplica en el modelado.
 - **Por qué**: la tasa está acotada en [0, 1], es asimétrica (3,8) y tiene cola derecha; el logit la lleva a la recta real y comprime esa cola. Con el mínimo de 0,003 y el máximo de 0,994 el recorte de ε = 0,001 no toca ningún valor actual. Es una opción, no una recomendación: conviene comparar el desempeño con y sin transformar.
 
-## Lista de IES a exportar (`reports/ies_a_descargar.csv`)
-- Generada con `python -m src.integrate.ies_descargar` (matrícula 2021 de SNIES). Criterio: todas las IES con sede en el Valle del Cauca (30) + las 3 de mayor matrícula de Bogotá, Medellín, Cali, Barranquilla y Bucaramanga + la mayor de las demás capitales (Cartagena, Cúcuta, Pereira, Manizales, Ibagué, Santa Marta, Villavicencio, Pasto, Tunja, Popayán, Neiva, Armenia, Montería, Valledupar) + el resto por matrícula hasta 60.
-- Columnas: código SNIES, nombre oficial (catálogo `n5yy-8nav`), municipio sede y departamento (DIVIPOLA, normalizados), sector (oficial/privada) y matrícula 2021.
-- **Matrícula = suma de programas** (máximo semestral por programa), incluye pregrado y posgrado. El SENA (9110) figura primero por matrícula; SPADIES sí lo cubre (7 IES-año en el dataset), pero es atípico por tamaño (ver su sección).
+## Lista de IES a exportar (retirada, 2026-11-06)
+Se había generado `reports/ies_a_descargar.csv` (60 IES: las del Valle del Cauca, las de mayor matrícula de las ciudades principales y las demás por matrícula) para exportar SPADIES IES por IES. El export "IES: Diferenciado" trae las 343 IES en un solo archivo, así que la lista, su generador (`src/integrate/ies_descargar.py`) y sus pruebas se eliminaron; siguen en el historial de git. Por la misma razón se eliminó `emparejar_por_nombre` (solo lo usaba el lector manual del DANE, ya retirado) y el dataset preliminar `data/processed/dataset_municipio.csv`.
 
 ## Pendientes manuales
-Ya no hace falta descargar IES una a una (el export diferenciado las trae todas; `reports/ies_a_descargar.csv` queda como referencia de cobertura) ni archivos del DANE (TerriData cubre población y NBI). Quedan: histórico de cambios de código DIVIPOLA (`config.yaml: cambios_codigo`, hoy vacío), confirmar con el MEN las filas repetidas de `5wck-szir`, y decidir el tratamiento de tasas atípicas, de la colinealidad territorial y de la ausencia de mercado laboral municipal (ver el EDA).
+Ya no hace falta descargar IES una a una (el export diferenciado las trae todas) ni archivos del DANE (TerriData cubre población y NBI). Quedan: histórico de cambios de código DIVIPOLA (`config.yaml: cambios_codigo`, hoy vacío), confirmar con el MEN las filas repetidas de `5wck-szir`, y decidir el tratamiento de tasas atípicas, de la colinealidad territorial y de la ausencia de mercado laboral municipal (ver el EDA).
 
 <!-- pipeline:inicio -->
 

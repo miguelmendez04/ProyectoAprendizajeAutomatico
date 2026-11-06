@@ -3,21 +3,33 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.integrate.banderas import calcular_banderas, es_regimen_especial
+from src.integrate.banderas import REGIMEN_ESPECIAL, calcular_banderas, es_regimen_especial, es_sena
 from src.integrate.build import construir_dataset_desde_tablas
 
 
-def test_regimen_especial_por_codigo():
-    cods = pd.Series(["2106", "2901", "2999", "3901", "3999", "9100", "9109", "9110", "1101", "2833", "4106", "21060"])
-    esperado = [True, True, True, True, True, True, True, False, False, False, False, False]
-    assert es_regimen_especial(cods).tolist() == esperado  # 9110 (SENA) no es 910x
+LISTA = ["2106", "2901", "2902", "2903", "2904", "2905", "2906", "3114", "3901", "3902",
+         "9101", "9102", "9103", "9104", "9105", "9107"]
 
 
-def test_regimen_especial_por_nombre_sin_tildes_ni_dobles_espacios():
-    cods = pd.Series(["1", "2", "3", "4", "5", "6", "7"])
-    nombres = pd.Series(["ESCUELA  MILITAR DE CADETES", "Escuela de Policía Nacional", "ESCUELA NAVAL DE SUBOFICIALES",
-                         "ESCUELA FAC", "FACULTAD DE ARTES", "UNIVERSIDAD DEL VALLE", None], index=cods.index)
-    assert es_regimen_especial(cods, nombres).tolist() == [True, True, True, True, False, False, False]  # FAC solo como palabra
+def test_regimen_especial_es_una_lista_explicita_de_16_codigos():
+    assert sorted(REGIMEN_ESPECIAL) == sorted(LISTA) and len(REGIMEN_ESPECIAL) == 16
+    assert es_regimen_especial(pd.Series(LISTA)).all()
+
+
+def test_9108_y_9109_no_son_militares_y_no_pueden_quedar_marcadas():
+    """Instituto Caro y Cuervo (9108) e ITEC (9109) están dentro del rango 910x pero no son escuelas militares."""
+    marca = es_regimen_especial(pd.Series(["9108", "9109"]))
+    assert not marca.any(), "9108 o 9109 quedaron marcadas como régimen especial"
+    assert "9108" not in REGIMEN_ESPECIAL and "9109" not in REGIMEN_ESPECIAL
+
+
+def test_la_lista_explicita_no_marca_codigos_vecinos_ni_al_sena():
+    otros = pd.Series(["9100", "9106", "9110", "2907", "2999", "3903", "3999", "1101", "2833", "4106", "21060", "3114 "])
+    assert not es_regimen_especial(otros).any()  # 9110 (SENA), prefijos 29xx/39xx/910x ya no cuentan
+
+
+def test_es_sena_solo_marca_el_9110():
+    assert es_sena(pd.Series(["9110", "9111", "9100", "1101", "91100"])).tolist() == [True, False, False, False, False]
 
 
 def _objetivo(**cols):
@@ -60,10 +72,11 @@ def test_snies_en_cero_cuenta_como_sin_dato():
     assert np.isnan(out.loc["1", "ratio_spadies_snies"]) and out.loc["1", "inconsistencia_fuentes"]
 
 
-def test_regimen_especial_se_marca_en_la_misma_tabla():
-    obj = _objetivo(cod_ies=["2106", "2", "3", "4", "5"])
-    out = calcular_banderas(obj, _snies({"2106": 100, "2": 100, "3": 100, "4": 100, "5": 100}), 2, 3.0)
+def test_regimen_especial_y_sena_se_marcan_en_la_misma_tabla():
+    obj = _objetivo(cod_ies=["2106", "9110", "9108", "4", "5"])
+    out = calcular_banderas(obj, _snies({"2106": 100, "9110": 100, "9108": 100, "4": 100, "5": 100}), 2, 3.0)
     assert out["regimen_especial"].tolist() == [True, False, False, False, False]
+    assert out["es_sena"].tolist() == [False, True, False, False, False]
 
 
 # ---- integración con construir_dataset_desde_tablas ----------------------------------------------
@@ -91,6 +104,20 @@ def test_exclusiones_por_defecto_y_columnas_de_diagnostico_en_el_dataset():
     assert not {"matriculados_t2_spadies", "matriculados_t2_snies"} & set(df.columns)  # el denominador no entra al dataset
     banderas = registro["banderas"].set_index("cod_ies")
     assert banderas.loc["2106", "regimen_especial"] and banderas.loc["3", "inconsistencia_fuentes"]
+
+
+def test_el_sena_se_marca_pero_no_se_excluye_por_defecto_y_excluir_sena_lo_saca():
+    t = _tablas()
+    t["catalogo"] = pd.concat([t["catalogo"], pd.DataFrame({"cod_ies": ["9110"], "cod_snies_programa": "p", "cod_divipola_mpio": "05001",
+                                                           "cod_divipola_mpio_programa": "05001", "sector": "1", "caracter": "4"})])
+    t["snies_programa"] = pd.concat([t["snies_programa"], pd.DataFrame({"cod_ies": ["9110"] * 3, "cod_snies_programa": "p",
+                                                                       "anio": [2016, 2017, 2018], "matriculados": 100})])
+    t["objetivo"] = pd.concat([t["objetivo"], pd.DataFrame({"cod_ies": ["9110"], "anio": [2018], "tasa_desercion": [0.12],
+                                                           "matriculados_t2_spadies": [100.0]})])
+    df, _ = construir_dataset_desde_tablas("ies", [2018], **t)
+    assert sorted(df["cod_ies"]) == ["1", "9110"] and df.set_index("cod_ies").loc["9110", "es_sena"]
+    df, _ = construir_dataset_desde_tablas("ies", [2018], excluir_sena=True, **t)
+    assert df["cod_ies"].tolist() == ["1"]
 
 
 def test_las_opciones_de_exclusion_se_pueden_apagar_por_separado():

@@ -53,9 +53,13 @@ excluir_posible_cierre: true
 excluir_inconsistencias: true
 umbral_ratio_inconsistencia: 3
 
-# Régimen especial: escuelas militares y policiales (códigos 2106, 29xx, 39xx, 910x y nombres con ESCUELA MILITAR,
-# POLICIA, NAVAL o FAC). La bandera `regimen_especial` queda siempre en el dataset.
+# Régimen especial: lista explícita de escuelas militares y policiales (códigos SNIES 2106, 2901-2906, 3114, 3901, 3902,
+# 9101-9105 y 9107; no se usan prefijos: 9108 Instituto Caro y Cuervo y 9109 ITEC no son militares). La bandera
+# `regimen_especial` queda siempre en el dataset.
 excluir_regimen_especial: true
+
+# SENA (9110): la bandera `es_sena` queda siempre en el dataset; solo se excluye si esta opción es true.
+excluir_sena: false
 
 # Las IES-año con tasa mayor que este umbral (tras el mínimo) se listan en reports/tasas_altas.csv
 umbral_tasa_alta: 0.5

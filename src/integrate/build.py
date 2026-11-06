@@ -59,9 +59,9 @@ def construir_dataset_desde_tablas(
     objetivo: pd.DataFrame | None = None,
     terridata: pd.DataFrame | None = None,
     rezago_matricula: int = 2,
-    nombres_ies: pd.Series | None = None,
     excluir_inconsistencias: bool = True,
     excluir_regimen_especial: bool = True,
+    excluir_sena: bool = False,
     umbral_ratio: float = 3.0,
     registro: dict | None = None,
 ) -> tuple[pd.DataFrame, list[dict]]:
@@ -72,16 +72,17 @@ def construir_dataset_desde_tablas(
 
     Si `objetivo` es None se genera un esqueleto con `tasa_desercion` nula.
 
-    Si el objetivo trae `matriculados_t2_spadies` se calculan las banderas `inconsistencia_fuentes` y
-    `regimen_especial` y el `ratio_spadies_snies` (ver `banderas.py`); las filas marcadas se excluyen según
-    `excluir_inconsistencias` y `excluir_regimen_especial`, antes de agregar por municipio. La tabla completa
+    Si el objetivo trae `matriculados_t2_spadies` se calculan las banderas `inconsistencia_fuentes`,
+    `regimen_especial` y `es_sena` y el `ratio_spadies_snies` (ver `banderas.py`); las filas marcadas se excluyen según
+    `excluir_inconsistencias`, `excluir_regimen_especial` y `excluir_sena` (esta última, apagada por defecto), antes de
+    agregar por municipio. La tabla completa
     con las banderas se deja en `registro["banderas"]`. El denominador no entra al dataset.
     """
     log: list[dict] = []
     base = _esqueleto(unidad, snies_mpio, snies_programa) if objetivo is None else objetivo.copy()
     base = base[base["anio"].isin(anios)].reset_index(drop=True)
     if objetivo is not None and {"cod_ies", "matriculados_t2_spadies"} <= set(base.columns):
-        base = calcular_banderas(base, snies_programa, rezago_matricula, umbral_ratio, nombres_ies)
+        base = calcular_banderas(base, snies_programa, rezago_matricula, umbral_ratio)
         if registro is not None:
             registro["banderas"] = base.copy()
         sale = pd.Series(False, index=base.index)
@@ -89,6 +90,8 @@ def construir_dataset_desde_tablas(
             sale |= base["inconsistencia_fuentes"]
         if excluir_regimen_especial:
             sale |= base["regimen_especial"]
+        if excluir_sena:
+            sale |= base["es_sena"]
         base = base[~sale].drop(columns=["matriculados_t2_spadies", "matriculados_t2_snies"]).reset_index(drop=True)
 
     sede_ies, _ = sede_por_ies(catalogo)
@@ -216,7 +219,7 @@ def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path
     else:
         tabla["nombre"] = pd.NA
     llave = [c for c in ("cod_ies", "anio", "semestre") if c in tabla.columns]
-    extra = ["matriculados_t2_snies", "ratio_spadies_snies", "inconsistencia_fuentes", "regimen_especial"]
+    extra = ["matriculados_t2_snies", "ratio_spadies_snies", "inconsistencia_fuentes", "regimen_especial", "es_sena"]
     if banderas is not None:
         tabla = tabla.merge(banderas[llave + extra], on=llave, how="left")
     primeras = ["cod_ies", "nombre", "anio"] + (["semestre"] if "semestre" in tabla.columns else [])
@@ -224,10 +227,10 @@ def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path
     tabla = tabla[primeras + resto]
     destino.parent.mkdir(parents=True, exist_ok=True)
     tabla.to_csv(destino, index=False, encoding="utf-8-sig")
-    marcas = {c: tabla[c].fillna(False).astype(bool) for c in ("posible_cierre", "inconsistencia_fuentes", "regimen_especial") if c in tabla}
+    marcas = {c: tabla[c].fillna(False).astype(bool) for c in ("posible_cierre", "inconsistencia_fuentes", "regimen_especial", "es_sena") if c in tabla}
     union = pd.concat(marcas.values(), axis=1).any(axis=1) if marcas else pd.Series(False, index=tabla.index)
     opciones = {"inconsistencia_fuentes": cfg.get("excluir_inconsistencias", True), "regimen_especial": cfg.get("excluir_regimen_especial", True),
-                "posible_cierre": cfg.get("excluir_posible_cierre", True)}
+                "posible_cierre": cfg.get("excluir_posible_cierre", True), "es_sena": cfg.get("excluir_sena", False)}
     notas.append(
         f"SPADIES: {len(tabla)} IES-año de {tabla['cod_ies'].nunique()} IES con tasa > {umbral:.0%} tras el denominador mínimo "
         f"(lista en {destino.as_posix()}); marcadas: "
@@ -243,10 +246,12 @@ def _anotar_banderas(cfg: dict, banderas: pd.DataFrame, nombres: pd.Series | Non
     umbral = cfg.get("umbral_ratio_inconsistencia", 3.0)
     excl_inc = cfg.get("excluir_inconsistencias", True)
     excl_reg = cfg.get("excluir_regimen_especial", True)
-    marcadas = banderas[banderas["inconsistencia_fuentes"] | banderas["regimen_especial"]].copy()
+    excl_sena = cfg.get("excluir_sena", False)
+    marcadas = banderas[banderas["inconsistencia_fuentes"] | banderas["regimen_especial"] | banderas["es_sena"]].copy()
     if nombres is not None:
         marcadas.insert(1, "nombre", marcadas["cod_ies"].map(nombres))
-    marcadas["excluida"] = (marcadas["inconsistencia_fuentes"] & excl_inc) | (marcadas["regimen_especial"] & excl_reg)
+    marcadas["excluida"] = ((marcadas["inconsistencia_fuentes"] & excl_inc) | (marcadas["regimen_especial"] & excl_reg)
+                            | (marcadas["es_sena"] & excl_sena))
     destino.parent.mkdir(parents=True, exist_ok=True)
     marcadas.to_csv(destino, index=False, encoding="utf-8-sig")
     n = len(banderas)
@@ -264,8 +269,12 @@ def _anotar_banderas(cfg: dict, banderas: pd.DataFrame, nombres: pd.Series | Non
         f"Régimen especial (escuelas militares y policiales): {len(reg)} IES-año de {reg['cod_ies'].nunique()} IES "
         f"({', '.join(sorted(reg['cod_ies'].unique()))}); {'se excluyen' if excl_reg else 'no se excluyen'}"
     )
+    sena = banderas[banderas["es_sena"]]
+    notas.append(
+        f"SENA (9110): {len(sena)} IES-año marcados con es_sena; {'se excluyen' if excl_sena else 'no se excluyen (excluir_sena = false)'}"
+    )
     quitadas = int(marcadas["excluida"].sum())
-    notas.append(f"Exclusiones por calidad (detalle en {destino.as_posix()}): {quitadas} IES-año de {n} (unión de las dos banderas activas)")
+    notas.append(f"Exclusiones por calidad (detalle en {destino.as_posix()}): {quitadas} IES-año de {n} (unión de las banderas activas)")
 
 
 def hay_export_spadies(cfg: dict) -> bool:
@@ -348,7 +357,7 @@ def construir_dataset(
         notas.append(f"SPADIES: no existe {cfg['spadies']['archivo']}; dataset preliminar con tasa_desercion nula")
 
     catalogo_ies = raw / "snies" / "ies_catalogo.csv"
-    nombres_ies = None
+    nombres_ies = None  # solo para escribir los nombres en los reportes
     if catalogo_ies.exists():
         nombres_ies = pd.read_csv(catalogo_ies, dtype=str).drop_duplicates("c_digo_instituci_n").set_index("c_digo_instituci_n")["nombre_instituci_n"]
     registro: dict = {}
@@ -356,8 +365,8 @@ def construir_dataset(
     df, log = construir_dataset_desde_tablas(
         cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
         objetivo=objetivo, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
-        nombres_ies=nombres_ies, excluir_inconsistencias=cfg.get("excluir_inconsistencias", True),
-        excluir_regimen_especial=cfg.get("excluir_regimen_especial", True),
+        excluir_inconsistencias=cfg.get("excluir_inconsistencias", True),
+        excluir_regimen_especial=cfg.get("excluir_regimen_especial", True), excluir_sena=cfg.get("excluir_sena", False),
         umbral_ratio=cfg.get("umbral_ratio_inconsistencia", 3.0), registro=registro,
     )
     df = depurar_terridata(df, terridata, cfg["unidad_analisis"], cfg["max_nulos_pct"], notas)

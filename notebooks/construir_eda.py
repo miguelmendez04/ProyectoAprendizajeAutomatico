@@ -158,7 +158,7 @@ n_cierre = len(con_minimo) - len(con_cierre)
 calidad = pd.read_csv(ROOT / cfg["rutas"]["reports"] / "exclusiones_calidad.csv", dtype={"cod_ies": str})
 n_calidad = int(calidad["excluida"].sum())
 print(f"Después se excluyen {n_cierre:,} IES-año por posible cierre (excluir_posible_cierre = {cfg.get('excluir_posible_cierre', True)}) "
-      f"y {n_calidad:,} por calidad (inconsistencia entre fuentes / régimen especial): "
+      f"y {n_calidad:,} por calidad (inconsistencia entre fuentes, régimen especial y, si `excluir_sena`, SENA): "
       f"dataset final {len(df):,} filas, {df['cod_ies'].nunique()} IES")
 assert len(con_minimo) - n_cierre - n_calidad == len(df), "las exclusiones no cuadran con el dataset final"
 
@@ -203,17 +203,18 @@ print(f"{len(tasas_altas)} IES-año de {tasas_altas['cod_ies'].nunique()} IES ·
 - `ratio_spadies_snies` = denominador de SPADIES (matrícula t-2) / matrícula SNIES t-2 de la IES; `inconsistencia_fuentes` se activa
   si el ratio es > 3 o < 1/3, o si SNIES no tiene dato dentro de su cobertura (SNIES por programa empieza en 2015: para los años
   cuyo t-2 es anterior no se marca, porque si no se perderían 2015 y 2016 enteros).
-- `regimen_especial`: escuelas militares y policiales (códigos 2106, 29xx, 39xx, 910x y nombres con ESCUELA MILITAR, POLICIA, NAVAL o FAC).
-- `excluir_inconsistencias` y `excluir_regimen_especial` (por defecto activas) las sacan del dataset; el detalle está en `reports/exclusiones_calidad.csv`.
+- `regimen_especial`: escuelas militares y policiales, por lista explícita de 16 códigos SNIES (2106, 2901–2906, 3114, 3901, 3902, 9101–9105, 9107); 9108 y 9109 no son militares y quedan fuera.
+- `es_sena`: el SENA (9110); se marca pero no se excluye salvo que `excluir_sena` sea true.
+- `excluir_inconsistencias` y `excluir_regimen_especial` (por defecto activas) las sacan del dataset, y `excluir_sena` (apagada) también al SENA; el detalle está en `reports/exclusiones_calidad.csv`.
 """),
     code("""
+excluye = {"inconsistencia_fuentes": cfg.get("excluir_inconsistencias", True), "regimen_especial": cfg.get("excluir_regimen_especial", True),
+           "es_sena": cfg.get("excluir_sena", False)}
 resumen_calidad = pd.DataFrame({
-    "IES-año marcadas": [int(calidad["inconsistencia_fuentes"].sum()), int(calidad["regimen_especial"].sum()), len(calidad)],
-    "IES": [calidad.loc[calidad["inconsistencia_fuentes"], "cod_ies"].nunique(), calidad.loc[calidad["regimen_especial"], "cod_ies"].nunique(),
-            calidad["cod_ies"].nunique()],
-    "IES-año excluidas": [int((calidad["inconsistencia_fuentes"] & cfg.get("excluir_inconsistencias", True)).sum()),
-                          int((calidad["regimen_especial"] & cfg.get("excluir_regimen_especial", True)).sum()), n_calidad],
-}, index=["inconsistencia_fuentes", "regimen_especial", "unión"])
+    "IES-año marcadas": [int(calidad[c].sum()) for c in excluye] + [len(calidad)],
+    "IES": [calidad.loc[calidad[c], "cod_ies"].nunique() for c in excluye] + [calidad["cod_ies"].nunique()],
+    "IES-año excluidas": [int((calidad[c] & e).sum()) for c, e in excluye.items()] + [n_calidad],
+}, index=list(excluye) + ["unión (filas con alguna bandera)"])
 display(resumen_calidad)
 
 # Qué pasa con las tasas > 50 %: cuántas de las 20 filas elimina cada bandera
@@ -227,6 +228,60 @@ print(f"  eliminadas por alguna: {int((altas['inconsistencia_fuentes'] | altas['
 print()
 print("Ratio SPADIES / SNIES en el dataset final (IES-año con ambos datos):")
 display(df["ratio_spadies_snies"].describe().round(2).to_frame("ratio").T)
+"""),
+    md("""
+### Composición oficial / privada antes y después de las exclusiones
+
+Tres etapas: **sin filtro** (todas las IES con tasa anual en 2015–2021), **tras el denominador mínimo y los posibles cierres** y
+**dataset final** (además sin inconsistencias entre fuentes ni régimen especial). La naturaleza sale del catálogo de SNIES.
+"""),
+    code("""
+from src.integrate.build import sede_por_ies
+
+sede, _ = sede_por_ies(pd.read_csv(ROOT / cfg["rutas"]["interim"] / "snies_catalogo.csv", dtype=str))
+naturaleza_ies = sede.set_index("cod_ies")["sector"].map({"1": "Oficial", "2": "Privada"})
+
+def composicion(tabla):
+    nat = tabla["cod_ies"].map(naturaleza_ies)
+    por_ies = nat.groupby(tabla["cod_ies"]).first().value_counts()
+    por_fila = nat.value_counts()
+    return pd.Series({"IES": tabla["cod_ies"].nunique(), "IES oficiales": por_ies.get("Oficial", 0), "IES privadas": por_ies.get("Privada", 0),
+                      "% IES oficiales": 100 * por_ies.get("Oficial", 0) / tabla["cod_ies"].nunique(),
+                      "IES-año": len(tabla), "IES-año oficiales": por_fila.get("Oficial", 0), "IES-año privadas": por_fila.get("Privada", 0),
+                      "% IES-año oficiales": 100 * por_fila.get("Oficial", 0) / len(tabla)})
+
+etapas = pd.DataFrame({"sin filtro": composicion(sin_filtro), "tras mínimo y cierre": composicion(con_cierre),
+                       "dataset final": composicion(df)})
+display(etapas.round(1))
+perdidas = sin_filtro.drop_duplicates("cod_ies").loc[~sin_filtro.drop_duplicates("cod_ies")["cod_ies"].isin(df["cod_ies"]), "cod_ies"]
+print("IES que salen entre la primera y la última etapa, por naturaleza:", perdidas.map(naturaleza_ies).value_counts().to_dict())
+"""),
+    md("""
+### ¿Es el SENA atípico? (por tamaño o por tasa)
+
+El SENA (código 9110) está en el dataset (`es_sena`; `excluir_sena` apagada). Se compara su matrícula de referencia (SNIES, t-2) y su
+tasa con la distribución de las demás IES del mismo año.
+"""),
+    code("""
+sena = df[df["es_sena"]].copy()
+otras = df[~df["es_sena"]]
+filas = []
+for anio, g in sena.groupby("anio"):
+    resto = otras[otras["anio"] == anio]
+    mat = g["matriculados_ies_t2"].iloc[0]
+    filas.append({"anio": anio, "tasa SENA": g["tasa_desercion"].iloc[0],
+                  "percentil de la tasa": 100 * (resto["tasa_desercion"] < g["tasa_desercion"].iloc[0]).mean(),
+                  "matrícula t-2 SENA": mat,
+                  "mediana de las demás": resto["matriculados_ies_t2"].median(),
+                  "máxima de las demás": resto["matriculados_ies_t2"].max(),
+                  "veces la mediana": mat / resto["matriculados_ies_t2"].median() if pd.notna(mat) else np.nan,
+                  "veces la mayor otra IES": mat / resto["matriculados_ies_t2"].max() if pd.notna(mat) else np.nan})
+display(pd.DataFrame(filas).set_index("anio").round(2))
+tasa_sena, tasa_resto = sena["tasa_desercion"], otras["tasa_desercion"]
+print(f"Tasa del SENA: mediana {tasa_sena.median():.1%} (rango {tasa_sena.min():.1%}–{tasa_sena.max():.1%}) frente a {tasa_resto.median():.1%} "
+      f"de las demás IES (p5–p95: {tasa_resto.quantile(.05):.1%}–{tasa_resto.quantile(.95):.1%}).")
+print(f"Matrícula t-2 del SENA: {sena['matriculados_ies_t2'].median():,.0f} frente a una mediana de {otras['matriculados_ies_t2'].median():,.0f} "
+      f"y un máximo de {otras['matriculados_ies_t2'].max():,.0f} en las demás.")
 """),
     md("## 3. Evolución 2015–2021"),
     code("""

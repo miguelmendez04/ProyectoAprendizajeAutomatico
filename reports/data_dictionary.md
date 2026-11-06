@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Filas: 1928 · Columnas: 41
+Filas: 1928 · Columnas: 42
 
 | Variable | Tipo | Fuente | Descripción | % nulos | Rango |
 |---|---|---|---|---|---|
@@ -10,7 +10,8 @@ Filas: 1928 · Columnas: 41
 | `posible_cierre` | bool | SPADIES (MEN) | Bandera de diagnóstico: la fila cae en los 2 semestres previos al último reporte de una IES que dejó de reportar. No es explicativa | 0.0% | 1 valores distintos |
 | `ratio_spadies_snies` | float64 | SPADIES / SNIES | Denominador de la tasa (matrícula SPADIES t-2) dividido por la matrícula SNIES t-2 de la IES. Diagnóstico, no explicativa | 29.0% | 0.3539 – 2.628 |
 | `inconsistencia_fuentes` | bool | SPADIES / SNIES | Bandera: ratio_spadies_snies > 3 o < 1/3, o SNIES sin dato dentro de su cobertura. Diagnóstico | 0.0% | 1 valores distintos |
-| `regimen_especial` | bool | SNIES (MEN) | Bandera: escuela militar o policial (códigos 2106, 29xx, 39xx, 910x o nombre del catálogo). Diagnóstico | 0.0% | 1 valores distintos |
+| `regimen_especial` | bool | SNIES (MEN) | Bandera: escuela militar o policial (lista explícita de 16 códigos SNIES). Diagnóstico | 0.0% | 1 valores distintos |
+| `es_sena` | bool | SNIES (MEN) | Bandera: la IES es el SENA (código 9110). Diagnóstico | 0.0% | 2 valores distintos |
 | `cod_divipola_mpio` | str | DIVIPOLA (DANE) | Código DANE del municipio, 5 dígitos con ceros a la izquierda | 0.0% | 67 valores distintos |
 | `sector` | str | SNIES (MEN) | Sector de la IES (id_sector: oficial/privada) | 0.0% | 2 valores distintos |
 | `caracter` | str | SNIES (MEN) | Carácter académico de la IES (id_caracter) | 0.0% | 4 valores distintos |

@@ -1,7 +1,7 @@
 # Guía ETL — Dataset propio de deserción en educación superior (Colombia)
 
 > Documento de arranque para desarrollar el ETL en Claude Code.
-> Proyecto: curso **Aprendizaje Automático** (Maestría IA y Ciencia de Datos, UAO), y a la vez avance para la tesis de maestría sobre deserción estudiantil.
+> Proyecto: curso **Aprendizaje Automático** (Maestría IA y Ciencia de Datos, UAO), con un avance sobre deserción estudiantil.
 > Fecha: noviembre 2026.
 
 ---
@@ -17,7 +17,7 @@
 
 ### Estado actual
 - Tema: **deserción en educación superior en Colombia** con datos abiertos (ICFES, DANE, MEN/SNIES, SPADIES).
-- **El tema de tesis aún está en análisis.** No hay unidad de análisis definida. El ETL debe ser **modular y configurable** para no amarrarse a una sola opción.
+- **El tema del proyecto aún está en análisis.** No hay unidad de análisis definida. El ETL debe ser **modular y configurable** para no amarrarse a una sola opción.
 - Acceso a SPADIES: **solo consulta pública**. Hay una cuenta institucional UAO, pero no se ha verificado si da acceso.
 
 ---
@@ -100,7 +100,7 @@ desercion-etl/
 - Tipos de datos, valores faltantes, códigos especiales ("sin información", 0, 99999).
 - Normalizar textos (mayúsculas, tildes, espacios) en nombres de municipios e IES.
 
-**Homologación DIVIPOLA** (módulo central, reutilizable en la tesis)
+**Homologación DIVIPOLA** (módulo central, reutilizable en el proyecto)
 - Llave canónica: código DANE de 5 dígitos con ceros a la izquierda (`str.zfill(5)`).
 - Resolver municipios nuevos o cambiados de código con la tabla de cambios.
 - Cuando solo hay nombre, emparejar por nombre normalizado + departamento, con *fuzzy matching* como último recurso. **Registrar cada emparejamiento no exacto** en un reporte.
@@ -154,7 +154,7 @@ desercion-etl/
 8. No subir `data/raw/` a git; sí subir los scripts que lo regeneran.
 
 ## 9. Preguntas abiertas
-- ¿Unidad de análisis final? (depende de la decisión de tesis y de lo que SPADIES deje exportar)
+- ¿Unidad de análisis final? (depende de la decisión del proyecto y de lo que SPADIES deje exportar)
 - ¿Regresión de la tasa o clasificación en niveles de riesgo?
 - ¿La cuenta institucional da acceso ampliado a SPADIES?
 - ¿Ventana temporal común entre fuentes?

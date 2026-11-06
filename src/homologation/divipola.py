@@ -1,7 +1,7 @@
 """Homologación de códigos y nombres de municipios contra DIVIPOLA (DANE).
 
 Llave canónica: código de 5 dígitos como str con ceros a la izquierda.
-Módulo central: lo usan todas las fuentes y se reutiliza en la tesis.
+Módulo central: lo usan todas las fuentes y se reutiliza en el proyecto.
 """
 import re
 import unicodedata

@@ -6,8 +6,10 @@ Reglas de diseño:
   NBI) no llevan sufijo.
 - Cada join registra las filas de la base sin pareja en el log.
 """
+import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from src.integrate.banderas import calcular_banderas
@@ -129,6 +131,9 @@ def construir_dataset_desde_tablas(
     if terridata is not None:
         cols_td = [c for c in terridata.columns if c not in LLAVE_MPIO]
         base = _unir_rezagada(base, terridata, LLAVE_MPIO, cols_td, "terridata", log)
+    # La matrícula de la IES es muy asimétrica (SENA ~430 mil frente a una mediana de ~3,7 mil): su logaritmo es la versión explicativa
+    for col in [c for c in base.columns if re.fullmatch(r"matriculados_ies_t\d+", c)]:
+        base[f"log_{col}"] = np.log1p(base[col])
     return base.reset_index(drop=True), log
 
 

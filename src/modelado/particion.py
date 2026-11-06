@@ -19,11 +19,21 @@ COLUMNAS_CATEGORICAS = ["sector", "caracter"]  # ids de SNIES: son categorías, 
 _TEXTO = ["cod_ies", "cod_divipola_mpio", *COLUMNAS_CATEGORICAS]
 
 
-def cargar_dataset(cfg: dict) -> pd.DataFrame:
-    """Lee `data/processed/dataset_<unidad>.csv` con los códigos y las categorías como texto."""
+def cargar_dataset(cfg: dict, excluir_sena: bool | None = None) -> pd.DataFrame:
+    """Lee `data/processed/dataset_<unidad>.csv` con los códigos y las categorías como texto.
+
+    Análisis de sensibilidad del SENA: con `excluir_sena=True` (o `config.yaml: modelado.excluir_sena: true` si no se pasa
+    el argumento) se quitan las filas con `es_sena`. El dataset conserva al SENA por defecto (`excluir_sena: false`);
+    esta opción permite correr el modelado sin él sin volver a ejecutar el pipeline.
+    """
     ruta = Path(cfg["rutas"]["processed"]) / f"dataset_{cfg['unidad_analisis']}.csv"
     cabecera = pd.read_csv(ruta, nrows=0).columns
-    return pd.read_csv(ruta, dtype={c: str for c in _TEXTO if c in cabecera})
+    df = pd.read_csv(ruta, dtype={c: str for c in _TEXTO if c in cabecera})
+    if excluir_sena is None:
+        excluir_sena = bool(cfg.get("modelado", {}).get("excluir_sena", False))
+    if excluir_sena and "es_sena" in df.columns:
+        df = df[~df["es_sena"]].reset_index(drop=True)
+    return df
 
 
 # Variables que no entran como explicativas por defecto:
@@ -31,7 +41,9 @@ def cargar_dataset(cfg: dict) -> pd.DataFrame:
 #   2019 (-3 % nacional, -10 % en Bogotá) y el nivel absoluto lee ese salto como una caída. Se conservan las variables
 #   relativas (% rural, % por edad) hasta tener las retroproyecciones del DANE con base 2018.
 # - ratio_spadies_snies: incluye el denominador de la propia tasa (SPADIES t-2); es una variable de diagnóstico.
-EXCLUIDAS_POR_DEFECTO = ["td_poblacion_total_t1", "ratio_spadies_snies"]
+# - matriculados_ies_t2: muy asimétrica (el SENA tiene ~430 mil frente a una mediana de ~3,7 mil); entra su logaritmo
+#   (`log_matriculados_ies_t2`, log1p). La versión bruta sigue en el dataset.
+EXCLUIDAS_POR_DEFECTO = ["td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2"]
 
 
 def columnas_explicativas(df: pd.DataFrame, objetivo: str = "tasa_desercion", excluir: list[str] | None = None) -> list[str]:

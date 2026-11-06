@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Filas: 1928 · Columnas: 42
+Filas: 1928 · Columnas: 43
 
 | Variable | Tipo | Fuente | Descripción | % nulos | Rango |
 |---|---|---|---|---|---|
@@ -46,3 +46,4 @@ Filas: 1928 · Columnas: 42
 | `td_repitencia_oficial_t1` | float64 | TerriData (DNP) | Repitencia del sector oficial en básica y media, % (año t-1) | 0.4% | 0 – 13.19 |
 | `td_transito_superior_t1` | float64 | TerriData (DNP) | Tasa de tránsito inmediato a la educación superior, % (año t-1) | 0.2% | 13.82 – 72.88 |
 | `td_poblacion_total_t1` | float64 | TerriData (DNP) | Indicador territorial poblacion_total (año t-1) | 0.2% | 1.859e+04 – 8.081e+06 |
+| `log_matriculados_ies_t2` | float64 | SNIES (MEN) | Logaritmo natural de 1 + matrícula anual de la IES (log1p); versión explicativa de la matrícula (año t-2) | 29.0% | 3.689 – 13.06 |

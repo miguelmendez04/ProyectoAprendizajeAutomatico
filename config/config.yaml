@@ -58,7 +58,8 @@ umbral_ratio_inconsistencia: 3
 # `regimen_especial` queda siempre en el dataset.
 excluir_regimen_especial: true
 
-# SENA (9110): la bandera `es_sena` queda siempre en el dataset; solo se excluye si esta opción es true.
+# SENA (9110): la bandera `es_sena` queda siempre en el dataset; solo se excluye si esta opción es true. Se mantiene
+# (false) porque su tasa no es atípica; su tamaño se maneja con log_matriculados_ies_t2.
 excluir_sena: false
 
 # Las IES-año con tasa mayor que este umbral (tras el mínimo) se listan en reports/tasas_altas.csv
@@ -75,7 +76,9 @@ max_nulos_pct: 0.5
 modelado:
   # Variables que no entran como explicativas (ver src/modelado/particion.py). La población absoluta queda fuera hasta
   # contar con las retroproyecciones del DANE con base 2018 (cambio de base 2005 -> 2018 entre 2017 y 2018).
-  excluir_variables: [td_poblacion_total_t1, ratio_spadies_snies]
+  excluir_variables: [td_poblacion_total_t1, ratio_spadies_snies, matriculados_ies_t2]
+  # Sensibilidad para el paper: true quita las filas del SENA al cargar el dataset (cargar_dataset), sin rehacer el pipeline.
+  excluir_sena: false
   transformacion_objetivo: ninguna   # ninguna | logit  (src/modelado/objetivo.py)
   epsilon_logit: 0.001               # la tasa se recorta a [epsilon, 1 - epsilon] antes del logit
 

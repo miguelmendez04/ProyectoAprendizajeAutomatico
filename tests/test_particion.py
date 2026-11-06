@@ -83,7 +83,7 @@ def test_poblacion_total_y_ratio_quedan_fuera_por_defecto_pero_las_relativas_ent
     cols = columnas_explicativas(df)
     assert "td_poblacion_total_t1" not in cols and "ratio_spadies_snies" not in cols
     assert {"td_pct_poblacion_rural_t1", "td_pct_pob_15_19_t1", "x_t1"} <= set(cols)
-    assert set(EXCLUIDAS_POR_DEFECTO) == {"td_poblacion_total_t1", "ratio_spadies_snies"}
+    assert set(EXCLUIDAS_POR_DEFECTO) == {"td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2"}
 
 
 def test_se_puede_cambiar_la_lista_de_exclusion():
@@ -92,3 +92,23 @@ def test_se_puede_cambiar_la_lista_de_exclusion():
     cfg = {"modelado": {"excluir_variables": ["x_t1"]}}
     assert "x_t1" not in columnas_explicativas_desde_config(df, cfg) and "td_poblacion_total_t1" in columnas_explicativas_desde_config(df, cfg)
     assert "td_poblacion_total_t1" not in columnas_explicativas_desde_config(df, {})  # sin sección: lista por defecto
+
+
+def test_matricula_bruta_queda_fuera_y_su_logaritmo_entra_por_defecto():
+    df = _df().assign(matriculados_ies_t2=100.0, log_matriculados_ies_t2=4.6, td_poblacion_total_t1=1.0)
+    cols = columnas_explicativas(df)
+    assert "matriculados_ies_t2" not in cols and "log_matriculados_ies_t2" in cols
+    assert "matriculados_ies_t2" in EXCLUIDAS_POR_DEFECTO
+    assert "matriculados_ies_t2" in columnas_explicativas(df, excluir=[])  # sigue en el dataset
+
+
+def test_cargar_dataset_con_excluir_sena_para_el_analisis_de_sensibilidad(tmp_path):
+    ruta = tmp_path / "dataset_ies.csv"
+    pd.DataFrame({"cod_ies": ["1830", "9110", "9110"], "anio": [2018, 2018, 2019], "tasa_desercion": [0.1, 0.12, 0.11],
+                  "es_sena": [False, True, True]}).to_csv(ruta, index=False)
+    cfg = {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}}
+    assert len(cargar_dataset(cfg)) == 3  # por defecto el SENA se queda
+    assert cargar_dataset(cfg, excluir_sena=True)["cod_ies"].tolist() == ["1830"]
+    cfg["modelado"] = {"excluir_sena": True}
+    assert cargar_dataset(cfg)["cod_ies"].tolist() == ["1830"]  # opción de la configuración
+    assert len(cargar_dataset(cfg, excluir_sena=False)) == 3  # el argumento manda sobre la configuración

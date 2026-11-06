@@ -181,3 +181,18 @@ def test_variables_de_matricula_se_rezagan_dos_anios_por_defecto_y_saber11_uno()
     assert fila["mpio_ies_con_oferta_t2"] == 48
     assert not any(c.startswith(("matriculados_ies", "mpio_")) and c.endswith("_t1") for c in df.columns)
     assert "punt_global_media_t1" in df.columns  # Saber 11 sigue en t-1
+
+
+def test_log_matriculados_ies_t2_es_log1p_de_la_matricula_y_conserva_la_bruta():
+    df, _ = construir_dataset_desde_tablas("ies", [2019], **_tablas())
+    fila = df[df["cod_ies"] == "1101"].iloc[0]
+    assert fila["matriculados_ies_t2"] == 150
+    assert fila["log_matriculados_ies_t2"] == pytest.approx(np.log1p(150))
+    assert df["log_matriculados_ies_t2"].notna().all()
+
+
+def test_log_matriculados_deja_los_nulos_como_nulos_y_no_se_crea_sin_matricula():
+    df, _ = construir_dataset_desde_tablas("ies", [2018], **_tablas())  # t-2 = 2016: sin dato de matrícula
+    assert df["matriculados_ies_t2"].isna().all() and df["log_matriculados_ies_t2"].isna().all()
+    mpio, _ = construir_dataset_desde_tablas("municipio", [2018], **_tablas())
+    assert "log_matriculados_ies_t2" not in mpio.columns  # solo existe en la unidad IES

@@ -27,6 +27,7 @@ _CATALOGO = {
     "n_estudiantes": ("Saber 11 (ICFES)", "Número de estudiantes que presentaron Saber 11"),
     "mpio_matriculados": ("SNIES (MEN)", "Matrícula de educación superior en el municipio"),
     "mpio_ies_con_oferta": ("SNIES (MEN)", "IES con oferta en el municipio"),
+    "log_matriculados_ies": ("SNIES (MEN)", "Logaritmo natural de 1 + matrícula anual de la IES (log1p); versión explicativa de la matrícula"),
     "matriculados_ies": ("SNIES (MEN)", "Matrícula anual de la IES (suma de sus programas)"),
     "matriculados_programa": ("SNIES (MEN)", "Matrícula anual del programa (máximo semestral)"),
 }

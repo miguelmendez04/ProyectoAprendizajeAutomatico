@@ -283,6 +283,42 @@ print(f"Tasa del SENA: mediana {tasa_sena.median():.1%} (rango {tasa_sena.min():
 print(f"Matrícula t-2 del SENA: {sena['matriculados_ies_t2'].median():,.0f} frente a una mediana de {otras['matriculados_ies_t2'].median():,.0f} "
       f"y un máximo de {otras['matriculados_ies_t2'].max():,.0f} en las demás.")
 """),
+    md("""
+**Decisión.** El SENA se mantiene (`excluir_sena: false`) porque su tasa no es atípica; el tamaño se maneja con la transformación
+logarítmica `log_matriculados_ies_t2 = log1p(matriculados_ies_t2)`, que es la versión explicativa (la bruta queda en el dataset pero
+fuera de las explicativas por defecto). Abajo se ve cuánto comprime el logaritmo la asimetría y el efecto de quitar al SENA
+(análisis de sensibilidad: `cargar_dataset(cfg, excluir_sena=True)` o `modelado.excluir_sena: true`).
+"""),
+    code("""
+con_mat = df.dropna(subset=["matriculados_ies_t2"])
+sin_sena = con_mat[~con_mat["es_sena"]]
+def z(serie, valor):
+    return (valor - serie.mean()) / serie.std()
+
+fila = lambda nombre, d: {"escenario": nombre, "filas": len(d), "IES": d["cod_ies"].nunique(),
+                          "asimetría matrícula bruta": stats.skew(d["matriculados_ies_t2"]),
+                          "asimetría log1p": stats.skew(d["log_matriculados_ies_t2"]),
+                          "rho Spearman bruta-tasa": d["matriculados_ies_t2"].corr(d["tasa_desercion"], method="spearman"),
+                          "rho Spearman log-tasa": d["log_matriculados_ies_t2"].corr(d["tasa_desercion"], method="spearman"),
+                          "tasa mediana": d["tasa_desercion"].median(), "tasa media": d["tasa_desercion"].mean()}
+sens = pd.DataFrame([fila("con SENA (por defecto)", con_mat), fila("sin SENA (sensibilidad)", sin_sena)]).set_index("escenario")
+display(sens.round(3).T)
+
+fila_sena = con_mat[con_mat["es_sena"]].iloc[0]
+print(f"Puntaje z del SENA ({int(fila_sena['anio'])}) frente a las demás IES: matrícula bruta {z(sin_sena['matriculados_ies_t2'], fila_sena['matriculados_ies_t2']):.0f} desviaciones; "
+      f"log1p {z(sin_sena['log_matriculados_ies_t2'], fila_sena['log_matriculados_ies_t2']):.1f} desviaciones")
+
+fig, ejes = plt.subplots(1, 2, figsize=(11, 3.6))
+ejes[0].hist(sin_sena["matriculados_ies_t2"], bins=40, color=AZUL)
+ejes[0].set(title="Matrícula t-2 (bruta), sin el SENA", xlabel="matriculados", ylabel="IES-año")
+ejes[1].hist(con_mat["log_matriculados_ies_t2"], bins=40, color=AZUL)
+sena_log = con_mat.loc[con_mat["es_sena"], "log_matriculados_ies_t2"]
+ejes[1].plot(sena_log, [1] * len(sena_log), "v", color=NARANJA, markersize=9, label="SENA")
+ejes[1].set(title="log1p(matrícula t-2), con el SENA", xlabel="log1p(matriculados)")
+ejes[1].legend(frameon=False)
+plt.tight_layout()
+plt.show()
+"""),
     md("## 3. Evolución 2015–2021"),
     code("""
 por_anio = df.groupby("anio")["tasa_desercion"].agg(

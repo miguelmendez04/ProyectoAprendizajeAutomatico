@@ -87,8 +87,20 @@ modelado:
   incluir_indicadores_falta: true
   transformacion_objetivo: ninguna   # ninguna | logit  (src/modelado/objetivo.py)
   epsilon_logit: 0.001               # la tasa se recorta a [epsilon, 1 - epsilon] antes del logit
+  # --- Opciones de mitigación de sesgo (todas apagadas por defecto; ver reports/analisis_sesgo.md) ---
+  # Pesos por fila para sample_weight: ninguno | matriculados | raiz_matriculados | inverso_grupo | inverso_ies
+  pesos_muestrales: ninguno
+  grupos_pesos: [sector, caracter]   # grupos del esquema inverso_grupo
+  # Denominador mínimo más alto que min_matriculados_t2 (p. ej. 200), aplicado al cargar. null = sin filtro adicional.
+  # Un umbral menor que el del pipeline (p. ej. 50) exige regenerar el dataset con ese min_matriculados_t2.
+  umbral_denominador: null
+  # true agrega n_anios_ies y panel_incompleto al cargar y deja panel_incompleto entre las explicativas
+  # (usa años posteriores al de cada fila: sirve para diagnóstico, no es recomendable como variable)
+  indicador_panel_incompleto: false
 
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021
+  agrupar_por: ies             # ies | departamento (por departamento no se repite ningún territorio entre entrenamiento y prueba)
+  estratificar_por: []         # [] = GroupKFold simple; [sector, caracter] estratifica los pliegues (solo con agrupar_por: ies)
 

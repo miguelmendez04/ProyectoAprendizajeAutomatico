@@ -87,8 +87,19 @@ def test_anual_exige_el_dato_del_anio_y_no_arrastra_valores_viejos():
 def test_censo_arrastra_el_ultimo_censo_ya_publicado():
     largo = _largo([("76001", 2005, "nbi_pct", 20.0), ("76001", 2018, "nbi_pct", 12.0)])
     out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")["td_nbi_pct"]
-    assert out.loc[2015:2017].tolist() == [20.0, 20.0, 20.0]  # el censo 2005 rige hasta 2017
-    assert out.loc[2018:2019].tolist() == [12.0, 12.0]
+    # El censo 2018 (NBI/IPM publicados desde 2020) solo está disponible desde el origen 2019, o sea el año objetivo 2020
+    assert out.loc[2015:2018].tolist() == [20.0, 20.0, 20.0, 20.0]  # el censo 2005 rige hasta el origen 2018
+    assert out.loc[2019] == 12.0
+
+
+def test_el_censo_2018_no_se_usa_para_el_anio_objetivo_2019():
+    """Fuga por publicación: con t-1, el año objetivo 2019 usa el origen 2018, y el censo 2018 aún no estaba publicado."""
+    largo = _largo([("76001", 2005, "ipm_censo", 50.0), ("76001", 2018, "ipm_censo", 30.0), ("76001", 2005, "miseria_pct", 9.0),
+                    ("76001", 2018, "miseria_pct", 4.0)])
+    out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020, 2021]).set_index("anio")
+    assert out.loc[2018, "td_ipm_censo"] == 50.0 and out.loc[2018, "td_miseria_pct"] == 9.0  # origen 2018 = objetivo 2019
+    assert out.loc[2019, "td_ipm_censo"] == 30.0 and out.loc[2020, "td_ipm_censo"] == 30.0  # objetivo 2020 en adelante
+    assert not out["td_ipm_censo"].isna().any()
 
 
 def test_poblacion_se_completa_hacia_atras_con_el_primer_dato():

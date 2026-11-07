@@ -3,7 +3,9 @@
 Cada indicador seleccionado se identifica por (dimensión, subcategoría, indicador). Hay tres modos de
 llevarlo al año t de la fila:
 - `anual`: el valor de ese año; si no hay dato queda nulo (no se arrastran valores viejos).
-- `censo`: el último censo ya levantado (NBI e IPM existen solo en 2005 y 2018): se arrastra hacia adelante.
+- `censo`: el último censo ya **publicado** (NBI e IPM existen solo en 2005 y 2018): se arrastra hacia adelante. El censo
+  2018 solo está disponible desde el año de origen 2019 (`DISPONIBLE_DESDE`), o sea desde el año objetivo 2020: el DANE
+  publicó el IPM censal municipal el 31 de enero de 2020 y el NBI de ese censo se actualizó en febrero de 2021.
 - `poblacion`: proyección DANE con base en el censo 2018 (Dim 2), disponible desde 2018. Para los años anteriores se usa
   la proyección con base en el censo 2005 (Dim 25, columnas `*_b05`, 1985–2020): hay un cambio de base entre 2017 y 2018.
   Si un municipio no está en la base 2005 se completa hacia atrás con su primer dato 2018 (aproximación).
@@ -12,6 +14,12 @@ Las columnas salen con prefijo `td_`; el rezago t-1 lo aplica la integración.
 import pandas as pd
 
 from src.homologation.divipola import normalizar_texto
+
+
+# Año de origen (t-1) desde el cual cada censo está disponible, si es posterior al año del censo: el censo 2018 se levantó en
+# 2018 pero sus resultados municipales se publicaron en 2020 (IPM, 31/01/2020; NBI, con revisión en febrero de 2021), así que
+# el año objetivo 2019 (origen 2018) todavía no puede usarlo. Con el rezago t-1 el censo 2018 rige desde el año objetivo 2020.
+DISPONIBLE_DESDE = {2018: 2019}
 
 
 def _ind(columna, dimension, subcategoria, indicador, descripcion, modo="anual", prefijo=False):
@@ -103,6 +111,23 @@ def _completar(ancho: pd.DataFrame, columnas: list[str], hacia_atras: bool) -> p
     return ancho
 
 
+def _aplazar_censos(ancho: pd.DataFrame, columnas: list[str]) -> pd.DataFrame:
+    """Mueve los valores censales al primer año de origen en que ya estaban publicados (`DISPONIBLE_DESDE`)."""
+    if not columnas:
+        return ancho
+    ancho = ancho.copy()
+    anio = ancho.index.get_level_values(1)
+    for censo, desde in DISPONIBLE_DESDE.items():
+        if desde == censo:
+            continue
+        movidos = ancho.loc[anio == censo, columnas]
+        ancho.loc[anio == censo, columnas] = float("nan")
+        destino = pd.MultiIndex.from_arrays([movidos.index.get_level_values(0), [desde] * len(movidos)], names=ancho.index.names)
+        ancho = ancho.combine_first(pd.DataFrame(movidos.to_numpy(), index=destino, columns=columnas))
+        anio = ancho.index.get_level_values(1)
+    return ancho
+
+
 def _sumar(ancho: pd.DataFrame, *columnas: str) -> pd.Series:
     """Suma de columnas; nula si falta alguna (o la columna no existe)."""
     if any(c not in ancho for c in columnas):
@@ -143,6 +168,7 @@ def transformar_terridata(largo: pd.DataFrame, anios: list[int]) -> pd.DataFrame
     ancho.columns.name = None
     modos = {i["columna"]: i["modo"] for i in INDICADORES}
     ancho = _derivar_poblacion(ancho)
+    ancho = _aplazar_censos(ancho, [c for c in ancho.columns if modos.get(c) == "censo"])
     modos.update({c: "poblacion" for c in ("poblacion_total", "pct_poblacion_rural", "pct_pob_15_19", "pct_pob_20_24")})
     # malla completa municipio x año para poder arrastrar valores entre años
     municipios = ancho.index.get_level_values(0).unique()

@@ -1,0 +1,105 @@
+# Análisis de sesgo del dataset IES × año
+
+Dataset: `data/processed/dataset_ies.csv` (1.928 IES-año, 295 IES, 2015–2021; objetivo `tasa_desercion`, SPADIES). Todas las cifras salen del repositorio y se reproducen con `python notebooks/construir_sesgo.py` (genera `notebooks/02_sesgo.ipynb`); el código está en `src/modelado/sesgo.py`, `geografia.py` y `mitigacion.py`. **No se cambió ningún valor por defecto del pipeline ni del dataset**: las técnicas de mitigación son opciones de `config.yaml` apagadas por defecto.
+
+**Cómo leer las cifras.** Los contrastes de hipótesis son orientativos: las filas de una misma IES no son independientes. Las métricas de modelado de la sección 4 salen de un Ridge de referencia (`alpha = 10`, sin ajuste de hiperparámetros): sirve para comparar utilidades, no es el modelo final.
+
+## 1. Tabla de sesgos
+
+| Sesgo | Evidencia (cifras) | Técnica aplicada en el ETL | Riesgo residual | Mitigación recomendada |
+|---|---|---|---|---|
+| **a. Selección / cobertura** | Los filtros sacan 220 de 2.148 IES-año (10,2 %) y 26 de 321 IES. Lo que sale tiene tasa mediana de 14,8 % (media 20,3 %) frente a 9,9 % (12,0 %) de lo que se queda; la media del universo (12,9 %) baja a 12,0 %. Por motivo: denominador < 100, 97 filas, mediana 24,8 % (P(excluida > incluida) = 0,78); inconsistencia de fuentes, 37, 18,0 % (0,73); posible cierre, 9, 17,4 % (0,65; p = 0,11); régimen especial, 77, 6,0 % (0,30). Las privadas excluidas tienen mediana 25,7 % (109 filas, 40 IES) frente a 10,2 % de las privadas incluidas. Composición de IES (sin filtro → final): oficiales 29,6 % → 26,8 %; universidades 39,3 % → 42,0 %; tecnológicas 14,0 % → 12,5 %; denominador < 200, 18,4 % → 12,2 % (en filas, 9,7 % → 4,3 %); Bogotá 33,3 % → 31,5 %. Los 27 departamentos siguen presentes, pero Cundinamarca pasa de 9 a 5 IES. | `min_matriculados_t2`, `excluir_posible_cierre`, `excluir_inconsistencias`, `excluir_regimen_especial`; tablas `reports/exclusiones_calidad.csv` y `tasas_altas.csv`; composición documentada en la bitácora. | El dataset describe IES con al menos 100 matriculados de referencia y datos consistentes entre fuentes; subrepresenta a las instituciones pequeñas con tasas altas, sobre todo privadas. Las conclusiones no se extienden a las excluidas. | Declarar la población objetivo; reportar la sensibilidad al umbral (sección 3); no extrapolar a IES con denominador < 100. |
+| **b. Supervivencia / panel incompleto** | 256 de 295 IES (86,8 %) tienen los 7 años; 39 (13,2 %, 136 filas) no: 16 salen antes, 10 son intermitentes, 9 entran tarde y 4 entran tarde y salen antes. Antes de los filtros eran 30 de 321 (9,3 %): los filtros crean parte de los paneles incompletos. Tasa de las incompletas: mediana 16,2 %, media 22,3 %, p90 45,6 %; completas: 9,6 %, 11,3 %, 18,5 %. Las que salen antes tienen media 25,3 % y p90 65,3 %. | `excluir_posible_cierre` (9 filas); `falta_*` solo marca bloques de años, no panel. | Las IES que dejan de reportar tienen tasas más altas y menos años: el panel completo sobrerrepresenta a las que sobreviven. | Reportar las métricas por panel (completo / incompleto); ponderar por `inverso_ies` solo como sensibilidad (ver sección 4); `indicador_panel_incompleto` sirve para diagnóstico, no como variable (usa años posteriores). |
+| **c. Concentración geográfica** | Bogotá, Medellín y Cali: 145 de 295 IES (49,2 %) y 944 de 1.928 filas (49,0 %); Bogotá sola, 93 IES (31,5 %) y 597 filas (31,0 %). Por región: Andina 38,2 % de las filas, Bogotá 31,0 %, Caribe 15,0 %, Pacífica 14,1 %, Orinoquía 1,0 % (3 IES), Amazonía 0,7 % (2 IES). Las tres ciudades son 3 municipios (frente a 64 en el resto): cada variable territorial toma ~20 valores distintos allí (mediana) frente a ~333 fuera. 24 de 27 variables territoriales varían menos dentro de las ciudades que fuera (razón de desviaciones, mediana 0,58). La correlación con la tasa cambia al quitarlas: `punt_global_media_t1` pasa de ρ = 0,01 a −0,17; `td_ipm_censo_t1`, de 0,01 a 0,18; `td_nbi_pct_t1`, de −0,005 a 0,16; `mpio_matriculados_t2`, de 0,085 a −0,085. | Contexto por municipio sede (`sede_por_ies`); GroupKFold por IES. | La señal territorial descansa en tres municipios y en una variación casi nula entre las IES de una misma ciudad; Orinoquía y Amazonía no permiten ninguna conclusión. | Validación dejando fuera Bogotá (y por departamento) como robustez; reducir o regularizar las variables territoriales colineales; no interpretar coeficientes territoriales como efecto causal. |
+| **d. Desbalance por carácter y sector** | 79 IES oficiales (526 filas) frente a 216 privadas (1.402). Por carácter (IES oficial / privada): técnica profesional 8 / 16, tecnológica 6 / 31, institución universitaria 17 / 93, universidad 48 / 76. La tasa difiere mucho: mediana de 7,4 % (universidad oficial) y 8,2 % (privada) a 20,6 % (técnica profesional, ambas); la dispersión es mayor en los grupos escasos (desviación de 0,148 en tecnológica privada y 0,127 en técnica privada, frente a 0,031 en universidad privada). | `sector` y `caracter` como categóricas (one-hot); etiquetas verificadas contra el catálogo. | Los grupos chicos (técnica profesional: 24 IES; tecnológica: 37) tienen estimaciones inestables; el error del modelo es mayor justo ahí. | Métricas por sector y carácter; estratificar los pliegues solo si se quiere reportar varianza entre pliegues (sección 4). |
+| **e. Faltantes no aleatorios** | Por **bloques de años**: MDM y SNIES nulos en 2015–2016 (100 % de esos años), Saber 11 en 2019 y 2021, y `td_desercion_escolar_t1` en 2015. Los bloques valen igual en oficiales y privadas: `falta_saber11` 28,3 % frente a 28,2 %, `falta_mdm` 29,7 % frente a 28,9 %, `falta_snies` 29,3 % frente a 28,9 %. **Fuera de los bloques** casi no falta nada: 5 filas (0,3 %) con algún `td_*` nulo, de 2 IES (4106, sin su municipio en TerriData, y 3834); `matriculados_ies_t2` y `punt_global_media_t1` no tienen ningún nulo fuera de sus bloques. | Indicadores `falta_saber11`, `falta_mdm`, `falta_snies`; imputación por mediana dentro de cada pliegue; `ventana_modelado` 2017–2021 como sensibilidad. | La falta depende del año, no del subgrupo, pero eso pesa en la evaluación temporal: la mitad de la prueba (2021) se predice con Saber 11 imputado (ver bitácora). | Reportar también la ventana 2017–2021; mantener los indicadores de falta. |
+| **f. Medición** | El tamaño y la tasa se asocian (ρ de Spearman = −0,36). Por tramo de denominador (filas · mediana · desviación · % > 50 %): < 200, 82 · 14,2 % · 0,195 · 8,5 %; 200–499, 208 · 16,0 % · 0,122 · 2,4 %; 500–999, 194 · 14,6 % · 0,111 · 1,5 %; 1.000–4.999, 765 · 9,6 % · 0,053 · 0 %; ≥ 5.000, 679 · 8,7 % · 0,042 · 0 %. Las 15 tasas > 50 % que quedan son todas de denominadores < 1.000. La desviación observada es de 5,7 a 14,6 veces la binomial de referencia en todos los tramos. Inconsistencia SPADIES/SNIES: 37 filas marcadas y excluidas (10 con ratio > 3, mediana de tasa 29,6 %; 8 con ratio < 1/3, 14,3 %; 19 sin dato de SNIES dentro de su cobertura, 18,0 %). En el dataset, el ratio tiene mediana 0,88 y rango 0,35–2,63; 31 filas con ratio > 2 o < 0,5 tienen tasa mediana de 15,2 %. | `min_matriculados_t2` (100); `ratio_spadies_snies` e `inconsistencia_fuentes`; `log_matriculados_spadies_t2` como tamaño. | El ruido por tamaño explica poco (la desviación observada es muy superior a la binomial): la variación entre IES es real, y su varianza cae con el tamaño (heterocedasticidad). Los 2015–2016 no tienen ratio (SNIES por programa empieza en 2015). | Umbral alternativo 200 como sensibilidad; pesos `raiz_matriculados`; reportar el error por tramo de tamaño; modelos robustos o con transformación logit. |
+| **g. Fuga temporal** | Se recalcularon 32 explicativas desde sus fuentes con el rezago permitido: 55.813 valores comparados, **0 discrepancias** (Saber 11, 5 variables, t-1; TerriData, 23, t-1; SNIES municipio, 2, y SNIES programas, 1, t-2; denominador de SPADIES, 1, de la propia fila). Todas las explicativas numéricas por defecto declaran `_t1` o `_t2` en su nombre (los indicadores `falta_*` derivan de ellas). El arrastre hacia atrás de la población de TerriData no llena ninguna de las 448 celdas que usa el dataset (3 quedan nulas). | Rezagos t-1 (contexto) y t-2 (matrícula); preprocesador ajustado solo con el entrenamiento; test `test_ninguna_explicativa_usa_un_anio_posterior_al_permitido_en_el_dataset_real` (se salta si faltan `data/processed` o `data/interim`). | Quedan caminos que el test no ve: `sector`, `caracter` y la sede se toman de los programas 2015–2021 (atributos de la institución, estables); el censo 2018 (NBI/IPM) entra desde el año objetivo 2020, porque el DANE publicó el IPM municipal el 31/01/2020 (la primera publicación del NBI no se pudo verificar; hay una actualización de febrero de 2021); las exclusiones por posible cierre usan información posterior a cada fila. | Mantener el test en la entrega; declarar la limitación de los censales y de la selección por cierre. |
+
+## 2. Técnicas de mitigación
+
+Todas son opciones; ninguna cambia el dataset ni los valores por defecto. «Entrega final» es una recomendación para las 3 semanas que quedan (la última decisión es de ustedes).
+
+| Técnica | Sesgo que ataca | Opción / función | Costo | ¿Conviene para la entrega final? |
+|---|---|---|---|---|
+| **Métricas por subgrupo** (MAE, RMSE, sesgo medio por sector, carácter, región, ciudad y tamaño) | Todos (hace visible dónde falla el modelo) | `mitigacion.metricas_por_subgrupo` | Bajo: una llamada sobre las predicciones fuera de muestra | **Sí.** Es lo que más aporta por lo que cuesta: los errores más altos están en grupos escasos |
+| **Validación dejando fuera Bogotá** | c (concentración) | `particion.particion_dejando_fuera(df, ("11",))` | Bajo: un solo experimento | **Sí**, como prueba de robustez |
+| **GroupKFold por departamento** | c | `particion.agrupar_por: departamento` | Bajo; un pliegue queda desbalanceado porque Bogotá pesa 31 % | Opcional (si hay tiempo) |
+| **Umbral de denominador 200** | f, a | `modelado.umbral_denominador: 200` | Bajo | **Sí**, como sensibilidad (sección 3) |
+| **Umbral de denominador 50** | f, a | regenerar con `min_matriculados_t2: 50` (`sesgo.sensibilidad_umbral` lo calcula en memoria) | Medio: hay que rehacer el dataset si se quiere modelar | Solo reportar la tabla (sección 3) |
+| **Pesos `raiz_matriculados`** | f (heterocedasticidad por tamaño) | `modelado.pesos_muestrales: raiz_matriculados` | Bajo; cambia el objetivo de ajuste hacia las IES grandes | Opcional: mejora levemente el MAE total (0,042 → 0,041) |
+| **Pesos `matriculados`** | f | `modelado.pesos_muestrales: matriculados` | Bajo; unas pocas IES (el SENA) dominan el ajuste | No: casi igual a sin pesos (0,043) |
+| **Pesos `inverso_grupo`** (sector × carácter) | d | `modelado.pesos_muestrales: inverso_grupo` | Bajo; sube el peso de los grupos escasos y de sus valores atípicos | No: empeora el MAE total (0,046) y no mejora los grupos peores |
+| **Pesos `inverso_ies`** | b (supervivencia) | `modelado.pesos_muestrales: inverso_ies` | Bajo | No: empeora el MAE total (0,045). Solo si se pide evidencia sobre el panel |
+| **GroupKFold estratificado** (sector × carácter) | a, d | `particion.estratificar_por: [sector, caracter]` | Bajo; es aleatorio con semilla fija | Opcional: el MAE no cambia (0,042); solo da pliegues más parecidos entre sí |
+| **Indicador de panel incompleto** | b | `modelado.indicador_panel_incompleto: true` (agrega `n_anios_ies` y `panel_incompleto`); `mitigacion.agregar_panel_incompleto` | Bajo | **Solo para diagnóstico y reporte por grupo**, no como variable: usa años posteriores al de cada fila (fuga hacia el futuro) |
+
+Las funciones están en `src/modelado/` y tienen pruebas (`tests/test_mitigacion.py`, `tests/test_sesgo.py`).
+
+## 3. Sensibilidad al umbral de denominador
+
+Dataset reconstruido en memoria con cada `min_matriculados_t2` (con 100 se reproduce el dataset publicado: 1.928 filas, 295 IES):
+
+| Umbral | IES-año | IES | % IES oficiales | % filas Bogotá | Mediana | Media | p95 | Desviación | Filas > 50 % |
+|---|---|---|---|---|---|---|---|---|---|
+| 50 | 1.966 | 297 | 26,6 | 31,2 | 9,9 % | 12,3 % | 27,9 % | 0,091 | 18 |
+| **100** | **1.928** | **295** | **26,8** | **31,0** | **9,9 %** | **12,0 %** | **26,1 %** | **0,087** | **15** |
+| 200 | 1.846 | 281 | 27,4 | 30,9 | 9,7 % | 11,7 % | 25,0 % | 0,077 | 8 |
+
+La mediana casi no se mueve (9,7 % a 9,9 %); lo que cambia es la cola: de 50 a 200 el percentil 95 baja de 27,9 % a 25,0 % y las tasas > 50 % pasan de 18 a 8. Subir el umbral a 200 cuesta 82 IES-año y 14 IES. La composición oficial/privada y el peso de Bogotá casi no cambian.
+
+## 4. Esquemas de validación y pesos (modelo de referencia)
+
+MAE de predicción fuera de muestra del Ridge de referencia frente a predecir la mediana del entrenamiento:
+
+| Esquema | Filas de prueba | MAE Ridge | MAE mediana | Mejora |
+|---|---|---|---|---|
+| GroupKFold por IES | 1.928 | 0,042 | 0,050 | 16,2 % |
+| GroupKFold estratificado (sector × carácter) | 1.928 | 0,042 | 0,050 | 15,5 % |
+| GroupKFold por departamento | 1.928 | 0,044 | 0,051 | 13,7 % |
+| Entrena fuera de Bogotá, prueba en Bogotá | 597 | 0,055 | 0,067 | 17,9 % |
+| Temporal 2015–2019 / 2020–2021 | 544 | 0,041 | 0,051 | 17,9 % |
+
+- El modelo mejora entre 14 % y 18 % sobre la mediana: la señal de las explicativas es débil en todos los esquemas.
+- Estratificar los pliegues no cambia el MAE. Validar por departamento lo sube dos milésimas (0,044).
+- Con Bogotá como prueba el MAE es mayor (0,055), pero también lo es el de la mediana (0,067): Bogotá tiene tasas más dispersas (con GroupKFold por IES el MAE en Bogotá ya es 0,054 frente a 0,038 en el resto). El error alto no se explica solo por extrapolar a un territorio no visto.
+- **Errores por subgrupo** (GroupKFold por IES, sin pesos): técnica profesional 0,082, tecnológica 0,080, denominador < 200 0,106, frente a 0,027 en universidad y 0,027 con denominador ≥ 5.000. El sesgo medio (predicho − observado) es negativo en los tramos chicos (−0,021 con < 200; −0,015 con 500–999): el modelo subestima la deserción de las IES pequeñas. Orinoquía (19 filas, 3 IES) y Amazonía (14 filas, 2 IES) son demasiado chicas para leer su MAE.
+- **Pesos** (MAE total; peores grupos): ninguno 0,042 (técnica profesional 0,082; < 200: 0,106); `raiz_matriculados` 0,041 (0,081; 0,102); `matriculados` 0,043 (0,082; 0,106); `inverso_grupo` 0,046 (0,082; 0,114); `inverso_ies` 0,045 (0,087; 0,113). Ningún esquema reduce el error de los grupos peores de forma apreciable: ese error es varianza propia de grupos chicos, no un efecto que los pesos corrijan.
+
+## Conclusiones
+
+### Bias and limitations
+
+*Borrador para adaptar al artículo; los números son los de este informe.*
+
+**Selección.** El dataset cubre 295 de las 321 IES con tasa anual de SPADIES en 2015–2021 (1.928 de 2.148 IES-año). Las filas excluidas por denominador pequeño, inconsistencia entre fuentes o posible cierre tienen tasas más altas (mediana 14,8 % frente a 9,9 %); las privadas excluidas, en particular, tienen mediana de 25,7 % frente a 10,2 %. Los resultados describen a las IES con al menos 100 matriculados de referencia y datos consistentes; no se extienden a las instituciones pequeñas ni a las escuelas militares y policiales. Subir el umbral a 200 deja la mediana en 9,7 % y baja las tasas por encima de 50 % de 15 a 8.
+
+**Supervivencia.** El 13 % de las IES (39 de 295) no tiene los siete años, y su tasa es más alta (mediana de 16,2 % frente a 9,6 %). El panel completo sobrerrepresenta a las instituciones que siguen reportando.
+
+**Concentración geográfica.** La mitad de las IES (49 %) está en Bogotá, Medellín y Cali, y las variables territoriales casi no varían entre las IES de una misma ciudad (tres municipios aportan unos 20 valores por variable). Las correlaciones territoriales cambian de tamaño y de signo al quitar esas ciudades, así que los efectos territoriales no deben leerse como generales; Orinoquía y Amazonía tienen cinco IES en total.
+
+**Desbalance.** Hay 79 IES oficiales y 216 privadas, y solo 24 técnicas profesionales y 37 tecnológicas, justo los grupos con tasas más altas (mediana de 13,7 % a 20,6 %) y más dispersas. En ellos, y en las IES con menos de 200 matriculados, el error es mayor (MAE de 0,08 a 0,11 frente a 0,03 en universidades), y el modelo subestima la deserción de las IES pequeñas. Se reporta el error por subgrupo, y los pesos muestrales no lo corrigen.
+
+**Faltantes y medición.** Los datos faltan por bloques de años (MDM y SNIES en 2015–2016, Saber 11 en 2019 y 2021), de la misma forma en oficiales y privadas; casi no falta nada fuera de los bloques. La variación de la tasa cae con el tamaño de la IES y es mucho mayor que la que produciría el ruido de un denominador pequeño: la tasa no es un ruido binomial sino heterogénea entre instituciones.
+
+**Fuga temporal.** Se recalcularon las 32 explicativas desde sus fuentes con los rezagos permitidos (contexto en t-1, matrícula en t-2): 0 discrepancias en 55.813 valores. Quedan limitaciones que esa verificación no cubre: los atributos institucionales (sector, carácter, sede) se toman de los programas de 2015–2021, y la selección por posible cierre usa información posterior a cada fila. Además, el censo 2018 (NBI/IPM) se usa solo desde el año objetivo 2020, por la fecha de publicación del DANE.
+
+**Poder predictivo.** Un modelo lineal de referencia mejora entre 14 % y 18 % el error de predecir la mediana, con cualquiera de los cinco esquemas de validación (por IES, estratificado, por departamento, sin Bogotá y temporal). Las explicativas disponibles (contexto territorial y tamaño) explican poco de la variación entre instituciones.
+
+### Bias and limitations (English version)
+
+*Draft for the paper; figures are those of this report.*
+
+**Selection.** The dataset covers 295 of the 321 institutions (IES) with an annual SPADIES dropout rate in 2015–2021 (1,928 of 2,148 institution-years). The rows removed for a small denominator, inconsistent sources or a probable closure have higher rates (median 14.8% vs. 9.9%); the excluded private institutions in particular have a median of 25.7% vs. 10.2% for the retained ones. The results therefore describe institutions with at least 100 enrolled students of reference and consistent records; they do not extend to very small institutions or to military and police academies. Raising the minimum denominator to 200 leaves the median at 9.7% and lowers the number of rates above 50% from 15 to 8.
+
+**Survival.** 13% of the institutions (39 of 295) do not have all seven years, and their rate is higher (median 16.2% vs. 9.6%). The complete panel over-represents institutions that keep reporting.
+
+**Geographic concentration.** Half of the institutions (49%) are in Bogotá, Medellín and Cali, and territorial variables hardly vary among institutions of the same city (three municipalities provide about 20 distinct values per variable). Territorial correlations change in size and sign when those cities are removed, so territorial effects should not be read as general; Orinoquía and Amazonía have only five institutions in total.
+
+**Imbalance.** There are 79 public and 216 private institutions, and only 24 technical-professional and 37 technological ones, precisely the groups with the highest (median 13.7% to 20.6%) and most dispersed rates. In them, and in institutions with fewer than 200 enrolled students, the error is larger (MAE 0.08 to 0.11 vs. 0.03 for universities), and the model underestimates dropout in small institutions. We report error by subgroup; sample weights do not correct it.
+
+**Missing data and measurement.** Missing values come in year blocks (MDM and SNIES in 2015–2016, Saber 11 in 2019 and 2021), identically for public and private institutions; almost nothing is missing outside those blocks. The dispersion of the rate falls with institution size and is far larger than a small denominator alone would produce: the rate is not binomial noise but real heterogeneity across institutions.
+
+**Temporal leakage.** We recomputed the 32 explanatory variables from their sources using the allowed lags (context at t-1, enrollment at t-2): 0 discrepancies in 55,813 values. Limitations remain that this check does not cover: institutional attributes (sector, character, seat) come from the 2015–2021 programs, and the probable-closure selection uses information posterior to each row. In addition, the 2018 census indicators (NBI, multidimensional poverty) are used only from target year 2020 on, because DANE published the municipal multidimensional poverty measure on 31 January 2020 (the first NBI publication date could not be verified; it was revised in February 2021).
+
+**Predictive power.** A reference linear model improves the error of predicting the median by 14% to 18% under all five validation schemes (by institution, stratified, by department, leaving Bogotá out, and temporal). The available explanatory variables (territorial context and size) explain little of the variation across institutions.

@@ -116,7 +116,7 @@ El dataset final tiene 295 IES: 343 − 22 (sin tasa anual en 2015–2021) − 9
   - **MDM**: empieza en 2016; con t-1 faltan **2015 y 2016** (100 % de las IES-año de esos años).
   - **SNIES (matrícula t-2)**: empieza en 2015; con t-2 faltan **2015 y 2016** (100 %).
   - **Saber 11**: se excluyen los años 2018, 2020 y 2021 (cobertura incompleta del calendario A); con t-1 faltan **2019 y 2021** (100 %).
-- **Indicadores** (0/1, en el dataset): `falta_saber11`, `falta_mdm`, `falta_snies` (valen 1 cuando la variable base es nula: `punt_global_media_t1`, `td_mdm_t1`, `matriculados_ies_t2`). Entran como numéricas en `variables_modelado` por defecto (`modelado.incluir_indicadores_falta`). Como `falta_mdm` y `falta_snies` coinciden exactamente (2015–2016), llevan la misma información; se conservan separadas porque identifican bloques distintos.
+- **Indicadores** (0/1, en el dataset): `falta_saber11`, `falta_mdm`, `falta_snies` (valen 1 cuando la variable base es nula: `punt_global_media_t1`, `td_mdm_t1`, `matriculados_ies_t2`). Entran como numéricas en `variables_modelado` por defecto (`modelado.incluir_indicadores_falta`). Como `falta_mdm` y `falta_snies` coinciden en 2015–2016 y difieren solo en 2 filas (la IES 4106, con sede en San Andrés, que no tiene su municipio en TerriData: 2020 y 2021), llevan casi la misma información; se conservan separadas porque identifican bloques distintos.
 - **Efecto en la partición temporal** (entrenamiento 2015–2019, prueba 2020–2021):
 
 | ventana | conjunto | filas | % sin Saber 11 | % sin MDM | % sin SNIES t-2 |

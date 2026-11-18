@@ -97,6 +97,27 @@ modelado:
   # true agrega n_anios_ies y panel_incompleto al cargar y deja panel_incompleto entre las explicativas
   # (usa años posteriores al de cada fila: sirve para diagnóstico, no es recomendable como variable)
   indicador_panel_incompleto: false
+  # --- Motor de experimentos (src/modelado/experimentos.py; python run_experimentos.py) ---
+  # La grilla es el producto cartesiano de las cuatro listas (2 x 2 x 3 x 3 = 36 configuraciones), con hiperparámetros por
+  # defecto: el ajuste de hiperparámetros viene después. Todos los pliegues y las semillas son los mismos para todas.
+  experimentos:
+    semilla: 42
+    n_jobs: 1                          # 1 para que los tiempos de ajuste sean comparables entre modelos
+    objetivo: [ninguna, logit]         # logit: TransformedTargetRegressor con la inversa de objetivo.py
+    imputacion: [mediana, knn]
+    seleccion: [ninguna, info_mutua, pca]
+    modelo: [ridge, random_forest, xgboost]
+    k_vecinos: 5                       # KNNImputer
+    k_info_mutua: 15                   # SelectKBest(mutual_info_regression)
+    varianza_pca: 0.90                 # PCA conserva esta fracción de varianza
+    ridge_alphas: {exp_min: -3, exp_max: 3, n: 13}   # RidgeCV: np.logspace(exp_min, exp_max, n)
+    random_forest: {n_estimators: 300}
+    xgboost: {n_estimators: 300, learning_rate: 0.05, max_depth: 4}
+    salidas:
+      resultados: reports/resultados/experimentos_v1.csv
+      resumen: reports/resultados/experimentos_v1_resumen.csv
+      informe: reports/resultados_v1.md
+      figura: reports/figuras/mae_configuraciones.png
 
 particion:
   n_splits: 5                  # GroupKFold por cod_ies

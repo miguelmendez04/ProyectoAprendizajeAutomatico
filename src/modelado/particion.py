@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import GroupKFold, StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -144,14 +144,24 @@ def preparar_x(df: pd.DataFrame, numericas: list[str], categoricas: list[str]) -
     return x
 
 
-def construir_preprocesador(numericas: list[str], categoricas: list[str]) -> ColumnTransformer:
-    """ColumnTransformer: numéricas con imputación por mediana y estandarización; categóricas con one-hot.
+IMPUTACIONES = ("mediana", "knn")
 
-    Las categorías que no se vieron en el entrenamiento se ignoran (todo ceros). La imputación y la estandarización
-    se ajustan solo con los datos que reciba `fit`: dentro de un Pipeline y una validación cruzada no hay fuga.
+
+def construir_preprocesador(
+    numericas: list[str], categoricas: list[str], imputacion: str = "mediana", k_vecinos: int = 5
+) -> ColumnTransformer:
+    """ColumnTransformer: numéricas con imputación y estandarización; categóricas con moda y one-hot.
+
+    `imputacion` de las numéricas: `mediana` (por defecto) o `knn` (KNNImputer con `k_vecinos`; los vecinos se buscan
+    solo entre las filas de entrenamiento). Las categorías que no se vieron en el entrenamiento se ignoran (todo ceros).
+    La imputación y la estandarización se ajustan solo con los datos que reciba `fit`: dentro de un Pipeline y una
+    validación cruzada no hay fuga.
     """
+    if imputacion not in IMPUTACIONES:
+        raise ValueError(f"imputacion inválida: {imputacion!r}; debe ser una de {IMPUTACIONES}")
+    imputador = SimpleImputer(strategy="median") if imputacion == "mediana" else KNNImputer(n_neighbors=k_vecinos)
     return ColumnTransformer([
-        ("num", Pipeline([("imputar", SimpleImputer(strategy="median")), ("escalar", StandardScaler())]), numericas),
+        ("num", Pipeline([("imputar", imputador), ("escalar", StandardScaler())]), numericas),
         ("cat", Pipeline([("imputar", SimpleImputer(strategy="most_frequent")),
                           ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categoricas),
     ])

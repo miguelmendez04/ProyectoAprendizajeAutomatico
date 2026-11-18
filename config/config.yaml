@@ -73,6 +73,10 @@ rezago_matricula: 2
 # Máximo de nulos tolerado por columna en la validación (proporción 0-1).
 max_nulos_pct: 0.5
 
+# Agrega al dataset la historia de la tasa de cada IES con años anteriores (tasa_t1, tasa_t2, tasa_media_previa, n_anios_previos,
+# falta_historia; src/integrate/historia.py). No son explicativas por defecto en el modelado.
+incluir_historia: true
+
 # Partición para la fase de modelado (src/modelado/particion.py)
 modelado:
   # Variables que no entran como explicativas (ver src/modelado/particion.py). La población absoluta queda fuera hasta
@@ -118,6 +122,21 @@ modelado:
       resumen: reports/resultados/experimentos_v1_resumen.csv
       informe: reports/resultados_v1.md
       figura: reports/figuras/mae_configuraciones.png
+  # --- Formulaciones con historia de la IES (src/modelado/formulaciones.py; python run_formulaciones.py) ---
+  # A contexto | B historia + contexto | B solo historia | C corrección sobre la ingenua (+ C solo historia). Los hiperparámetros, la
+  # semilla y los pliegues son los de `experimentos` y `particion`. En C el objetivo es el cambio respecto a la ingenua (sin logit).
+  formulaciones:
+    incluir: [A_contexto, B_historia_contexto, B_solo_historia, C_correccion, C_correccion_solo_historia]
+    objetivo: [ninguna, logit]
+    imputacion: [mediana]
+    seleccion: [ninguna, info_mutua, pca]
+    modelo: [ridge, random_forest, xgboost]
+    recortar_predicciones: true        # las predicciones finales se recortan a [0, 1]
+    salidas:
+      resultados: reports/resultados/experimentos_v2.csv
+      resumen: reports/resultados/experimentos_v2_resumen.csv
+      informe: reports/resultados_v2.md
+      figura: reports/figuras/mae_formulaciones.png
 
 particion:
   n_splits: 5                  # GroupKFold por cod_ies

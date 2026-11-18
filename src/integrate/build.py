@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from src.integrate.banderas import calcular_banderas
+from src.integrate.historia import agregar_historia
 from src.integrate.join import rezagar_features, unir_con_perdida
 
 LLAVE_MPIO = ["cod_divipola_mpio", "anio"]
@@ -385,4 +386,8 @@ def construir_dataset(
     if "banderas" in registro:
         _anotar_banderas(cfg, registro["banderas"], nombres_ies, reports / "exclusiones_calidad.csv", notas)
         escribir_tasas_altas(cfg, registro["banderas"], reports / "tasas_altas.csv", notas)
+    llave = {"ies": ["cod_ies"], "programa": ["cod_ies", "cod_snies_programa"], "municipio": ["cod_divipola_mpio"]}[cfg["unidad_analisis"]]
+    if cfg.get("incluir_historia", True) and "tasa_desercion" in df.columns and "semestre" not in df.columns and set(llave) <= set(df.columns):
+        # Historia de la tasa (solo años anteriores), sobre el dataset ya depurado: ver src/integrate/historia.py
+        df = agregar_historia(df, llave)
     return df, log

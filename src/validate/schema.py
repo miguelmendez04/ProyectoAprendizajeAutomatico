@@ -24,6 +24,8 @@ def construir_esquema(
 
     def nulos_dentro_del_tope(df) -> bool:
         proporcion = df.isna().mean()
+        # La historia de la tasa es nula por construcción en el primer año de cada entidad (no es un defecto de calidad)
+        proporcion = proporcion.drop(["tasa_t1", "tasa_t2", "tasa_media_previa"], errors="ignore")
         if not objetivo_obligatorio:
             proporcion = proporcion.drop("tasa_desercion", errors="ignore")
         return bool((proporcion <= max_nulos_pct).all())
@@ -46,6 +48,8 @@ def construir_esquema(
             ),  # código DANE de 5 dígitos con ceros a la izquierda
             r"^punt_global_(media|mediana)_t\d+$": col(checks=pa.Check.in_range(0, PUNTAJE_MAX_SABER11)),
             r"^pct_.*": col(checks=pa.Check.in_range(0, 1)),
+            r"^tasa_(t1|t2|media_previa)$": col(checks=pa.Check.in_range(0, 1)),
+            r"^n_anios_previos$": col(checks=pa.Check.ge(0)),
             r"^nbi_pct$": col(checks=pa.Check.in_range(0, 100)),
             r"^(n_estudiantes|n_ies|matriculados|mpio_|poblacion).*": col(checks=pa.Check.ge(0)),
             r"^td_(poblacion_total|pct_|nbi_pct|miseria_pct|ipm_censo|cob_|desercion_|repitencia_|transito_).*": col(checks=pa.Check.ge(0)),

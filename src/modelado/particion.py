@@ -78,6 +78,10 @@ def cargar_dataset(cfg: dict, excluir_sena: bool | None = None, ventana_modelado
 # Columnas que nunca son explicativas, ni siquiera con `excluir=[]`: `n_anios_ies` cuenta años posteriores al de cada fila
 # (si la IES siguió reportando), es decir, información del futuro. `panel_incompleto` sí puede entrar (opción de sesgo).
 NUNCA_EXPLICATIVAS = ("n_anios_ies",)
+# Historia de la tasa de la propia IES (solo años anteriores; ver src/integrate/historia.py). Son de opt-in: nunca entran en
+# `columnas_explicativas` (la formulación «contexto» no lleva historia); las formulaciones con historia las piden aparte
+# (`src/modelado/formulaciones.py`).
+COLUMNAS_HISTORIA = ("tasa_t1", "tasa_t2", "tasa_media_previa", "n_anios_previos", "falta_historia")
 EXCLUIDAS_POR_DEFECTO = ["td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2", "log_matriculados_ies_t2"]
 
 
@@ -86,7 +90,7 @@ def columnas_explicativas(df: pd.DataFrame, objetivo: str = "tasa_desercion", ex
 
     `excluir=None` aplica `EXCLUIDAS_POR_DEFECTO`; con `[]` no se excluye nada más. Las banderas (booleanas) nunca entran.
     """
-    fuera = {objetivo, "anio", "semestre", *NUNCA_EXPLICATIVAS, *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir)}
+    fuera = {objetivo, "anio", "semestre", *NUNCA_EXPLICATIVAS, *COLUMNAS_HISTORIA, *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir)}
     numericas = df.select_dtypes("number").columns
     return [c for c in numericas if c not in fuera and not c.startswith("cod_")]
 

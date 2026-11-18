@@ -28,6 +28,11 @@ _CATALOGO = {
     "mpio_matriculados": ("SNIES (MEN)", "Matrícula de educación superior en el municipio"),
     "mpio_ies_con_oferta": ("SNIES (MEN)", "IES con oferta en el municipio"),
     "log_matriculados_spadies": ("SPADIES (MEN)", "Logaritmo natural de 1 + el denominador de la tasa (matrícula SPADIES de hace dos semestres, promedio de los dos del año). Tamaño por defecto; información de t-2, completa 2015–2021"),
+    "tasa_t1": ("ETL (SPADIES)", "Historia: tasa de deserción anual de la misma IES en el año t-1 (fila t-1 del dataset; nula sin ella). Opt-in en el modelado: no es explicativa por defecto"),
+    "tasa_t2": ("ETL (SPADIES)", "Historia: tasa de deserción anual de la misma IES en el año t-2 (nula sin esa fila). Opt-in en el modelado"),
+    "tasa_media_previa": ("ETL (SPADIES)", "Historia: media de las tasas de la misma IES en todos los años anteriores a t presentes en el dataset (nula en su primer año). Opt-in en el modelado"),
+    "n_anios_previos": ("ETL (SPADIES)", "Historia: número de tasas anteriores a t de la misma IES en el dataset (0 en su primer año). Solo cuenta el pasado, a diferencia de n_anios_ies. Opt-in en el modelado"),
+    "falta_historia": ("ETL", "Indicador: la fila no tiene tasa_t1 (primer año de la IES en el dataset, 2015 para todas, o falta la fila del año anterior)"),
     "falta_saber11": ("ETL", "Indicador: la fila no tiene variables de Saber 11 (años con cobertura incompleta del calendario A: 2019 y 2021)"),
     "falta_mdm": ("ETL", "Indicador: la fila no tiene la medición de desempeño municipal (MDM empieza en 2016: faltan 2015–2016)"),
     "falta_snies": ("ETL", "Indicador: la fila no tiene matrícula SNIES t-2 (SNIES por programa empieza en 2015: faltan 2015–2016)"),
@@ -43,7 +48,7 @@ def describir_columnas(columnas: list[str]) -> tuple[dict[str, str], dict[str, s
     fuentes, descripciones = {}, {}
     for c in columnas:
         m = _REZAGO.match(c)
-        base, sufijo = (m["base"], f" (año t-{m['k']})") if m else (c, "")
+        base, sufijo = (m["base"], f" (año t-{m['k']})") if m and c not in _CATALOGO else (c, "")
         if base.startswith("td_"):
             fuentes[c], descripciones[c] = "TerriData (DNP)", f"{descripcion_columna(base[3:]) or 'Indicador territorial ' + base[3:]}{sufijo}"
         elif base in _CATALOGO:

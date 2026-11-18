@@ -117,6 +117,14 @@ def tasa_anual(semestrales: pd.DataFrame, min_denominador: float = 0) -> pd.Data
     return g[columnas].reset_index(drop=True)
 
 
+def tasas_anuales_sin_minimo(cfg: dict) -> pd.DataFrame:
+    """Tasas anuales de SPADIES de todos los años, sin denominador mínimo y sin quitar posibles cierres (columnas `cod_ies`,
+    `anio`, `tasa_desercion`, `matriculados_t2_spadies`). Solo para diagnóstico de la historia (ver `src/integrate/historia.py`)."""
+    semestrales = tasas_semestrales(leer_diferenciado(Path(cfg["spadies"]["archivo"])))
+    semestrales.loc[semestrales["tasa_desercion"] > 1, "tasa_desercion"] = float("nan")
+    return tasa_anual(semestrales, 0)
+
+
 VENTANA_CIERRE = 2  # semestres previos al último reporte que se consideran sospechosos
 
 

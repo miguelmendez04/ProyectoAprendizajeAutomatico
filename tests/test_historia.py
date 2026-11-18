@@ -5,8 +5,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.integrate.historia import COLUMNAS_HISTORIA, agregar_historia
+from src.integrate.historia import (
+    COLUMNAS_HISTORIA, COLUMNAS_HISTORIA_REZAGADA, COLUMNAS_HISTORIA_TODAS, agregar_historia, clasificar_sin_historia,
+)
 from src.modelado.particion import COLUMNAS_HISTORIA as HIST_MODELADO
+from src.modelado.particion import COLUMNAS_HISTORIA_REZAGADA as HIST_REZAGADA_MODELADO
 from src.modelado.particion import columnas_explicativas
 
 DATASET = Path("data/processed/dataset_ies.csv")
@@ -50,7 +53,7 @@ def test_las_filas_conservan_su_orden_y_el_resto_de_columnas():
     df = _panel().sample(frac=1, random_state=3).reset_index(drop=True)
     out = agregar_historia(df, ["cod_ies"])
     assert out[["cod_ies", "anio", "tasa_desercion"]].equals(df)
-    assert list(out.columns[-5:]) == COLUMNAS_HISTORIA
+    assert list(out.columns[-8:]) == COLUMNAS_HISTORIA_TODAS
 
 
 def test_las_tasas_nulas_no_cuentan_como_historia():
@@ -83,7 +86,7 @@ def test_la_historia_no_cambia_si_se_alteran_el_año_t_y_los_posteriores():
         futuro = (alterado["cod_ies"] == fila["cod_ies"]) & (alterado["anio"] >= fila["anio"])
         alterado.loc[futuro, "tasa_desercion"] = 0.999
         nuevo = agregar_historia(alterado, ["cod_ies"])
-        cols = COLUMNAS_HISTORIA
+        cols = COLUMNAS_HISTORIA_TODAS
         pd.testing.assert_series_equal(base.loc[i, cols].astype(float), nuevo.loc[i, cols].astype(float), check_names=False)
 
 
@@ -107,22 +110,105 @@ def test_n_anios_previos_nunca_cuenta_el_futuro():
 # ---------- no son explicativas por defecto ----------
 def test_las_columnas_de_historia_no_entran_como_explicativas_por_defecto():
     df = agregar_historia(_panel_aleatorio().assign(x_t1=1.0), ["cod_ies"])
+    assert set(COLUMNAS_HISTORIA_TODAS) <= set(df.columns)
     for excluir in (None, []):
         explicativas = columnas_explicativas(df, excluir=excluir)
         assert explicativas == ["x_t1"]
-    assert set(HIST_MODELADO) == set(COLUMNAS_HISTORIA)
+    assert set(HIST_MODELADO) == set(COLUMNAS_HISTORIA) and set(HIST_REZAGADA_MODELADO) == set(COLUMNAS_HISTORIA_REZAGADA)
+
+
+# ---------- historia previa a la ventana (SPADIES desde 1999) ----------
+def _previa() -> pd.DataFrame:
+    return pd.DataFrame({"cod_ies": ["A", "A", "A", "X"], "anio": [2013, 2014, 2015, 2014], "tasa_desercion": [0.05, 0.08, 0.99, 0.5]})
+
+
+def _ventana() -> pd.DataFrame:
+    return pd.DataFrame({"cod_ies": ["A", "A", "B"], "anio": [2015, 2016, 2015], "tasa_desercion": [0.10, 0.20, 0.30]})
+
+
+def test_la_previa_da_historia_al_primer_anio_de_la_ventana():
+    h = agregar_historia(_ventana(), ["cod_ies"], previa=_previa()).set_index(["cod_ies", "anio"])
+    assert h.loc[("A", 2015), "tasa_t1"] == pytest.approx(0.08) and h.loc[("A", 2015), "tasa_t2"] == pytest.approx(0.05)
+    assert h.loc[("A", 2015), "n_anios_previos"] == 2 and h.loc[("A", 2015), "tasa_media_previa"] == pytest.approx(0.065)
+    assert h.loc[("A", 2016), "tasa_t1"] == pytest.approx(0.10) and h.loc[("A", 2016), "n_anios_previos"] == 3  # 2013, 2014, 2015
+    assert h.loc[("A", 2016), "tasa_media_previa"] == pytest.approx((0.05 + 0.08 + 0.10) / 3)
+    assert np.isnan(h.loc[("B", 2015), "tasa_t1"]) and h.loc[("B", 2015), "n_anios_previos"] == 0  # B no tiene previa
+
+
+def test_la_previa_no_cambia_las_filas_del_dataset():
+    h = agregar_historia(_ventana(), ["cod_ies"], previa=_previa())
+    assert h[["cod_ies", "anio", "tasa_desercion"]].equals(_ventana())  # sin filas nuevas (X no aparece) ni cambios
+
+
+def test_la_previa_solo_aporta_anios_anteriores_a_la_ventana():
+    """El 2015 de la previa (0,99) no debe usarse: el dataset ya trae ese año (0,10)."""
+    h = agregar_historia(_ventana(), ["cod_ies"], previa=_previa()).set_index(["cod_ies", "anio"])
+    assert h.loc[("A", 2016), "tasa_t1"] == pytest.approx(0.10)
+
+
+def test_con_previa_alterar_el_anio_t_y_los_posteriores_no_cambia_la_historia():
+    base = agregar_historia(_ventana(), ["cod_ies"], previa=_previa())
+    alterado = _ventana()
+    alterado.loc[(alterado.cod_ies == "A") & (alterado.anio >= 2015), "tasa_desercion"] = 0.999
+    nuevo = agregar_historia(alterado, ["cod_ies"], previa=_previa())
+    fila = base.index[(base.cod_ies == "A") & (base.anio == 2015)][0]
+    pd.testing.assert_series_equal(base.loc[fila, COLUMNAS_HISTORIA_TODAS].astype(float), nuevo.loc[fila, COLUMNAS_HISTORIA_TODAS].astype(float), check_names=False)
+
+
+# ---------- historia rezagada: nunca usa t-1 ----------
+def test_la_historia_rezagada_usa_solo_anios_hasta_t_menos_2():
+    h = _historia(_panel())
+    assert h.loc[("A", 2018), "tasa_media_rezagada"] == pytest.approx((0.10 + 0.20) / 2) and h.loc[("A", 2018), "n_anios_rezagados"] == 2
+    assert np.isnan(h.loc[("A", 2016), "tasa_media_rezagada"]) and h.loc[("A", 2016), "n_anios_rezagados"] == 0  # solo existe 2015 = t-1
+    assert h.loc[("A", 2016), "falta_historia_rezagada"] and not h.loc[("A", 2018), "falta_historia_rezagada"]
+    # B en 2018: años <= 2016 = {2016}; el hueco de 2017 no cuenta
+    assert h.loc[("B", 2018), "tasa_media_rezagada"] == pytest.approx(0.50) and h.loc[("B", 2018), "n_anios_rezagados"] == 1
+
+
+def test_la_historia_rezagada_no_cambia_si_se_altera_t_menos_1():
+    df = _panel_aleatorio()
+    base = agregar_historia(df, ["cod_ies"])
+    for i, fila in df.iterrows():
+        alterado = df.copy()
+        previo = (alterado["cod_ies"] == fila["cod_ies"]) & (alterado["anio"] == fila["anio"] - 1)
+        if not previo.any():
+            continue
+        alterado.loc[previo, "tasa_desercion"] = 0.999
+        nuevo = agregar_historia(alterado, ["cod_ies"])
+        pd.testing.assert_series_equal(base.loc[i, COLUMNAS_HISTORIA_REZAGADA].astype(float), nuevo.loc[i, COLUMNAS_HISTORIA_REZAGADA].astype(float), check_names=False)
+        assert base.loc[i, "tasa_t1"] != nuevo.loc[i, "tasa_t1"]  # contraprueba: la normal sí cambia
+
+
+# ---------- motivos de las filas sin historia ----------
+def test_clasificar_sin_historia():
+    df = pd.DataFrame({"cod_ies": ["N", "D", "Q", "H"], "anio": [2016, 2016, 2017, 2016], "n_anios_previos": [0, 1, 1, 2],
+                       "falta_historia": [True, True, True, True]})
+    anual = pd.DataFrame({"cod_ies": ["N", "D", "D", "Q", "Q", "H"], "anio": [2016, 2014, 2015, 2015, 2016, 2013],
+                          "matriculados_t2_spadies": [500.0, 500.0, 40.0, 900.0, 900.0, 300.0]})
+    m = clasificar_sin_historia(df, anual, minimo=100).set_index("cod_ies")["motivo"]
+    assert m["N"].startswith("IES nueva")
+    assert m["D"].startswith("t-1 con denominador menor")
+    assert m["Q"].startswith("t-1 excluida por calidad")
+    assert m["H"].startswith("sin tasa anual en t-1")
 
 
 # ---------- datos reales ----------
-@pytest.mark.skipif(not DATASET.exists(), reason="falta data/processed/dataset_ies.csv")
+INTERIM = Path("data/interim/spadies.csv")
+
+
+@pytest.mark.skipif(not DATASET.exists() or not INTERIM.exists(), reason="faltan data/processed o data/interim")
 def test_la_historia_del_dataset_publicado_se_recalcula_solo_con_el_pasado():
     d = pd.read_csv(DATASET, dtype={"cod_ies": str})
-    assert set(COLUMNAS_HISTORIA) <= set(d.columns)
-    recalculado = agregar_historia(d.drop(columns=COLUMNAS_HISTORIA), ["cod_ies"])
-    for c in COLUMNAS_HISTORIA:
+    assert set(COLUMNAS_HISTORIA_TODAS) <= set(d.columns)
+    previa = pd.read_csv(INTERIM, dtype={"cod_ies": str})[["cod_ies", "anio", "tasa_desercion"]]
+    previa = previa[previa["anio"] < d["anio"].min()]
+    recalculado = agregar_historia(d.drop(columns=COLUMNAS_HISTORIA_TODAS), ["cod_ies"], previa=previa)
+    for c in COLUMNAS_HISTORIA_TODAS:
         pd.testing.assert_series_equal(d[c].astype(float), recalculado[c].astype(float), check_names=False)
-    # cada tasa_t1 publicada es, literalmente, la tasa de la fila del año anterior
-    previa = d.set_index(["cod_ies", "anio"])["tasa_desercion"]
-    esperado = pd.Series(list(zip(d["cod_ies"], d["anio"] - 1))).map(previa.to_dict())
-    assert d["tasa_t1"].to_numpy() == pytest.approx(esperado.to_numpy(float), nan_ok=True)
-    assert (d.loc[d["anio"] == d["anio"].min(), "tasa_t1"].isna()).all()  # el primer año del dataset no tiene t-1
+    # desde el segundo año de la ventana, tasa_t1 publicada es la tasa de la fila del año anterior en el dataset
+    previa_fila = d.set_index(["cod_ies", "anio"])["tasa_desercion"]
+    esperado = pd.Series(list(zip(d["cod_ies"], d["anio"] - 1))).map(previa_fila.to_dict())
+    dentro = (d["anio"] > d["anio"].min()).to_numpy()
+    assert d["tasa_t1"].to_numpy()[dentro] == pytest.approx(esperado.to_numpy(float)[dentro], nan_ok=True)
+    # las filas del dataset no cambian por la historia previa: la tasa publicada es la de SPADIES
+    assert d["tasa_desercion"].notna().all()

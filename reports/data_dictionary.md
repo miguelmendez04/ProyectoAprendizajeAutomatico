@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Filas: 1928 · Columnas: 52
+Filas: 1928 · Columnas: 55
 
 | Variable | Tipo | Fuente | Descripción | % nulos | Rango |
 |---|---|---|---|---|---|
@@ -51,8 +51,11 @@ Filas: 1928 · Columnas: 52
 | `falta_saber11` | bool | ETL | Indicador: la fila no tiene variables de Saber 11 (años con cobertura incompleta del calendario A: 2019 y 2021) | 0.0% | 2 valores distintos |
 | `falta_mdm` | bool | ETL | Indicador: la fila no tiene la medición de desempeño municipal (MDM empieza en 2016: faltan 2015–2016) | 0.0% | 2 valores distintos |
 | `falta_snies` | bool | ETL | Indicador: la fila no tiene matrícula SNIES t-2 (SNIES por programa empieza en 2015: faltan 2015–2016) | 0.0% | 2 valores distintos |
-| `tasa_t1` | float64 | ETL (SPADIES) | Historia: tasa de deserción anual de la misma IES en el año t-1 (fila t-1 del dataset; nula sin ella). Opt-in en el modelado: no es explicativa por defecto | 15.8% | 0.002712 – 0.9942 |
-| `tasa_t2` | float64 | ETL (SPADIES) | Historia: tasa de deserción anual de la misma IES en el año t-2 (nula sin esa fila). Opt-in en el modelado | 30.5% | 0.002712 – 0.8727 |
-| `tasa_media_previa` | float64 | ETL (SPADIES) | Historia: media de las tasas de la misma IES en todos los años anteriores a t presentes en el dataset (nula en su primer año). Opt-in en el modelado | 15.3% | 0.02073 – 0.7514 |
-| `n_anios_previos` | int64 | ETL (SPADIES) | Historia: número de tasas anteriores a t de la misma IES en el dataset (0 en su primer año). Solo cuenta el pasado, a diferencia de n_anios_ies. Opt-in en el modelado | 0.0% | 0 – 6 |
-| `falta_historia` | bool | ETL | Indicador: la fila no tiene tasa_t1 (primer año de la IES en el dataset, 2015 para todas, o falta la fila del año anterior) | 0.0% | 2 valores distintos |
+| `tasa_t1` | float64 | ETL (SPADIES) | Historia: tasa de deserción anual de la misma IES en el año t-1 (nula si no hay tasa de ese año). Desde 2015 sale del dataset; para años anteriores, de SPADIES (misma definición y filtros). Opt-in en el modelado: no es explicativa por defecto | 1.8% | 0.002712 – 0.9942 |
+| `tasa_t2` | float64 | ETL (SPADIES) | Historia: tasa de deserción anual de la misma IES en el año t-2 (nula si no hay tasa de ese año). Compartida por la historia normal y la rezagada. Opt-in en el modelado | 2.7% | 0.002712 – 0.8727 |
+| `tasa_media_previa` | float64 | ETL (SPADIES) | Historia: media de todas las tasas anuales de la misma IES de años anteriores a t, desde 1999 (nula si no hay ninguna). Opt-in en el modelado | 0.8% | 0.03927 – 0.6131 |
+| `n_anios_previos` | int64 | ETL (SPADIES) | Historia: número de tasas anuales de años anteriores a t de la misma IES (0 si ninguna). Solo cuenta el pasado, a diferencia de n_anios_ies. Opt-in en el modelado | 0.0% | 0 – 22 |
+| `falta_historia` | bool | ETL | Indicador: la fila no tiene tasa_t1 (IES nueva en SPADIES o sin tasa válida en t-1; ver reports/sin_historia.csv) | 0.0% | 2 valores distintos |
+| `tasa_media_rezagada` | float64 | ETL (SPADIES) | Historia rezagada (escenario conservador, sin usar t-1): media de las tasas anuales de la misma IES de años <= t-2 (nula si no hay ninguna). Opt-in en el modelado | 1.4% | 0.03981 – 0.6502 |
+| `n_anios_rezagados` | int64 | ETL (SPADIES) | Historia rezagada: número de tasas anuales de años <= t-2 de la misma IES (0 si ninguna). Opt-in en el modelado | 0.0% | 0 – 21 |
+| `falta_historia_rezagada` | bool | ETL | Indicador: la fila no tiene tasa_t2 (historia rezagada) | 0.0% | 2 valores distintos |

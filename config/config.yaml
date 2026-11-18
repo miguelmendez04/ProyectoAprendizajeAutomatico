@@ -76,6 +76,8 @@ max_nulos_pct: 0.5
 # Agrega al dataset la historia de la tasa de cada IES con años anteriores (tasa_t1, tasa_t2, tasa_media_previa, n_anios_previos,
 # falta_historia; src/integrate/historia.py). No son explicativas por defecto en el modelado.
 incluir_historia: true
+# La historia usa, para los años anteriores a `anios`, las tasas anuales de SPADIES (misma definición y filtros); no agrega filas.
+historia_previa_a_ventana: true
 
 # Partición para la fase de modelado (src/modelado/particion.py)
 modelado:
@@ -137,6 +139,37 @@ modelado:
       resumen: reports/resultados/experimentos_v2_resumen.csv
       informe: reports/resultados_v2.md
       figura: reports/figuras/mae_formulaciones.png
+
+  # --- Protocolo de evaluación v3 (src/modelado/protocolo.py; python run_protocolo_v3.py) ---
+  # GroupKFold por IES (con mezcla) repetido con semillas distintas; mismos pliegues para todas las configuraciones. El conjunto de
+  # configuraciones se FIJÓ ANTES de correr y no se modifica mirando resultados (lo protege tests/test_protocolo.py).
+  # Imputación mediana en todas; selección «ninguna» salvo donde se indica; objetivo en logit donde se indica (en C el objetivo es
+  # el cambio respecto a la ingenua, sin logit). «Rezagada» = sin usar la tasa de t-1 (escenario conservador).
+  protocolo_v3:
+    n_splits: 5
+    semillas: [101, 102, 103, 104, 105]   # 5 repeticiones x 5 pliegues = 25 ajustes por configuración
+    nivel_confianza: 0.95
+    configuraciones:
+      - {nombre: "A contexto | ridge logit info_mutua", formulacion: A_contexto, modelo: ridge, objetivo: logit, seleccion: info_mutua}
+      - {nombre: "B historia+contexto | xgboost logit", formulacion: B_historia_contexto, modelo: xgboost, objetivo: logit, seleccion: ninguna}
+      - {nombre: "B historia+contexto | ridge logit", formulacion: B_historia_contexto, modelo: ridge, objetivo: logit, seleccion: ninguna}
+      - {nombre: "B solo historia | ridge logit", formulacion: B_solo_historia, modelo: ridge, objetivo: logit, seleccion: ninguna}
+      - {nombre: "C corrección con contexto | ridge", formulacion: C_correccion, modelo: ridge, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección con contexto | random_forest", formulacion: C_correccion, modelo: random_forest, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección solo historia | ridge", formulacion: C_correccion_solo_historia, modelo: ridge, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección solo historia | random_forest", formulacion: C_correccion_solo_historia, modelo: random_forest, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "B historia+contexto | xgboost logit [rezagada]", formulacion: B_historia_rezagada_contexto, modelo: xgboost, objetivo: logit, seleccion: ninguna}
+      - {nombre: "B historia+contexto | ridge logit [rezagada]", formulacion: B_historia_rezagada_contexto, modelo: ridge, objetivo: logit, seleccion: ninguna}
+      - {nombre: "B solo historia | ridge logit [rezagada]", formulacion: B_solo_historia_rezagada, modelo: ridge, objetivo: logit, seleccion: ninguna}
+      - {nombre: "C corrección con contexto | ridge [rezagada]", formulacion: C_correccion_rezagada, modelo: ridge, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección con contexto | random_forest [rezagada]", formulacion: C_correccion_rezagada, modelo: random_forest, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección solo historia | ridge [rezagada]", formulacion: C_correccion_solo_historia_rezagada, modelo: ridge, objetivo: ninguna, seleccion: ninguna}
+      - {nombre: "C corrección solo historia | random_forest [rezagada]", formulacion: C_correccion_solo_historia_rezagada, modelo: random_forest, objetivo: ninguna, seleccion: ninguna}
+    salidas:
+      resultados: reports/resultados/experimentos_v3.csv
+      resumen: reports/resultados/experimentos_v3_resumen.csv
+      informe: reports/resultados_v3.md
+      figura: reports/figuras/mae_v3_ic.png
 
 particion:
   n_splits: 5                  # GroupKFold por cod_ies

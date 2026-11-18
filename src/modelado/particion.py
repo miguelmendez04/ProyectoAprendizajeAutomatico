@@ -82,6 +82,8 @@ NUNCA_EXPLICATIVAS = ("n_anios_ies",)
 # `columnas_explicativas` (la formulación «contexto» no lleva historia); las formulaciones con historia las piden aparte
 # (`src/modelado/formulaciones.py`).
 COLUMNAS_HISTORIA = ("tasa_t1", "tasa_t2", "tasa_media_previa", "n_anios_previos", "falta_historia")
+# Variante rezagada (sin t-1): la usa la sensibilidad «historia rezagada»; también es de opt-in
+COLUMNAS_HISTORIA_REZAGADA = ("tasa_t2", "tasa_media_rezagada", "n_anios_rezagados", "falta_historia_rezagada")
 EXCLUIDAS_POR_DEFECTO = ["td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2", "log_matriculados_ies_t2"]
 
 
@@ -90,7 +92,7 @@ def columnas_explicativas(df: pd.DataFrame, objetivo: str = "tasa_desercion", ex
 
     `excluir=None` aplica `EXCLUIDAS_POR_DEFECTO`; con `[]` no se excluye nada más. Las banderas (booleanas) nunca entran.
     """
-    fuera = {objetivo, "anio", "semestre", *NUNCA_EXPLICATIVAS, *COLUMNAS_HISTORIA, *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir)}
+    fuera = {objetivo, "anio", "semestre", *NUNCA_EXPLICATIVAS, *COLUMNAS_HISTORIA, *COLUMNAS_HISTORIA_REZAGADA, *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir)}
     numericas = df.select_dtypes("number").columns
     return [c for c in numericas if c not in fuera and not c.startswith("cod_")]
 

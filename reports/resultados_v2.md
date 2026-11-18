@@ -1,5 +1,7 @@
 # Resultados v2: historia de la IES y corrección sobre la ingenua
 
+> **Nota (2026-11-18):** esta v2 se calculó con la historia que empieza en 2015 (commit 422e3a1). Desde la v3 la historia usa también las tasas anuales de SPADIES de 1999 a 2014 y las columnas de historia del dataset cambiaron; si se vuelve a correr `run_formulaciones.py` las cifras serán otras. La referencia vigente es `reports/resultados_v3.md`.
+
 Generado por `python run_formulaciones.py` (motor en `src/modelado/formulaciones.py`). Todas las cifras salen de la corrida; no se editan a mano. Continúa `reports/resultados_v1.md`.
 
 ## Diseño

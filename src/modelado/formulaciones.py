@@ -25,7 +25,7 @@ from src.modelado.experimentos import (
     BASE_INGENUA, BASE_MEDIANA, construir_pipeline, hash_pliegue, metricas, parametros_experimentos, prediccion_ingenua,
 )
 from src.modelado.particion import (
-    COLUMNAS_HISTORIA, cargar_dataset, kfold_desde_config, preparar_x, variables_modelado_desde_config,
+    COLUMNAS_HISTORIA, COLUMNAS_HISTORIA_REZAGADA, cargar_dataset, kfold_desde_config, preparar_x, variables_modelado_desde_config,
 )
 
 FORMULACIONES = {
@@ -35,6 +35,15 @@ FORMULACIONES = {
     "C_correccion": {"conjunto": "historia_contexto", "correccion": True},
     "C_correccion_solo_historia": {"conjunto": "solo_historia", "correccion": True},
 }
+# Variantes «historia rezagada» (escenario conservador: la tasa de t-1 aún no estaría publicada al inicio de t): no usan t-1; la
+# corrección parte de la ingenua rezagada (tasa t-2, o la mediana del entrenamiento si falta).
+FORMULACIONES_REZAGADAS = {
+    "B_historia_rezagada_contexto": {"conjunto": "historia_rezagada_contexto", "correccion": False},
+    "B_solo_historia_rezagada": {"conjunto": "solo_historia_rezagada", "correccion": False},
+    "C_correccion_rezagada": {"conjunto": "historia_rezagada_contexto", "correccion": True, "base": "tasa_t2"},
+    "C_correccion_solo_historia_rezagada": {"conjunto": "solo_historia_rezagada", "correccion": True, "base": "tasa_t2"},
+}
+TODAS_LAS_FORMULACIONES = {**FORMULACIONES, **FORMULACIONES_REZAGADAS}
 COLUMNAS_RESULTADO = [
     "configuracion", "tipo", "formulacion", "modelo", "objetivo", "imputacion", "seleccion", "n_variables", "pliegue",
     "n_entrenamiento", "n_prueba", "n_con_historia", "n_sin_historia", "mae", "rmse", "r2", "mae_con_historia",
@@ -75,17 +84,19 @@ def parametros_formulaciones(cfg: dict) -> dict:
     """`modelado.formulaciones` completado con valores por defecto; los hiperparámetros salen de `modelado.experimentos`."""
     p = dict(_DEFECTO)
     p.update(cfg.get("modelado", {}).get("formulaciones") or {})
-    malas = [f for f in p["incluir"] if f not in FORMULACIONES]
+    malas = [f for f in p["incluir"] if f not in TODAS_LAS_FORMULACIONES]
     if malas:
-        raise ValueError(f"modelado.formulaciones.incluir: {malas} no existen; las válidas son {list(FORMULACIONES)}")
+        raise ValueError(f"modelado.formulaciones.incluir: {malas} no existen; las válidas son {list(TODAS_LAS_FORMULACIONES)}")
     return p
 
 
 def variables_formulacion(df: pd.DataFrame, cfg: dict, conjunto: str) -> tuple[list[str], list[str]]:
-    """(numéricas, categóricas) de cada conjunto: `contexto` | `historia_contexto` | `solo_historia`."""
+    """(numéricas, categóricas) de cada conjunto: `contexto` | `historia_contexto` | `solo_historia` y las rezagadas
+    `historia_rezagada_contexto` | `solo_historia_rezagada` (sin t-1)."""
     if conjunto == "contexto":
         return variables_modelado_desde_config(df, cfg)
-    falta = [c for c in COLUMNAS_HISTORIA if c not in df.columns]
+    requeridas = COLUMNAS_HISTORIA_REZAGADA if "rezagada" in conjunto else COLUMNAS_HISTORIA
+    falta = [c for c in requeridas if c not in df.columns]
     if falta:
         raise ValueError(f"el dataset no trae las columnas de historia {falta}: regenerarlo con pipeline.py (incluir_historia: true)")
     if conjunto == "solo_historia":
@@ -93,12 +104,17 @@ def variables_formulacion(df: pd.DataFrame, cfg: dict, conjunto: str) -> tuple[l
     if conjunto == "historia_contexto":
         numericas, categoricas = variables_modelado_desde_config(df, cfg)
         return numericas + [c for c in COLUMNAS_HISTORIA if c not in numericas], categoricas
+    if conjunto == "solo_historia_rezagada":
+        return list(COLUMNAS_HISTORIA_REZAGADA), []
+    if conjunto == "historia_rezagada_contexto":
+        numericas, categoricas = variables_modelado_desde_config(df, cfg)
+        return numericas + [c for c in COLUMNAS_HISTORIA_REZAGADA if c not in numericas], categoricas
     raise ValueError(f"conjunto inválido: {conjunto!r}")
 
 
 def grilla_formulacion(nombre: str, p: dict) -> list[dict]:
     """Configuraciones de una formulación; en la corrección el objetivo es el cambio, así que no hay logit."""
-    objetivos = ["ninguna"] if FORMULACIONES[nombre]["correccion"] else p["objetivo"]
+    objetivos = ["ninguna"] if TODAS_LAS_FORMULACIONES[nombre]["correccion"] else p["objetivo"]
     return [{"formulacion": nombre, "objetivo": o, "imputacion": i, "seleccion": s, "modelo": m}
             for o, i, s, m in itertools.product(objetivos, p["imputacion"], p["seleccion"], p["modelo"])]
 
@@ -109,12 +125,12 @@ def nombre_configuracion(c: dict) -> str:
 
 def construir_pipeline_formulacion(c: dict, numericas: list[str], categoricas: list[str], p_exp: dict):
     """Pipeline de la configuración; con `correccion` lo envuelve en `CorreccionSobreIngenua`."""
-    spec = FORMULACIONES[c["formulacion"]]
+    spec = TODAS_LAS_FORMULACIONES[c["formulacion"]]
     p = dict(p_exp)
     if not categoricas:  # SelectKBest exige k <= nº de columnas: sin categóricas, a lo sumo las numéricas
         p["k_info_mutua"] = min(p["k_info_mutua"], len(numericas))
     pipe = construir_pipeline(c, numericas, categoricas, p)
-    return CorreccionSobreIngenua(pipe) if spec["correccion"] else pipe
+    return CorreccionSobreIngenua(pipe, spec.get("base", "tasa_t1")) if spec["correccion"] else pipe
 
 
 def _mae(real, pred) -> float:
@@ -175,7 +191,7 @@ def ejecutar_formulaciones(cfg: dict, df: pd.DataFrame | None = None, verbose: b
     pliegues = list(kfold_desde_config(df, cfg))  # una sola vez
     filas = evaluar_lineas_base(df, y, pliegues)
     for nombre in p["incluir"]:
-        numericas, categoricas = variables_formulacion(df, cfg, FORMULACIONES[nombre]["conjunto"])
+        numericas, categoricas = variables_formulacion(df, cfg, TODAS_LAS_FORMULACIONES[nombre]["conjunto"])
         X = preparar_x(df, numericas, categoricas)
         for c in grilla_formulacion(nombre, p):
             t0 = time.perf_counter()

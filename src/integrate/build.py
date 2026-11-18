@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from src.integrate.banderas import calcular_banderas
-from src.integrate.historia import agregar_historia
+from src.integrate.historia import agregar_historia, clasificar_sin_historia
 from src.integrate.join import rezagar_features, unir_con_perdida
 
 LLAVE_MPIO = ["cod_divipola_mpio", "anio"]
@@ -207,6 +207,23 @@ def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: 
     return df
 
 
+def _anotar_sin_historia(cfg: dict, df: pd.DataFrame, nombres: pd.Series | None, destino: Path, notas: list[str]) -> None:
+    """Escribe `reports/sin_historia.csv` (filas sin `tasa_t1` y su motivo) y deja el resumen en la bitácora."""
+    from src.extract.spadies import tasas_anuales_sin_minimo
+
+    sin = clasificar_sin_historia(df, tasas_anuales_sin_minimo(cfg), cfg.get("min_matriculados_t2", 100))
+    if nombres is not None:
+        sin.insert(1, "nombre_ies", sin["cod_ies"].map(nombres))
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    sin.to_csv(destino, index=False)
+    por_motivo = sin.groupby("motivo")["cod_ies"].agg(filas="size", ies="nunique")
+    detalle = "; ".join(f"{m}: {r['filas']} fila(s) de {r['ies']} IES" for m, r in por_motivo.iterrows())
+    notas.append(
+        f"Historia: {len(sin)} de {len(df)} filas sin tasa_t1 ({sin['cod_ies'].nunique()} IES; detalle en {destino.name})"
+        + (f" — {detalle}" if detalle else "")
+    )
+
+
 def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path, notas: list[str]) -> pd.DataFrame:
     """Lista las IES-año con tasa > `umbral_tasa_alta` tras el denominador mínimo y las escribe en `destino`.
 
@@ -388,6 +405,12 @@ def construir_dataset(
         escribir_tasas_altas(cfg, registro["banderas"], reports / "tasas_altas.csv", notas)
     llave = {"ies": ["cod_ies"], "programa": ["cod_ies", "cod_snies_programa"], "municipio": ["cod_divipola_mpio"]}[cfg["unidad_analisis"]]
     if cfg.get("incluir_historia", True) and "tasa_desercion" in df.columns and "semestre" not in df.columns and set(llave) <= set(df.columns):
-        # Historia de la tasa (solo años anteriores), sobre el dataset ya depurado: ver src/integrate/historia.py
-        df = agregar_historia(df, llave)
+        # Historia de la tasa (solo años anteriores): las filas del dataset ya depurado y, para los años anteriores a la ventana,
+        # las tasas anuales de SPADIES con los mismos filtros (denominador mínimo, ceros iniciales faltantes). Ver historia.py
+        previa = None
+        if cfg["unidad_analisis"] == "ies" and objetivo is not None and cfg.get("historia_previa_a_ventana", True):
+            previa = objetivo.loc[objetivo["anio"] < min(cfg["anios"]), ["cod_ies", "anio", "tasa_desercion"]]
+        df = agregar_historia(df, llave, previa=previa)
+        if previa is not None:
+            _anotar_sin_historia(cfg, df, nombres_ies, reports / "sin_historia.csv", notas)
     return df, log

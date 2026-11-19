@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 docs/superpowers/
 reports/resultados/_parcial_ajuste/
+reports/resultados/_parcial_sesgo/

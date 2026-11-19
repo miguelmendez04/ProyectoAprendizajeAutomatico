@@ -1,0 +1,33 @@
+modelo,variable,n_pliegues_seleccionada,de_pliegues,media,desviacion,signo_constante
+T2 ridge info_mutua (ajustado),caracter_técnica profesional,25,25,0.5763705240067174,0.09874376478247954,True
+T2 ridge info_mutua (ajustado),caracter_universidad,25,25,-0.532024499081744,0.1034607198805225,True
+T2 ridge info_mutua (ajustado),caracter_tecnológica,25,25,0.34629408466138967,0.09908294915237344,True
+T2 ridge info_mutua (ajustado),caracter_institución universitaria,21,25,-0.2725433790374608,0.026465372819809183,True
+T2 ridge info_mutua (ajustado),td_miseria_pct_t1,25,25,0.12955130088634337,0.021703145609525083,True
+T2 ridge info_mutua (ajustado),log_matriculados_spadies_t2,25,25,-0.09234091917750678,0.01726248288021674,True
+T2 ridge info_mutua (ajustado),td_nbi_pct_t1,25,25,-0.07561416593675456,0.030075305742554154,True
+T2 ridge info_mutua (ajustado),td_idf_transferencias_t1,17,25,-0.05919924162004742,0.024851781148708715,True
+T2 ridge info_mutua (ajustado),td_pct_pob_15_19_t1,1,25,0.05385858612411927,,True
+T2 ridge info_mutua (ajustado),td_idf_inversion_t1,1,25,-0.053399892428419145,,True
+T2 ridge info_mutua (ajustado),td_pct_poblacion_rural_t1,25,25,-0.05127698685618275,0.015012810163682805,True
+T2 ridge info_mutua (ajustado),mpio_ies_con_oferta_t2,20,25,0.049973899665915075,0.05847601004226366,False
+T2 ridge info_mutua (ajustado),td_cob_bruta_media_t1,1,25,-0.048289250881105514,,True
+T2 ridge info_mutua (ajustado),td_pct_pob_20_24_t1,4,25,0.04532511432225743,0.005325748002108899,True
+T2 ridge info_mutua (ajustado),td_ipm_censo_t1,25,25,0.038374686569548115,0.01925995824046494,True
+T2 ridge info_mutua (ajustado),td_idf_t1,6,25,0.03826191543353553,0.022164997763957195,True
+T2 ridge info_mutua (ajustado),td_cob_neta_media_t1,14,25,-0.02890708290952606,0.015298700076800143,False
+T2 ridge info_mutua (ajustado),pct_colegio_oficial_t1,14,25,0.02433695299523719,0.014269389417393816,False
+T2 ridge info_mutua (ajustado),td_cob_bruta_total_t1,5,25,-0.02034115430396025,0.028248359421118734,False
+T2 ridge info_mutua (ajustado),n_estudiantes_t1,21,25,0.018637620715761766,0.012830256869843204,False
+T2 ridge info_mutua (ajustado),td_mdm_educacion_t1,4,25,-0.017322293864732125,0.003965844033875548,True
+T2 ridge info_mutua (ajustado),pct_estrato_bajo_t1,6,25,0.01196204859874625,0.02243914672214786,False
+T2 ridge info_mutua (ajustado),punt_global_media_t1,5,25,-0.009971708489315811,0.0038672068195918247,True
+T2 ridge info_mutua (ajustado),punt_global_mediana_t1,1,25,-0.005584696032372438,,True
+T2 ridge info_mutua (ajustado),mpio_matriculados_t2,25,25,-0.003778916920205336,0.061625965138334286,False
+T2 ridge info_mutua (ajustado),td_idf_deuda_t1,5,25,-0.0037008714837018287,0.006080679303115673,False
+T2 ridge info_mutua (ajustado),td_transito_superior_t1,4,25,-0.002867044501375304,0.011780686052510616,False
+T1 C solo historia | ridge (ajustado),tasa_t1,25,25,-0.02241845772008111,0.0012587687857404319,True
+T1 C solo historia | ridge (ajustado),falta_historia,25,25,0.011332983287022074,0.0014973398836003182,True
+T1 C solo historia | ridge (ajustado),tasa_t2,25,25,0.008965561469323683,0.00130136650334977,True
+T1 C solo historia | ridge (ajustado),n_anios_previos,25,25,-0.005383244448070068,0.000869346741227091,True
+T1 C solo historia | ridge (ajustado),tasa_media_previa,25,25,0.004942554840306161,0.0008618734380833764,True

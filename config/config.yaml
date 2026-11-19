@@ -241,6 +241,42 @@ modelado:
       figura_ajuste: reports/figuras/ajuste_vs_defecto.png
       figura_temporal: reports/figuras/temporal_por_anio.png
 
+  # --- Sesgo medido en los modelos finales, sensibilidad, diagnóstico del colapso e interpretabilidad
+  # (src/modelado/evaluacion_final.py, subgrupos.py, sensibilidad.py, diagnostico_colapso.py, interpretabilidad.py; python run_sesgo_sensibilidad.py) ---
+  # Modelos finales: T1 naive, C solo historia ridge (ajustado), B xgboost (ajustado); T2 mediana por carácter x sector, ridge info_mutua (defecto y
+  # ajustado) y xgboost con clusters (ajustado). Hiperparámetros finales = consenso de los 25 pliegues del ajuste anidado (moda; mediana si son continuos).
+  sesgo_sensibilidad:
+    semillas: [301, 302, 303, 304, 305]   # mismas semillas externas del ajuste: 5 x 5 pliegues, GroupKFold por IES
+    n_splits: 5
+    nivel_confianza: 0.95
+    n_jobs: -1
+    bootstrap: {replicas: 1000, semilla: 2026}   # IC por bootstrap sobre IES para el error por subgrupo
+    ajuste: reports/resultados/ajuste.csv        # de donde salen los hiperparámetros finales
+    ciudades: {"11001": Bogotá, "05001": Medellín, "76001": Cali}   # región: estas tres ciudades y el resto
+    sensibilidad:                                 # escenarios (filtran el dataset ya construido; no se re-corre el ETL)
+      umbral_denominador: 200
+      anio_minimo_snies: 2017                     # años con matrícula SNIES observada (2015-2016 la tienen imputada)
+    colapso: {z_umbral: 3.0, n_peores: 40, recorte: 3.0, particion: prepandemia}
+    permutacion: {n_repeticiones: 5, semilla: 301}
+    shap: {max_display: 15, top: 10}
+    salidas:
+      subgrupos: reports/resultados/subgrupos.csv
+      sensibilidad: reports/resultados/sensibilidad.csv
+      sensibilidad_pliegues: reports/resultados/sensibilidad_pliegues.csv
+      colapso: reports/resultados/colapso_ridge.csv
+      colapso_z: reports/resultados/colapso_ridge_z.csv
+      colapso_peores: reports/resultados/colapso_ridge_peores.csv
+      shap_top: reports/resultados/shap_top.csv
+      shap_grupos: reports/resultados/shap_grupos.csv
+      permutacion: reports/resultados/permutacion.csv
+      coeficientes: reports/resultados/coeficientes_ridge.csv
+      hiperparametros: reports/resultados/hiperparametros_finales.csv
+      informe: reports/resultados_sesgo_sensibilidad.md
+      figura_subgrupos: reports/figuras/error_subgrupos.png
+      figura_shap_t1: reports/figuras/shap_t1.png
+      figura_shap_t2: reports/figuras/shap_t2.png
+      figura_coeficientes: reports/figuras/coeficientes_ridge.png
+
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021

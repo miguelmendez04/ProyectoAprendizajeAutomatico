@@ -1,0 +1,76 @@
+modelo,variable,rank_permutacion,aumento_mae_medio,aumento_mae_sd,n_pliegues
+T1 B historia+contexto | xgboost logit (ajustado),tasa_t1,1,0.022108609810685628,0.000986389442487552,5
+T1 B historia+contexto | xgboost logit (ajustado),tasa_t2,2,0.005660159804743083,0.0006928674016754054,5
+T1 B historia+contexto | xgboost logit (ajustado),tasa_media_previa,3,0.0013725643102520334,0.0004954456987735531,5
+T1 B historia+contexto | xgboost logit (ajustado),caracter,4,0.0002786291471505728,0.00016024823397124195,5
+T1 B historia+contexto | xgboost logit (ajustado),log_matriculados_spadies_t2,5,0.00011905964406561083,0.0003667965503527551,5
+T1 B historia+contexto | xgboost logit (ajustado),n_anios_previos,6,9.997462490851303e-05,0.00020686977749437556,5
+T1 B historia+contexto | xgboost logit (ajustado),falta_historia,7,4.914381785053282e-05,3.4841658658636205e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),mpio_matriculados_t2,8,1.2341580099040905e-05,2.487262669014539e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_desercion_escolar_t1,9,1.2099395687314996e-05,1.4556170409541778e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),pct_colegio_oficial_t1,10,9.415754158087624e-06,1.911903351849559e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_mdm_t1,11,7.757071464783022e-06,1.0514997980628856e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_mdm_educacion_t1,12,7.514569875650551e-06,1.301483512188974e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),mpio_ies_con_oferta_t2,13,6.193133373904452e-06,2.0016796901067947e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_transito_superior_t1,14,5.72257158704792e-06,7.092417333224473e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_repitencia_oficial_t1,15,3.3314384976400314e-06,1.0235217320525088e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),n_estudiantes_t1,16,3.0274917758521534e-06,6.7696774121269715e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_nbi_pct_t1,17,2.9894450948748927e-06,4.577510640178796e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),punt_global_media_t1,18,2.0983688481981957e-06,1.3290249925721652e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_cob_bruta_media_t1,19,1.5711303830349963e-06,8.257214456979484e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_recursos_propios_t1,20,1.3941425599363344e-06,2.820708737339985e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_transferencias_t1,21,1.0174002475757392e-06,1.8145103572341709e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_mdm_gestion_t1,22,4.293699623098002e-07,9.601004232212358e-07,5
+T1 B historia+contexto | xgboost logit (ajustado),falta_saber11,23,7.061721498377583e-08,1.5790489308543944e-07,5
+T1 B historia+contexto | xgboost logit (ajustado),punt_global_mediana_t1,24,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),falta_snies,25,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_inversion_t1,26,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),falta_mdm,27,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),td_pct_pob_15_19_t1,28,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_ahorro_t1,29,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),sector,30,0.0,0.0,5
+T1 B historia+contexto | xgboost logit (ajustado),td_cob_bruta_total_t1,31,-4.300298988152429e-08,9.615760861082394e-08,5
+T1 B historia+contexto | xgboost logit (ajustado),td_miseria_pct_t1,32,-7.616145135169747e-08,6.455102213877535e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_pct_poblacion_rural_t1,33,-3.4912023074831764e-07,7.806565682736505e-07,5
+T1 B historia+contexto | xgboost logit (ajustado),pct_estrato_bajo_t1,34,-5.520680242626641e-07,1.2344616304553202e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_cob_neta_media_t1,35,-7.818091519655456e-07,1.748178409226423e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_pct_pob_20_24_t1,36,-1.7043189639424917e-06,8.215940121572924e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_t1,37,-3.353004814527494e-06,7.497546694167551e-06,5
+T1 B historia+contexto | xgboost logit (ajustado),td_idf_deuda_t1,38,-4.684764224438392e-06,1.6053399684986666e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_ipm_censo_t1,39,-4.986734221873041e-06,1.8639934060229833e-05,5
+T1 B historia+contexto | xgboost logit (ajustado),td_mdm_resultados_t1,40,-6.596343049968395e-06,1.0869602605215836e-05,5
+T2 xgboost con clusters (ajustado),caracter,1,0.015199674882737758,0.0028249393942079517,5
+T2 xgboost con clusters (ajustado),log_matriculados_spadies_t2,2,0.002060093721105959,0.0017554727631616876,5
+T2 xgboost con clusters (ajustado),td_pct_poblacion_rural_t1,3,0.00022009512849367266,0.0006407384057932828,5
+T2 xgboost con clusters (ajustado),td_miseria_pct_t1,4,0.00016566896513326728,0.00021681918743388155,5
+T2 xgboost con clusters (ajustado),td_cob_neta_media_t1,5,0.00014466186867926362,0.0003565227419211483,5
+T2 xgboost con clusters (ajustado),td_pct_pob_20_24_t1,6,0.00010050614380734291,0.0002451426068951444,5
+T2 xgboost con clusters (ajustado),sector,7,6.739632294238559e-05,0.00023487271102185008,5
+T2 xgboost con clusters (ajustado),falta_saber11,8,2.4541032621150926e-05,4.142165039843184e-05,5
+T2 xgboost con clusters (ajustado),td_mdm_resultados_t1,9,2.4369297777134673e-05,4.888168961865317e-05,5
+T2 xgboost con clusters (ajustado),td_idf_recursos_propios_t1,10,9.875434966163938e-06,0.0002826255577054637,5
+T2 xgboost con clusters (ajustado),falta_snies,11,0.0,0.0,5
+T2 xgboost con clusters (ajustado),falta_mdm,12,0.0,0.0,5
+T2 xgboost con clusters (ajustado),td_pct_pob_15_19_t1,13,-3.186053712123934e-06,0.0001163343232410709,5
+T2 xgboost con clusters (ajustado),td_cob_bruta_total_t1,14,-1.2979234794552596e-05,0.00012919198080677612,5
+T2 xgboost con clusters (ajustado),punt_global_media_t1,15,-1.921391059822128e-05,0.00017073693091885792,5
+T2 xgboost con clusters (ajustado),td_idf_ahorro_t1,16,-2.9254893511585363e-05,6.686452197494015e-05,5
+T2 xgboost con clusters (ajustado),td_mdm_educacion_t1,17,-2.9897455276482603e-05,9.432735640547716e-05,5
+T2 xgboost con clusters (ajustado),td_repitencia_oficial_t1,18,-3.1684716534152585e-05,7.810304722807473e-05,5
+T2 xgboost con clusters (ajustado),pct_colegio_oficial_t1,19,-3.3252381130879365e-05,0.00013858775590744446,5
+T2 xgboost con clusters (ajustado),td_nbi_pct_t1,20,-3.6507598793365784e-05,9.680003738383603e-05,5
+T2 xgboost con clusters (ajustado),td_ipm_censo_t1,21,-4.132976057544341e-05,0.00013507888997141596,5
+T2 xgboost con clusters (ajustado),td_idf_inversion_t1,22,-4.923543874849709e-05,9.490248837513087e-05,5
+T2 xgboost con clusters (ajustado),punt_global_mediana_t1,23,-5.5632745812452675e-05,0.0001212301926311412,5
+T2 xgboost con clusters (ajustado),td_idf_deuda_t1,24,-5.7364151723657274e-05,4.84256066149368e-05,5
+T2 xgboost con clusters (ajustado),td_transito_superior_t1,25,-6.018114274310482e-05,0.00012279962154023406,5
+T2 xgboost con clusters (ajustado),td_cob_bruta_media_t1,26,-6.404242103646388e-05,0.0001831104451871816,5
+T2 xgboost con clusters (ajustado),td_idf_t1,27,-6.69091004751167e-05,0.00015451057176331983,5
+T2 xgboost con clusters (ajustado),n_estudiantes_t1,28,-7.082961199440074e-05,0.00015962077565940614,5
+T2 xgboost con clusters (ajustado),td_mdm_gestion_t1,29,-7.598180835692234e-05,7.416871146243215e-05,5
+T2 xgboost con clusters (ajustado),mpio_matriculados_t2,30,-8.463222454860975e-05,0.00018911354235528135,5
+T2 xgboost con clusters (ajustado),td_mdm_t1,31,-8.603839586296888e-05,0.00010538865707190164,5
+T2 xgboost con clusters (ajustado),td_desercion_escolar_t1,32,-0.00010563902378337112,0.00018978797967503155,5
+T2 xgboost con clusters (ajustado),pct_estrato_bajo_t1,33,-0.00012162212690965388,0.00020503701403234742,5
+T2 xgboost con clusters (ajustado),td_idf_transferencias_t1,34,-0.000126140709509958,0.00025417711997364117,5
+T2 xgboost con clusters (ajustado),mpio_ies_con_oferta_t2,35,-0.00014212498167155322,0.00015959612468183866,5

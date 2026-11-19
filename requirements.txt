@@ -12,3 +12,4 @@ xgboost
 nbformat
 nbconvert
 ipykernel
+shap

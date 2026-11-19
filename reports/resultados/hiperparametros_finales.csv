@@ -1,0 +1,6 @@
+modelo,variante,hiperparametros
+T1 C solo historia | ridge (ajustado),ajustado,"{""alpha"": 157.41890047456639}"
+T1 B historia+contexto | xgboost logit (ajustado),ajustado,"{""colsample_bytree"": 0.8, ""learning_rate"": 0.016062363601797407, ""max_depth"": 2, ""min_child_weight"": 1, ""n_estimators"": 200, ""reg_lambda"": 3.244160088734161, ""subsample"": 0.7}"
+T2 ridge info_mutua (defecto),defecto,{}
+T2 ridge info_mutua (ajustado),ajustado,"{""alpha"": 4.0428727350273315, ""k"": 15}"
+T2 xgboost con clusters (ajustado),ajustado,"{""colsample_bytree"": 1.0, ""learning_rate"": 0.018033524512802664, ""max_depth"": 2, ""min_child_weight"": 10, ""n_estimators"": 500, ""reg_lambda"": 0.17541893487450796, ""subsample"": 1.0}"

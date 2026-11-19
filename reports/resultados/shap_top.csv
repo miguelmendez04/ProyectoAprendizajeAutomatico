@@ -1,0 +1,21 @@
+modelo,rank,variable,mean_abs_shap,spearman
+T1 B historia+contexto | xgboost logit (ajustado),1,tasa_t1,0.26760092,0.996857880251672
+T1 B historia+contexto | xgboost logit (ajustado),2,tasa_t2,0.09080577,0.9839824921294749
+T1 B historia+contexto | xgboost logit (ajustado),3,tasa_media_previa,0.04042184,0.8641821638660269
+T1 B historia+contexto | xgboost logit (ajustado),4,log_matriculados_spadies_t2,0.015089608,-0.48629317649225295
+T1 B historia+contexto | xgboost logit (ajustado),5,n_anios_previos,0.012972779,-0.6548520765360631
+T1 B historia+contexto | xgboost logit (ajustado),6,caracter_universidad,0.0044075693,-0.9035263287798204
+T1 B historia+contexto | xgboost logit (ajustado),7,caracter_tecnológica,0.0039902567,0.5628577841961321
+T1 B historia+contexto | xgboost logit (ajustado),8,caracter_técnica profesional,0.0031851386,0.46017945311666547
+T1 B historia+contexto | xgboost logit (ajustado),9,falta_historia,0.0022717393,0.23504389228647724
+T1 B historia+contexto | xgboost logit (ajustado),10,mpio_ies_con_oferta_t2,0.0011697869,0.7755011283415026
+T2 xgboost con clusters (ajustado),1,caracter_universidad,0.22139557,-0.8682143266577943
+T2 xgboost con clusters (ajustado),2,log_matriculados_spadies_t2,0.114977725,-0.48210266582776334
+T2 xgboost con clusters (ajustado),3,caracter_institución universitaria,0.092000216,-0.8781794594362928
+T2 xgboost con clusters (ajustado),4,caracter_técnica profesional,0.047170267,0.43747142440444
+T2 xgboost con clusters (ajustado),5,td_pct_poblacion_rural_t1,0.03809994,-0.8143128338571715
+T2 xgboost con clusters (ajustado),6,caracter_tecnológica,0.03130582,0.5568871461980307
+T2 xgboost con clusters (ajustado),7,sector_oficial,0.02117291,-0.783606084591496
+T2 xgboost con clusters (ajustado),8,td_miseria_pct_t1,0.01861911,0.7131071706600726
+T2 xgboost con clusters (ajustado),9,distancia_cluster_5,0.01570386,0.7093263838717988
+T2 xgboost con clusters (ajustado),10,td_pct_pob_20_24_t1,0.014376586,0.5707177615947863

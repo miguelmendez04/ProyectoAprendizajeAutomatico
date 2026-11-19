@@ -34,8 +34,9 @@ Las fechas de SPADIES nacional y de TerriData son las de modificación del archi
 ## Reproducir el ETL
 Con los 14 crudos en su carpeta: `python reproducir.py --etapa etl` (≈ 2 min con los crudos ya descargados; usa `--saltar-extract`). Al terminar compara el SHA-256 del dataset generado con el publicado: **la corrida del ETL desde los crudos fijados produce un dataset byte a byte idéntico** (se comprobó el 2026-11-18). `python pipeline.py` sin `--saltar-extract` vuelve a descargar las fuentes de datos.gov.co, que pueden haber cambiado.
 
-## ¿Se puede publicar `dataset_ies.csv`?
-Está en el repositorio. Razones y límites:
+## Licencia de `dataset_ies.csv`
+Está en el repositorio y se distribuye bajo **CC BY-SA 4.0** (ver [`data/processed/LICENSE`](../data/processed/LICENSE)), con atribución a MEN (SPADIES y SNIES), ICFES, DNP (TerriData) y DANE (DIVIPOLA).
 - Es una **tabla derivada y agregada** por IES × año (tasas, conteos y variables de contexto municipal); no contiene datos de personas.
-- Las cinco fuentes de datos.gov.co son CC BY-SA 4.0 (atribución y compartir igual): el dataset derivado se ofrece bajo esos mismos términos, con atribución a ICFES, MEN y DANE.
-- **No verifiqué las condiciones de uso de SPADIES ni de TerriData** (no hay una licencia legible por máquina como en datos.gov.co): sus indicadores agregados por IES y municipio son estadísticas oficiales públicas, pero conviene que el equipo confirme sus términos antes de redistribuirlo fuera del curso. El código es MIT (ver `LICENSE`); los datos conservan las condiciones de sus fuentes.
+- Las cinco fuentes de datos.gov.co son CC BY-SA 4.0 (atribución y compartir igual); de ahí que el derivado use la misma licencia.
+- **No pude verificar las condiciones de uso de SPADIES ni de TerriData** (no hay una licencia legible por máquina como en datos.gov.co); sus cifras son estadísticas oficiales públicas y aquí solo aparecen agregadas por IES o municipio. Conviene que el equipo las confirme antes de redistribuir fuera del curso.
+- El código es MIT (ver [`LICENSE`](../LICENSE)); los datos crudos (no versionados) conservan las condiciones de sus fuentes.

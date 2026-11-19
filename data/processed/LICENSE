@@ -1,0 +1,23 @@
+dataset_ies.csv — licencia y atribución
+=======================================
+
+Este archivo es una OBRA DERIVADA (tabla agregada por IES x año, sin datos de personas) construida a partir de fuentes oficiales colombianas. Se
+distribuye bajo la licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional (CC BY-SA 4.0):
+https://creativecommons.org/licenses/by-sa/4.0/deed.es  (texto legal: https://creativecommons.org/licenses/by-sa/4.0/legalcode)
+
+Puede copiarlo, redistribuirlo y adaptarlo, incluso con fines comerciales, si: (1) da el crédito a las fuentes de abajo e indica si hizo cambios;
+(2) distribuye sus derivados bajo la misma licencia CC BY-SA 4.0.
+
+Atribución a las fuentes
+- MEN (Ministerio de Educación Nacional) — SPADIES (tasa de deserción, variable objetivo) y SNIES (matrícula por municipio y por programa;
+  catálogo de IES). SNIES: conjuntos de datos.gov.co 5wck-szir, y9ga-zwzy y n5yy-8nav.
+- ICFES — Resultados únicos Saber 11 (datos.gov.co kgxf-xxbe).
+- DNP — TerriData (indicadores municipales: población, educación, finanzas, desempeño, pobreza y mercado laboral).
+- DANE — DIVIPOLA, códigos de municipios (datos.gov.co gdxc-w37w), y las proyecciones de población que incluye TerriData.
+
+Origen de la licencia: los cinco conjuntos de datos.gov.co figuran con licencia CC BY-SA 4.0 en la API de metadatos del portal (consultada el
+2026-11-18); de ahí viene la obligación de «compartir igual». Las condiciones de uso de SPADIES y de TerriData no se pudieron verificar de forma
+automática; sus cifras son estadísticas oficiales públicas y aquí solo aparecen agregadas por IES o por municipio.
+
+Sin garantía: los datos se ofrecen «tal cual». La licencia MIT del repositorio (../../LICENSE) cubre solo el código. Detalle de fuentes, fechas y
+checksums: ../../docs/DATOS.md.

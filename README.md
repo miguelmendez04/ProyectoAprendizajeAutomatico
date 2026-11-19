@@ -1,6 +1,6 @@
 # Deserción en educación superior en Colombia: ETL y modelado (IES × año, 2015–2021)
 
-> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Reproduce:** `pip install -r requirements.txt` then `python reproducir.py --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; data keep the terms of their official sources ([`docs/DATOS.md`](docs/DATOS.md)).
+> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Reproduce:** `pip install -r requirements.txt` then `python reproducir.py --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
 
 Proyecto del curso Aprendizaje Automático (Maestría IA y Ciencia de Datos, UAO). Entrega: 26 de noviembre de 2026 (tag `v1.0-entrega`).
 Especificación: `guia_etl_desercion.md` · Bitácora de decisiones y calidad de datos: `reports/etl_log.md`.
@@ -26,6 +26,8 @@ MAE (menor es mejor) con validación anidada: GroupKFold por IES 5 × 5 = 25 aju
 | 1 | **Ridge de corrección, C solo historia** (ajustado) | 0,0245 [0,0212; 0,0278] | +4,4 % | 0,011; < 0,001 |
 | 2 | **Mediana por carácter × sector** | 0,0400 [0,0345; 0,0455] | — | — |
 | 2 | Mejor modelo: ridge, logit, información mutua, sin clusters (ajustado) | 0,0396 [0,0345; 0,0448] | +0,9 % | 0,596; 0,127 |
+
+> **Nota.** Estas cifras vienen de la validación anidada (semillas externas 301–305). La confirmación de la Tarea 2 (semillas 201–205, sin ajuste anidado) da 0,0405 para la mediana por carácter × sector (`reports/resultados_tarea2.md`), y ambas conclusiones coinciden: el mejor modelo mejora 2,2 % en esa confirmación (p de Wilcoxon 0,019 pero p de la t corregida 0,35), sin firmeza estadística; en la validación anidada, +0,9 % (p t corregida 0,60).
 
 **Lectura.** En la Tarea 1 el ridge de corrección supera a la ingenua con significancia en ambas pruebas, pero la ventaja es pequeña (0,001 de MAE) y en las particiones temporales (prepandemia y 2020–2021) ningún modelo se distingue de la ingenua. En la Tarea 2 el contexto no mejora a la mediana por carácter × sector con firmeza estadística; xgboost y random forest empeoran con hiperparámetros por defecto y quedan «sin diferencia firme» tras el ajuste. Costo: el ridge de la Tarea 1 se ajusta en ~9 ms; random forest, en ~1,3 s sin menos error (`reports/resultados_complejidad.md`).
 
@@ -97,7 +99,10 @@ docs/                    DATOS.md, REPRODUCIBILIDAD.md
 - **Variables de mercado laboral** no disponibles a nivel municipal para la ventana.
 
 ## Licencia y citación
-El **código** es MIT ([`LICENSE`](LICENSE)). Los **datos** provienen de sus fuentes oficiales (ICFES, MEN/SNIES, DANE, DNP/TerriData y SPADIES) y conservan sus propias condiciones; las cinco fuentes de datos.gov.co son CC BY-SA 4.0 y las de SPADIES y TerriData no se verificaron (ver [`docs/DATOS.md`](docs/DATOS.md)). Para citar: [`CITATION.cff`](CITATION.cff).
+- **Código:** MIT ([`LICENSE`](LICENSE)).
+- **Dataset derivado** `data/processed/dataset_ies.csv`: obra derivada de fuentes de datos.gov.co, distribuida bajo **CC BY-SA 4.0** con atribución a MEN (SPADIES y SNIES), ICFES, DNP (TerriData) y DANE ([`data/processed/LICENSE`](data/processed/LICENSE)). La obligación de «compartir igual» viene de las cinco fuentes de datos.gov.co, cuya licencia se leyó de la API del portal; las condiciones de SPADIES y TerriData no se pudieron verificar automáticamente ([`docs/DATOS.md`](docs/DATOS.md)).
+- **Datos crudos** (`data/raw/`, no versionados): conservan las condiciones de sus fuentes oficiales.
+- Para citar: [`CITATION.cff`](CITATION.cff).
 
 ---
 

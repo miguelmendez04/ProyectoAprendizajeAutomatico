@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Si usa este repositorio, cítelo con estos metadatos. Los datos conservan las condiciones de sus fuentes oficiales (docs/DATOS.md)."
+message: "Si usa este repositorio, cítelo con estos metadatos. El código es MIT; el dataset derivado data/processed/dataset_ies.csv es CC BY-SA 4.0, con atribución a MEN (SPADIES/SNIES), ICFES, DNP (TerriData) y DANE (data/processed/LICENSE); los datos crudos conservan las condiciones de sus fuentes (docs/DATOS.md)."
 title: "Estimación de la tasa de deserción en educación superior en Colombia (IES x año, 2015-2021): ETL y modelado"
 type: software
 authors:
@@ -8,7 +8,7 @@ authors:
   - family-names: "Colonia"
     given-names: "Simón"
 repository-code: "https://github.com/miguelmendez04/ProyectoAprendizajeAutomatico"
-license: MIT
+license: MIT  # solo el código; el dataset derivado (data/processed/dataset_ies.csv) es CC BY-SA 4.0
 version: "1.0-entrega"
 date-released: "2026-11-26"
 keywords: [deserción, educación superior, Colombia, SPADIES, aprendizaje automático, validación anidada]

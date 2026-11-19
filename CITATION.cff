@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "Si usa este repositorio, cítelo con estos metadatos. Los datos conservan las condiciones de sus fuentes oficiales (docs/DATOS.md)."
+title: "Estimación de la tasa de deserción en educación superior en Colombia (IES x año, 2015-2021): ETL y modelado"
+type: software
+authors:
+  - family-names: "Méndez Rodríguez"
+    given-names: "Miguel Ángel"
+  - family-names: "Colonia"
+    given-names: "Simón"
+repository-code: "https://github.com/miguelmendez04/ProyectoAprendizajeAutomatico"
+license: MIT
+version: "1.0-entrega"
+date-released: "2026-11-26"
+keywords: [deserción, educación superior, Colombia, SPADIES, aprendizaje automático, validación anidada]
+abstract: "ETL y experimentos de aprendizaje automático para estimar la tasa de deserción de las instituciones de educación superior colombianas (IES x año) a partir de SPADIES, SNIES, Saber 11 y TerriData, con validación por IES, IC 95 %, ajuste anidado de hiperparámetros, análisis de sesgo y complejidad computacional."

@@ -1,0 +1,122 @@
+{
+  "crudos": {
+    "data/raw/dane/divipola.csv": {
+      "fuente": "datos.gov.co gdxc-w37w",
+      "url": "https://www.datos.gov.co/resource/gdxc-w37w.json",
+      "fecha_descarga": "2026-11-05T16:15:57+00:00",
+      "descarga": "automática (pipeline.py)",
+      "bytes": 71895,
+      "sha256": "16ca3a2d2838faaf2a48ececeb99b63a72e59c0d39afcb6ae87d081add58f6ab"
+    },
+    "data/raw/saber11/saber11.csv": {
+      "fuente": "datos.gov.co kgxf-xxbe",
+      "url": "https://www.datos.gov.co/resource/kgxf-xxbe.json",
+      "fecha_descarga": "2026-11-05T21:06:13+00:00",
+      "descarga": "automática (pipeline.py)",
+      "bytes": 180778467,
+      "sha256": "5bf04d6233f60e8e6122f59855c4b78666625e58da33140a1c947e71212362c0"
+    },
+    "data/raw/snies/ies_catalogo.csv": {
+      "fuente": "datos.gov.co n5yy-8nav",
+      "url": "https://www.datos.gov.co/resource/n5yy-8nav.json",
+      "fecha_descarga": "2026-11-05T22:52:03+00:00",
+      "descarga": "automática (pipeline.py)",
+      "bytes": 43380,
+      "sha256": "05e4d0aef72c51f132380b287b6442988847b4860c0b366447d95e7d1f7573b3"
+    },
+    "data/raw/snies/matricula_mpio.csv": {
+      "fuente": "datos.gov.co y9ga-zwzy",
+      "url": "https://www.datos.gov.co/resource/y9ga-zwzy.json",
+      "fecha_descarga": "2026-11-05T17:04:25+00:00",
+      "descarga": "automática (pipeline.py)",
+      "bytes": 760694,
+      "sha256": "e3f9ca9482cadb6673df110566620d84e19aafaea6ea371ac835f6c2ea4e5669"
+    },
+    "data/raw/snies/matricula_programa.csv": {
+      "fuente": "datos.gov.co 5wck-szir",
+      "url": "https://www.datos.gov.co/resource/5wck-szir.json",
+      "fecha_descarga": "2026-11-05T17:05:28+00:00",
+      "descarga": "automática (pipeline.py)",
+      "bytes": 15475772,
+      "sha256": "16d7ceb1379497ea98a1ff665ca83b3d900eb5824f5cc44519dd98614bc4f432"
+    },
+    "data/raw/spadies/spadies_diferenciado.csv": {
+      "fuente": "SPADIES, export manual (IES: Diferenciado)",
+      "url": "https://spadies.mineducacion.gov.co",
+      "fecha_descarga": "2026-11-06T14:59:19+00:00",
+      "descarga": "manual con inicio de sesión",
+      "bytes": 146367,
+      "sha256": "02721c05860fa944493d0b0382affd5fd6f233b0d18c3b5be43a75b2d12eca66"
+    },
+    "data/raw/spadies/spadies_nacional.csv": {
+      "fuente": "SPADIES, export manual (total nacional; solo control de sumas)",
+      "url": "https://spadies.mineducacion.gov.co",
+      "fecha_descarga": "2026-11-05",
+      "descarga": "manual con inicio de sesión (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 1173,
+      "sha256": "036ecf8cb61ebf058b1a40f26f7e49efc1d001d2ae3f0c59bcf8b529e898931b"
+    },
+    "data/raw/terridata/TerriData_Dim2.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 2",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 56457530,
+      "sha256": "ffeab87ebb417bf3ab1c5f9bdaf9a3cf43f56cc925ac562aeedeaa6f7898d825"
+    },
+    "data/raw/terridata/TerriData_Dim4.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 4",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 6309747,
+      "sha256": "a0df371abb06f5925aa86541093aaeb950e8d0ba417fde3b30c03f1eb8154067"
+    },
+    "data/raw/terridata/TerriData_Dim7.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 7",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 29610199,
+      "sha256": "17bb16ce43a4a83a278b4acfc5cf421a452b89e9c877d8a0a2eee70d4b60fba8"
+    },
+    "data/raw/terridata/TerriData_Dim8.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 8",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 3067381,
+      "sha256": "3d590dc7e3a73c1cd954c0aba0210e5658c03ae99164762fcae581b66f16145b"
+    },
+    "data/raw/terridata/TerriData_Dim14.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 14",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 952989,
+      "sha256": "17e66bfc7457bf75055a064e385157d9b94efc8310e3c9a762c58bcb1a310ab9"
+    },
+    "data/raw/terridata/TerriData_Dim16.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 16",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 2736455,
+      "sha256": "39a0d8317b89e7ddb6ace8ec0c0d01652641f8a5f283e8fd329471fc208f86aa"
+    },
+    "data/raw/terridata/TerriData_Dim25.txt.zip": {
+      "fuente": "TerriData (DNP), dimensión 25",
+      "url": "https://terridata.dnp.gov.co",
+      "fecha_descarga": "2026-11-06",
+      "descarga": "manual (fecha: modificación del archivo; no hay metadata.json)",
+      "bytes": 33840048,
+      "sha256": "b32fb7a9d8598963b6725773db90dfea3e323db5aded170f2199d2eeaac8b332"
+    }
+  },
+  "procesado": {
+    "data/processed/dataset_ies.csv": {
+      "bytes": 843268,
+      "sha256": "fdbd629d4ea462b51006c8daf7577e7a62db1e69e03271fe6af99dde4a79f8f7"
+    }
+  }
+}

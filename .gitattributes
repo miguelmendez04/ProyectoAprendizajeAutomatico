@@ -1,0 +1,3 @@
+data/processed/*.csv -text
+data/checksums.json -text
+*.sh text eol=lf

@@ -237,6 +237,61 @@ def test_un_modelo_alterado_o_ausente_no_se_carga(entrenados, tmp_path):
         pr.cargar_modelo("tarea1_ridge", tmp_path / "vacia")
 
 
+def test_tarea2_usa_la_mediana_por_defecto_y_el_ridge_advierte(entrenados, tmp_path, caplog):
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    pr.configurar(ap)
+    base = [
+        "--tarea",
+        "2",
+        "--entrada",
+        str(tmp_path / "e.csv"),
+        "--salida",
+        str(tmp_path / "s.csv"),
+    ]
+    entrenados["df"].head(5).to_csv(tmp_path / "e.csv", index=False)
+    por_defecto = ap.parse_args([*base, "--modelos-dir", str(entrenados["destino"])])
+    assert por_defecto.modelo == "mediana"
+    assert pr.clave_modelo(2, por_defecto.modelo) == "tarea2_mediana"
+
+    with caplog.at_level("WARNING"):
+        assert pr.ejecutar(por_defecto) == 0
+    assert "mediana" in pd.read_csv(tmp_path / "s.csv")["modelo"].iloc[0].lower()
+    assert "ridge" not in caplog.text
+
+    caplog.clear()
+    con_ridge = ap.parse_args(
+        [*base, "--modelos-dir", str(entrenados["destino"]), "--modelo", "ridge"]
+    )
+    with caplog.at_level("WARNING"):
+        assert pr.ejecutar(con_ridge) == 0
+    assert "model_card.md" in caplog.text and "no mejora con firmeza" in caplog.text
+
+
+def test_tarea1_no_emite_la_advertencia_del_ridge(entrenados, tmp_path, caplog):
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    pr.configurar(ap)
+    entrenados["df"].head(5).to_csv(tmp_path / "e.csv", index=False)
+    args = ap.parse_args(
+        [
+            "--tarea",
+            "1",
+            "--entrada",
+            str(tmp_path / "e.csv"),
+            "--salida",
+            str(tmp_path / "s.csv"),
+            "--modelos-dir",
+            str(entrenados["destino"]),
+        ]
+    )
+    with caplog.at_level("WARNING"):
+        pr.ejecutar(args)
+    assert "model_card.md" not in caplog.text
+
+
 # ---------- de punta a punta por la CLI ----------
 def test_entrenar_y_predecir_por_la_cli_con_datos_de_juguete(entrenados, tmp_path, monkeypatch):
     cfg, df = dict(entrenados["cfg"]), entrenados["df"]

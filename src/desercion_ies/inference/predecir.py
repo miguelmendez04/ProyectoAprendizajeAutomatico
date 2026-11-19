@@ -47,8 +47,8 @@ def configurar(ap: argparse.ArgumentParser) -> None:
     ap.add_argument(
         "--modelo",
         choices=sorted(MODELOS_T2),
-        default="ridge",
-        help="solo Tarea 2: ridge con información mutua o la mediana por carácter × sector",
+        default="mediana",
+        help="solo Tarea 2: mediana por carácter × sector (por defecto) o ridge con información mutua (sin mejora firme sobre la mediana; ver models/model_card.md)",
     )
     ap.add_argument(
         "--modelos-dir",
@@ -57,7 +57,7 @@ def configurar(ap: argparse.ArgumentParser) -> None:
     )
 
 
-def clave_modelo(tarea: int, modelo: str = "ridge") -> str:
+def clave_modelo(tarea: int, modelo: str = "mediana") -> str:
     """Nombre del modelo guardado para la tarea pedida."""
     return "tarea1_ridge" if tarea == 1 else MODELOS_T2[modelo]
 
@@ -113,8 +113,16 @@ def predecir_tabla(modelo: ModeloEntrenado, df: pd.DataFrame, etiqueta: str) -> 
     return salida.reset_index(drop=True)
 
 
+ADVERTENCIA_RIDGE = (
+    "el ridge de la Tarea 2 no mejora con firmeza a la mediana por carácter × sector y es inestable "
+    "en la validación temporal (prepandemia); ver models/model_card.md"
+)
+
+
 def ejecutar(args: argparse.Namespace) -> int:
     """Valida la entrada, predice y escribe el CSV; devuelve 2 (sin traceback) si la entrada no es válida."""
+    if args.tarea == 2 and args.modelo == "ridge":
+        log.warning(ADVERTENCIA_RIDGE)
     try:
         modelo, meta = cargar_modelo(clave_modelo(args.tarea, args.modelo), args.modelos_dir)
         salida = predecir_tabla(modelo, leer_entrada(args.entrada), meta["nombre"])

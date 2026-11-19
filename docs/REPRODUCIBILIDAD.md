@@ -9,7 +9,7 @@ Fecha: 2026-11-18. Entorno: Windows 11, Python 3.14.6, Intel Core i5-12500H (16 
 4. **Pruebas.** `python -m pytest -q`: 399 pasan.
 
 ## Comparación del modo `--rapido` con los CSV publicados
-Igualdad **exacta** (diferencia absoluta 0) de MAE, RMSE, R² y tamaños, fila a fila, para las claves (configuración, semilla, pliegue…) que existen en ambos. El modo rápido usa un subconjunto de semillas y configuraciones, por eso solo hay filas comunes con una parte de lo publicado.
+En el entorno original (Anaconda, MKL) la igualdad es **exacta** (diferencia absoluta 0) en MAE, RMSE, R² y tamaños, fila a fila, para las claves (configuración, semilla, pliegue…) que existen en ambos. El modo rápido usa un subconjunto de semillas y configuraciones, por eso solo hay filas comunes con una parte de lo publicado.
 
 | Archivo | Filas comunes | Idénticas | Resultado |
 |---|---|---|---|
@@ -35,3 +35,13 @@ Igualdad **exacta** (diferencia absoluta 0) de MAE, RMSE, R² y tamaños, fila a
 - La corrida **completa** (`--etapa todo` sin `--rapido`, ≈ 1,5 h) no se repitió desde el clon: sus resultados son los publicados en `reports/`. La verificación rápida cubre un subconjunto exacto de ellos.
 - Otras plataformas (Linux/macOS) y otras versiones de librerías: los resultados se generaron con las versiones de `requirements.txt` en Windows 11; cambios de versión de scikit-learn o xgboost pueden alterar cifras en el último decimal o más.
 - Una nueva descarga de datos.gov.co puede traer datos distintos (las fuentes se actualizan): por eso se fijan los SHA-256.
+
+## Verificación de la estructura de paquete (2026-11-19)
+Tras reestructurar el repositorio en el paquete `desercion_ies` (ver [`MIGRACION.md`](MIGRACION.md)):
+- **Tablas:** los 39 archivos de `reports/tables/` son idénticos byte a byte a los de `reports/resultados/` del commit anterior a la reestructuración (eabacab); el SHA-256 de `dataset_ies.csv` no cambió.
+- **Informes:** al regenerar con `--solo-informe` (Tarea 2, ajuste, sesgo y complejidad) salen los mismos archivos que los reescritos con las rutas nuevas (salvo los PNG de SHAP, que difieren en bytes al regenerarse y se conservaron).
+- **Entorno limpio:** clon nuevo, `python -m venv` y `pip install -e ".[dev]"` (3,7 min), 412 pruebas pasan y 2 se omiten (las que necesitan `data/interim`), y `desercion reproducir --etapa todo --rapido` termina en 389 s.
+- **Cuadernos:** los seis se ejecutan sin errores.
+
+### Diferencia por la biblioteca de álgebra lineal
+En el venv limpio (wheels de pip, OpenBLAS) las cifras por pliegue **ya no son idénticas bit a bit** a las publicadas (generadas con la distribución Anaconda, MKL): difieren **como máximo en 8 × 10⁻¹⁴** (MAE, RMSE y R²), ruido de punto flotante de ~1e-15 a 1e-13 relativo. Por eso `desercion reproducir --rapido` informa, además de las filas exactamente iguales, las iguales hasta 1e-9 (todas las que no son una diferencia esperada). Las diferencias esperadas de arriba (v2 con historia y modelos «ajustado» con `n_iter` reducido) no cambian. Ninguna conclusión depende de cifras más allá del noveno decimal.

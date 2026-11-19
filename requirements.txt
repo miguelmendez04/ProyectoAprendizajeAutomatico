@@ -1,5 +1,6 @@
+# GENERADO por tools/generar_requirements.py a partir de pyproject.toml: no editar a mano.
 # Versiones exactas con las que se generaron los resultados (Python 3.14.6, Windows 11, 16 hilos).
-# Instalación: python -m venv .venv && .venv\Scripts\activate (Windows) | source .venv/bin/activate (Linux/macOS) && pip install -r requirements.txt
+# Instalación sin empaquetar: pip install -r requirements.txt; con el comando `desercion`: pip install -e ".[dev]"
 pandas==3.0.3
 numpy==2.4.6
 scipy==1.18.0
@@ -15,6 +16,8 @@ PyYAML==6.0.3
 requests==2.34.2
 openpyxl==3.1.5
 pytest==9.0.3
+ruff==0.15.1
+pre-commit==4.7.0
 nbformat==5.10.4
 nbconvert==7.17.1
 nbclient==0.11.0

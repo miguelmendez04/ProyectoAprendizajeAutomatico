@@ -1,9 +1,9 @@
 # Deserción en educación superior en Colombia: ETL y modelado (IES × año, 2015–2021)
 
-> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Reproduce:** `pip install -r requirements.txt` then `python reproducir.py --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
+> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Reproduce:** `pip install -r requirements.txt` then `desercion reproducir --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
 
 Proyecto del curso Aprendizaje Automático (Maestría IA y Ciencia de Datos, UAO). Entrega: 26 de noviembre de 2026 (tag `v1.0-entrega`).
-Especificación: `guia_etl_desercion.md` · Bitácora de decisiones y calidad de datos: `reports/etl_log.md`.
+Especificación: `docs/guia_etl.md` · Bitácora de decisiones y calidad de datos: `reports/01_etl.md`.
 
 ## Autores
 - **Miguel Ángel Méndez Rodríguez** — Data Engineer y Project Manager.
@@ -18,7 +18,7 @@ La **tasa de deserción** anual de cada IES (fuente: SPADIES; desertores de t / 
 - **Tarea 2 — sin historia («arranque en frío»).** Solo el contexto (formulación A), incluidos KernelPCA, autoencoder y clusters. Línea base: la **mediana por carácter × sector**.
 
 ## Resultados principales
-MAE (menor es mejor) con validación anidada: GroupKFold por IES 5 × 5 = 25 ajustes; IC 95 % con la corrección de Nadeau y Bengio. Fuente: `reports/resultados_ajuste_temporal.md` (`reports/resultados/ajuste_resumen.csv`). «p» es la prueba t corregida (y Wilcoxon) frente a la línea base.
+MAE (menor es mejor) con validación anidada: GroupKFold por IES 5 × 5 = 25 ajustes; IC 95 % con la corrección de Nadeau y Bengio. Fuente: `reports/04_ajuste_temporal.md` (`reports/tables/ajuste_resumen.csv`). «p» es la prueba t corregida (y Wilcoxon) frente a la línea base.
 
 | Tarea | Modelo | MAE [IC 95 %] | Mejora frente a la línea base | p (t corregida; Wilcoxon) |
 |---|---|---|---|---|
@@ -27,27 +27,29 @@ MAE (menor es mejor) con validación anidada: GroupKFold por IES 5 × 5 = 25 aju
 | 2 | **Mediana por carácter × sector** | 0,0400 [0,0345; 0,0455] | — | — |
 | 2 | Mejor modelo: ridge, logit, información mutua, sin clusters (ajustado) | 0,0396 [0,0345; 0,0448] | +0,9 % | 0,596; 0,127 |
 
-> **Nota.** Estas cifras vienen de la validación anidada (semillas externas 301–305). La confirmación de la Tarea 2 (semillas 201–205, sin ajuste anidado) da 0,0405 para la mediana por carácter × sector (`reports/resultados_tarea2.md`), y ambas conclusiones coinciden: el mejor modelo mejora 2,2 % en esa confirmación (p de Wilcoxon 0,019 pero p de la t corregida 0,35), sin firmeza estadística; en la validación anidada, +0,9 % (p t corregida 0,60).
+> **Nota.** Estas cifras vienen de la validación anidada (semillas externas 301–305). La confirmación de la Tarea 2 (semillas 201–205, sin ajuste anidado) da 0,0405 para la mediana por carácter × sector (`reports/03_tarea2.md`), y ambas conclusiones coinciden: el mejor modelo mejora 2,2 % en esa confirmación (p de Wilcoxon 0,019 pero p de la t corregida 0,35), sin firmeza estadística; en la validación anidada, +0,9 % (p t corregida 0,60).
 
-**Lectura.** En la Tarea 1 el ridge de corrección supera a la ingenua con significancia en ambas pruebas, pero la ventaja es pequeña (0,001 de MAE) y en las particiones temporales (prepandemia y 2020–2021) ningún modelo se distingue de la ingenua. En la Tarea 2 el contexto no mejora a la mediana por carácter × sector con firmeza estadística; xgboost y random forest empeoran con hiperparámetros por defecto y quedan «sin diferencia firme» tras el ajuste. Costo: el ridge de la Tarea 1 se ajusta en ~9 ms; random forest, en ~1,3 s sin menos error (`reports/resultados_complejidad.md`).
+**Lectura.** En la Tarea 1 el ridge de corrección supera a la ingenua con significancia en ambas pruebas, pero la ventaja es pequeña (0,001 de MAE) y en las particiones temporales (prepandemia y 2020–2021) ningún modelo se distingue de la ingenua. En la Tarea 2 el contexto no mejora a la mediana por carácter × sector con firmeza estadística; xgboost y random forest empeoran con hiperparámetros por defecto y quedan «sin diferencia firme» tras el ajuste. Costo: el ridge de la Tarea 1 se ajusta en ~9 ms; random forest, en ~1,3 s sin menos error (`reports/07_complejidad.md`).
 
 ## Cómo reproducir
 **Requisitos:** Python 3.14, las versiones fijas de `requirements.txt` y el dataset `data/processed/dataset_ies.csv` (ya está en el repositorio). Los datos crudos **no** son necesarios para el modelado; solo para la etapa `etl` (ver [`docs/DATOS.md`](docs/DATOS.md): URL, pasos de descarga, nombre y carpeta de cada archivo, fecha y checksums).
 
 ```
 python -m venv .venv
-.venv\Scripts\activate            # Windows  (Linux/macOS: source .venv/bin/activate)
-pip install -r requirements.txt
-python reproducir.py --solo-verificar         # SHA-256 del dataset (y de los crudos, si están)
-python reproducir.py --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
-python reproducir.py --etapa todo             # corrida completa (≈ 1,5 h)
-python -m pytest -q                            # 399 pruebas (≈ 2 min)
+.venv\Scriptsctivate            # Windows  (Linux/macOS: source .venv/bin/activate)
+pip install -e ".[dev]"           # instala el paquete (comando `desercion`) con las versiones fijas y las herramientas de desarrollo
+desercion verificar                           # SHA-256 del dataset (y de los crudos, si están)
+desercion reproducir --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
+desercion reproducir --etapa todo             # corrida completa (≈ 1,5 h)
+python -m pytest -q                           # 399 pruebas (≈ 2 min); `-m "not integration"` omite las que necesitan los datos publicados
 ```
-Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--rapido`, `--reanudar` (reutiliza lo ya calculado donde el script lo permite: ajuste anidado, sesgo y complejidad guardan puntos de control), `--sin-notebooks`, `--sin-verificar`. Al terminar imprime el tiempo y las cifras clave de cada etapa. Cada etapa llama a los scripts existentes (`pipeline.py`, `run_experimentos.py`, `run_formulaciones.py`, `run_protocolo_v3.py`, `run_tarea2.py`, `run_ajuste_temporal.py`, `run_sesgo_sensibilidad.py`, `run_complejidad.py`) con sus semillas, sin cambiar su lógica.
+Sin `pip install -e` (solo con `requirements.txt`, generado desde `pyproject.toml`): `pip install -r requirements.txt` y anteponer `PYTHONPATH=src` (PowerShell: `$env:PYTHONPATH = "src"`) a `python -m desercion_ies <comando>`, que es equivalente a `desercion <comando>`.
+
+Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--rapido`, `--reanudar` (reutiliza lo ya calculado donde el script lo permite: ajuste anidado, sesgo y complejidad guardan puntos de control), `--sin-notebooks`, `--sin-verificar`. Al terminar imprime el tiempo y las cifras clave de cada etapa. Cada etapa llama a los scripts existentes (`src/desercion_ies/etl/pipeline.py`, `desercion evaluar v1`, `desercion evaluar v2`, `desercion evaluar tarea1`, `desercion evaluar tarea2`, `desercion evaluar ajuste`, `desercion evaluar sesgo`, `desercion evaluar complejidad`) con sus semillas, sin cambiar su lógica.
 
 | Etapa | Qué corre | Completa (≈) | `--rapido` (≈) |
 |---|---|---|---|
-| `etl` | `pipeline.py --saltar-extract` (necesita los 14 crudos) | 2 min | 2 min |
+| `etl` | `desercion etl --saltar-extract` (necesita los 14 crudos) | 2 min | 2 min |
 | `eda` | cuadernos 01 y 02 | 2 min | 2 min |
 | `tarea1` | v1 (36 configuraciones), v2 (formulaciones), v3 (protocolo 5 × 5) | 31 min | 0,5 min |
 | `tarea2` | cribado + confirmación + clusters | 15 min | 1,5 min |
@@ -60,40 +62,62 @@ Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--ra
 **Modo `--rapido`.** Solo cambia la *configuración*: menos semillas (se conservan las primeras de las publicadas), grillas más chicas, `n_iter` = 3 en la búsqueda interna, 100 réplicas de bootstrap y 2 repeticiones en la medición. Escribe todo en `reproduccion/` (no se versiona) y no toca `reports/`. Al final **compara contra los CSV publicados**: las cifras por pliegue de las configuraciones comunes coinciden **exactamente** (v1, v3, Tarea 2, ajuste por defecto, arranque en frío), salvo dos diferencias esperadas y documentadas en [`docs/REPRODUCIBILIDAD.md`](docs/REPRODUCIBILIDAD.md) (la v2 con historia y el ajuste con `n_iter` reducido). Los tiempos medidos (complejidad) nunca coinciden: dependen de la máquina.
 
 ## Mapa de informes y cuadernos
-| Orden | Cuaderno | Pregunta que responde | Informe(s) |
-|---|---|---|---|
-| 01 | `notebooks/01_eda.ipynb` | ¿Cómo es el dataset, qué calidad tiene y qué se excluyó? | `reports/data_dictionary.md`, `etl_log.md`, `notebooks/conclusiones_eda.md` |
-| 02 | `notebooks/02_sesgo.ipynb` | ¿Hay sesgo de selección, supervivencia, geografía o fuga temporal? | `reports/analisis_sesgo.md` |
-| 03 | — (no existe: la numeración salta; v1–v3 se documentan solo en informes) | ¿Qué configuraciones y formulaciones funcionan, con qué protocolo? | `resultados_v1.md`, `resultados_v2.md` (historia desde 2015; superada), `resultados_v3.md` (referencia vigente) |
-| 04 | `notebooks/04_tarea2.ipynb` | Sin historia, ¿ayudan KernelPCA, el autoencoder o los clusters? | `resultados_tarea2.md` |
-| 05 | `notebooks/05_ajuste_temporal.ipynb` | ¿El ajuste de hiperparámetros, la pandemia o el arranque en frío cambian las conclusiones? | `resultados_ajuste_temporal.md` |
-| 06 | `notebooks/06_sesgo_interpretabilidad.ipynb` | ¿Dónde falla más el modelo, qué tan robusto es y qué variables usa? | `resultados_sesgo_sensibilidad.md` |
-| 07 | `notebooks/07_complejidad.ipynb` | ¿Cuánto cuesta cada modelo y cómo escala con más filas? | `resultados_complejidad.md` |
+Los informes (`reports/`) se numeran en orden de lectura; los cuadernos (`notebooks/`), de 01 a 06 sin saltos.
+| Informe | Cuaderno | Pregunta que responde |
+|---|---|---|
+| `reports/01_etl.md` (bitácora del ETL; anexos en `reports/etl/`) | `notebooks/01_eda.ipynb` | ¿Cómo se construyó el dataset, qué calidad tiene y qué se excluyó? (`notebooks/conclusiones_eda.md`) |
+| `reports/05_sesgo_dataset.md` | `notebooks/02_sesgo.ipynb` | ¿Hay sesgo de selección, supervivencia, geografía o fuga temporal en el dataset? |
+| `reports/02_tarea1.md` (v3, referencia vigente; v1 y v2 en `reports/historico/`) | — | Tarea 1: ¿qué formulaciones y configuraciones funcionan, con qué protocolo? |
+| `reports/03_tarea2.md` | `notebooks/03_tarea2.ipynb` | Tarea 2: sin historia, ¿ayudan KernelPCA, el autoencoder o los clusters? |
+| `reports/04_ajuste_temporal.md` | `notebooks/04_ajuste_temporal.ipynb` | ¿El ajuste de hiperparámetros, la pandemia o el arranque en frío cambian las conclusiones? |
+| `reports/06_sesgo_modelos.md` | `notebooks/05_sesgo_interpretabilidad.ipynb` | ¿Dónde falla más el modelo, qué tan robusto es y qué variables usa? |
+| `reports/07_complejidad.md` | `notebooks/06_complejidad.ipynb` | ¿Cuánto cuesta cada modelo y cómo escala con más filas? |
 
-Todos los cuadernos se ejecutan de punta a punta sin errores (`jupyter nbconvert --execute`); ver [`docs/REPRODUCIBILIDAD.md`](docs/REPRODUCIBILIDAD.md).
+La Tarea 1 y la v1–v2 no tienen cuaderno propio (se documentan en sus informes). Todos los cuadernos se ejecutan de punta a punta sin errores (`jupyter nbconvert --execute`); ver [`docs/REPRODUCIBILIDAD.md`](docs/REPRODUCIBILIDAD.md). Los nombres anteriores de rutas, módulos y comandos están en [`docs/MIGRACION.md`](docs/MIGRACION.md).
 
 ## Estructura del repositorio
+Estructura tipo Cookiecutter Data Science con *src layout*; `pip install -e .` instala el paquete `desercion_ies` y el comando `desercion`.
 ```
-reproducir.py            punto de entrada único (etapas, --rapido, --reanudar)
-pipeline.py              ETL: extract → transform → integrate → validate
-run_*.py                 un script por etapa de modelado (v1, v2, v3, Tarea 2, ajuste, sesgo, complejidad)
-config/config.yaml       toda la configuración (fuentes, filtros, grillas, semillas, salidas)
-src/{extract,transform,integrate,validate,homologation}/   ETL
-src/modelado/            partición, métodos, protocolo, ajuste, sesgo, complejidad e informes
-src/reproducibilidad.py  checksums, configuración del modo rápido, comparación con lo publicado
+pyproject.toml           paquete, dependencias con versiones fijas, pytest y ruff   ·   requirements.txt: generado desde pyproject
+Makefile                 atajos (install, test, lint, reproduce, notebooks…)         ·   tools/: generador de requirements.txt
+configs/config.yaml      toda la configuración (fuentes, filtros, grillas, semillas, salidas)
+src/desercion_ies/
+  cli.py, __main__.py    comando `desercion` (etl, eda, evaluar, reproducir, verificar)
+  paths.py, config.py    rutas del proyecto (raíz detectada sin depender del directorio actual) y lectura de la configuración
+  reproduce.py, reproducibilidad.py   reproducción por etapas, checksums, modo rápido y comparación con lo publicado
+  etl/                   extract/, transform/, homologation/, integrate/, validate/ y pipeline.py
+  features/              particion, objetivo
+  models/                metodos (KernelPCA, autoencoder, clusters, selección)
+  evaluation/            protocolo, experimentos, formulaciones, tarea2, ajuste, temporal, arranque_frio, evaluacion_final
+  analysis/              sesgo, subgrupos, sensibilidad, interpretabilidad, diagnostico_colapso, complejidad, costo_protocolo…
+  reporting/             generadores de los informes (informe_*)
+  runners/               lógica de cada `desercion evaluar <etapa>`
 data/raw/                crudos (no versionados; ver docs/DATOS.md)
-data/processed/          dataset_ies.csv (versionado)   ·   data/checksums.json (SHA-256)
-reports/                 informes .md, resultados/*.csv, figuras/
-notebooks/               01 a 07 (+ construir_*.py que los generan)
-tests/                   pruebas (pytest)
-docs/                    DATOS.md, REPRODUCIBILIDAD.md
+data/processed/          dataset_ies.csv (versionado, CC BY-SA 4.0)   ·   data/checksums.json (SHA-256)
+reports/                 01_etl.md … 07_complejidad.md, etl/ (anexos del ETL), historico/ (v1 y v2), tables/ (CSV), figures/
+notebooks/               01 a 06 (+ construir/: los scripts que los generan y ejecutan)
+tests/unit/              pruebas unitarias   ·   tests/integration/: necesitan data/processed, data/interim o los resultados publicados
+docs/                    guia_etl.md, DATOS.md, REPRODUCIBILIDAD.md, MIGRACION.md
 ```
+
+### Equivalentes en PowerShell
+`make` no viene con Windows; cada objetivo del `Makefile` equivale a:
+| `make …` | PowerShell |
+|---|---|
+| `install` / `install-dev` | `pip install -e .` / `pip install -e ".[dev]"` |
+| `test` / `test-unit` | `python -m pytest -q` / `python -m pytest -q -m "not integration"` |
+| `lint` / `format` | `python -m ruff check src tests tools notebooks/construir` / `python -m ruff format src tests tools notebooks/construir` |
+| `etl` | `desercion etl --saltar-extract` |
+| `reproduce` / `reproduce-fast` | `desercion reproducir --etapa todo` / `desercion reproducir --etapa todo --rapido` |
+| `notebooks` | `Get-ChildItem notebooks/construir/construir_*.py \| ForEach-Object { python $_.FullName }` |
+| `requirements` | `python tools/generar_requirements.py` |
+| `clean` | `Remove-Item -Recurse -Force reproduccion, .pytest_cache, .ruff_cache -ErrorAction SilentlyContinue` |
 
 ## Limitaciones principales
 - **Tamaño y alcance:** 1.928 filas de 295 IES; la unidad es la institución, no el estudiante. Las conclusiones no se trasladan a programas ni a personas.
 - **Ventaja pequeña de los modelos:** en la Tarea 1 es de ~4 %, y ningún modelo supera a la ingenua con IC que excluya 0 en las particiones temporales; en la Tarea 2 no hay mejora firme sobre la mediana por carácter × sector.
-- **Disponibilidad de la historia:** la Tarea 1 supone conocer la tasa de t−1; el escenario conservador («historia rezagada») está en `resultados_v3.md`.
-- **Sesgo de selección y supervivencia:** solo IES con denominador suficiente y sin posible cierre; el error es mayor en algunos subgrupos (ver `resultados_sesgo_sensibilidad.md`). El análisis de fuga cubre 32 explicativas, no todos los caminos posibles.
+- **Disponibilidad de la historia:** la Tarea 1 supone conocer la tasa de t−1; el escenario conservador («historia rezagada») está en `02_tarea1.md`.
+- **Sesgo de selección y supervivencia:** solo IES con denominador suficiente y sin posible cierre; el error es mayor en algunos subgrupos (ver `06_sesgo_modelos.md`). El análisis de fuga cubre 32 explicativas, no todos los caminos posibles.
 - **Datos que cambian:** las fuentes de datos.gov.co se actualizan; por eso se fijan SHA-256 y fecha de descarga. SPADIES y TerriData se descargan a mano.
 - **Complejidad medida en una sola máquina** (CPU híbrida, un hilo): sirve para comparar componentes entre sí, no para predecir tiempos en otra; con 4 puntos los exponentes de escalado son aproximados.
 - **Variables de mercado laboral** no disponibles a nivel municipal para la ventana.
@@ -108,26 +132,26 @@ docs/                    DATOS.md, REPRODUCIBILIDAD.md
 
 ## Detalles del ETL y del modelado
 ### Regenerar `data/raw/` (no se versiona; detalle en `docs/DATOS.md`)
-- **Automático** (`pipeline.py` sin `--saltar-extract`): Saber 11 (`kgxf-xxbe`, ~3,4 M filas, ~25 min), matrícula SNIES y DIVIPOLA. datos.gov.co falla de forma intermitente (500/503); la descarga reintenta sola.
+- **Automático** (`desercion etl` sin `--saltar-extract`): Saber 11 (`kgxf-xxbe`, ~3,4 M filas, ~25 min), matrícula SNIES y DIVIPOLA. datos.gov.co falla de forma intermitente (500/503); la descarga reintenta sola.
 - **Manual**:
-  - `data/raw/spadies/spadies_diferenciado.csv` — SPADIES → Analíticas → Deserción Anual → tipo de cálculo IES → IES: Diferenciado (variable objetivo; todas las IES en un archivo) y `spadies_nacional.csv` (total nacional, solo contexto y control). Formato y cálculo de la tasa en `reports/etl_log.md`. Sin el diferenciado el pipeline genera un dataset **preliminar** con `tasa_desercion` nula.
-  - `data/raw/terridata/TerriData_Dim{2,4,7,8,14,16,25}.txt.zip` — descargas de TerriData (DNP) por dimensión: población, educación, finanzas públicas, desempeño municipal, pobreza y mercado laboral. Fuente de población y NBI/IPM (ya no se usan archivos del DANE). La lectura tarda ~1 min (la dimensión 2 pesa ~1 GB) y se guarda en `data/interim/terridata_largo.csv`. Si faltan, la fuente se omite y se anota en `reports/etl_log.md`.
+  - `data/raw/spadies/spadies_diferenciado.csv` — SPADIES → Analíticas → Deserción Anual → tipo de cálculo IES → IES: Diferenciado (variable objetivo; todas las IES en un archivo) y `spadies_nacional.csv` (total nacional, solo contexto y control). Formato y cálculo de la tasa en `reports/01_etl.md`. Sin el diferenciado el pipeline genera un dataset **preliminar** con `tasa_desercion` nula.
+  - `data/raw/terridata/TerriData_Dim{2,4,7,8,14,16,25}.txt.zip` — descargas de TerriData (DNP) por dimensión: población, educación, finanzas públicas, desempeño municipal, pobreza y mercado laboral. Fuente de población y NBI/IPM (ya no se usan archivos del DANE). La lectura tarda ~1 min (la dimensión 2 pesa ~1 GB) y se guarda en `data/interim/terridata_largo.csv`. Si faltan, la fuente se omite y se anota en `reports/01_etl.md`.
 
 ### Modelado
-Utilidades en `src/modelado/` (parámetros en `config/config.yaml`, secciones `modelado` y `particion`):
+Utilidades en `src/desercion_ies/` (subpaquetes `features`, `models`, `evaluation`, `analysis` y `reporting`) (parámetros en `configs/config.yaml`, secciones `modelado` y `particion`):
 - **Partición** (`particion.py`): `particion_group_kfold` (por `cod_ies`) y `particion_temporal` (entrena 2015–2019, prueba 2020–2021). `cargar_dataset(cfg, excluir_sena=..., ventana_modelado=...)` aplica las sensibilidades: `modelado.ventana_modelado` (`[2015, 2021]` por defecto; `[2017, 2021]` evita los años sin MDM ni SNIES) y `modelado.excluir_sena` (quita al SENA al cargar).
 - **Variables**: `variables_modelado(df)` devuelve las **numéricas y las categóricas por separado** (`sector` y `caracter`, con etiquetas según SNIES) y `construir_preprocesador` arma el `ColumnTransformer` (imputación, estandarización y one-hot). El tamaño por defecto es `log_matriculados_spadies_t2` (denominador de SPADIES t-2, completo 2015–2021; información de t-2, sin fuga); `log_matriculados_ies_t2` (SNIES) es la alternativa. Quedan fuera por defecto `td_poblacion_total_t1` (cambio de base de las proyecciones 2005 → 2018), `ratio_spadies_snies` y la matrícula bruta. Los indicadores `falta_saber11`, `falta_mdm` y `falta_snies` marcan los bloques de años sin dato (MDM y SNIES: 2015–2016; Saber 11: 2019 y 2021) y entran como numéricas.
 - **Objetivo** (`objetivo.py`): transformación logit opcional (`modelado.transformacion_objetivo`).
-- **Experimentos** (`experimentos.py`, `informe_experimentos.py`; `python run_experimentos.py`): grilla de 36 configuraciones (objetivo ninguna/logit × imputación mediana/KNN × selección ninguna/información mutua/PCA × Ridge/Random Forest/XGBoost, configurable en `modelado.experimentos`) con GroupKFold por IES de 5 pliegues idénticos para todas, más las líneas base mediana e ingenua (tasa del año anterior de la IES). Escribe `reports/resultados/experimentos_v1.csv` (por pliegue) y `experimentos_v1_resumen.csv`, `reports/resultados_v1.md` y `reports/figuras/mae_configuraciones.png`.
-- **Formulaciones con historia** (`formulaciones.py`, `informe_formulaciones.py`; `python run_formulaciones.py`): A contexto, B historia + contexto, B solo historia y C corrección sobre la ingenua (+ C solo historia), con los mismos pliegues que la v1; reporta el MAE total y por filas con/sin historia. Las columnas de historia (`tasa_t1`, `tasa_t2`, `tasa_media_previa`, `n_anios_previos`, `falta_historia`, solo años anteriores a t) las agrega el ETL (`incluir_historia`) y no son explicativas por defecto. Salidas: `reports/resultados/experimentos_v2.csv`, `reports/resultados_v2.md`, `reports/figuras/mae_formulaciones.png`.
-- **Protocolo v3** (`protocolo.py`, `informe_v3.py`; `python run_protocolo_v3.py`): evaluación rigurosa de un conjunto de 15 configuraciones fijado antes de correr, con GroupKFold por IES repetido 5 veces (25 ajustes), IC 95 % con la corrección de Nadeau y Bengio, prueba de Wilcoxon pareada contra la ingenua y MAE por filas con/sin historia. Incluye la variante «historia rezagada» (sin la tasa de t-1) y su ingenua rezagada. La historia del dataset usa las tasas anuales de SPADIES desde 1999 (`historia_previa_a_ventana`); las filas sin historia (34) se listan en `reports/sin_historia.csv`.
-- **Tarea 2: estimación sin historia** (`metodos.py`, `tarea2.py`, `informe_tarea2.py`; `python run_tarea2.py`; notebook `notebooks/04_tarea2.ipynb`): predice la tasa solo con el contexto (formulación A) con GroupKFold por IES. Líneas base: mediana y mediana por carácter × sector. Métodos del profesor como transformers de scikit-learn (KernelPCA RBF, autoencoder n→16→8→16→n con parada temprana, clusters K-means con k por silueta que agregan el cluster y las distancias a los centroides). Protocolo en dos etapas: cribado de 120 configuraciones (una semilla) y confirmación 5 × 5 con semillas distintas, IC 95 % y t corregida. Salidas: `reports/resultados_tarea2.md`, `reports/resultados/experimentos_tarea2_*.csv`, `reports/figuras/tarea2_metodologias.png` y `clusters.png`.
-- **Ajuste, particiones temporales y arranque en frío** (`ajuste.py`, `temporal.py`, `arranque_frio.py`, `informe_ajuste.py`; `python run_ajuste_temporal.py`; notebook `notebooks/05_ajuste_temporal.ipynb`): ajuste de hiperparámetros con validación anidada (externa GroupKFold por IES 5 × 5, interna RandomizedSearchCV de 30 iteraciones), particiones temporales (prepandemia y estrés, con bootstrap por IES) y arranque en frío estricto agrupando por municipio. Salidas: `reports/resultados_ajuste_temporal.md`, `reports/resultados/ajuste.csv`, `temporal.csv`, `arranque_frio_municipio.csv`, `reports/figuras/ajuste_vs_defecto.png` y `temporal_por_anio.png`.
-- **Sesgo medido, sensibilidad e interpretabilidad** (`evaluacion_final.py`, `subgrupos.py`, `sensibilidad.py`, `diagnostico_colapso.py`, `interpretabilidad.py`; `python run_sesgo_sensibilidad.py`; notebook `notebooks/06_sesgo_interpretabilidad.ipynb`): error por subgrupo de los modelos finales frente a su línea base (IC por bootstrap sobre IES), cuatro escenarios de sensibilidad (sin Bogotá, denominador mínimo 200, sin SENA, 2017–2021), diagnóstico reproducible del colapso del ridge ajustado de la Tarea 2, y SHAP, importancia por permutación y estabilidad de coeficientes. Salidas: `reports/resultados_sesgo_sensibilidad.md`, `reports/resultados/{subgrupos,sensibilidad,colapso_ridge,shap_top}.csv` y `reports/figuras/{error_subgrupos,shap_t1,shap_t2,coeficientes_ridge}.png`.
-- **Complejidad medida** (`complejidad.py`, `costo_protocolo.py`, `informe_complejidad.py`; `python run_complejidad.py`; notebook `notebooks/07_complejidad.ipynb`): costo de ajuste, predicción y memoria de cada modelo y método con un solo hilo (calentamiento, 5 repeticiones, mediana y RIQ), escalado empírico con submuestras por IES y exponente log-log frente al teórico, y costo del protocolo de evaluación. Salidas: `reports/resultados_complejidad.md`, `reports/resultados/complejidad*.csv` y `reports/figuras/complejidad_{costo_error,escalado}.png`.
-- **Sesgo** (`sesgo.py`, `geografia.py`, `mitigacion.py`): análisis de sesgo del dataset y opciones de mitigación, **todas apagadas por defecto** (el dataset y los valores por defecto no cambian): `modelado.pesos_muestrales` (`ninguno` | `matriculados` | `raiz_matriculados` | `inverso_grupo` | `inverso_ies`), `modelado.umbral_denominador` (p. ej. 200), `modelado.indicador_panel_incompleto`, `particion.agrupar_por` (`departamento`) y `particion.estratificar_por` (`[sector, caracter]`); además `particion_dejando_fuera` (prueba en Bogotá) y `metricas_por_subgrupo` (MAE por sector, carácter, región, ciudad y tamaño). Informe en `reports/analisis_sesgo.md` y figuras en `notebooks/02_sesgo.ipynb` (`python notebooks/construir_sesgo.py`).
+- **Experimentos** (`experimentos.py`, `informe_experimentos.py`; `desercion evaluar v1`): grilla de 36 configuraciones (objetivo ninguna/logit × imputación mediana/KNN × selección ninguna/información mutua/PCA × Ridge/Random Forest/XGBoost, configurable en `modelado.experimentos`) con GroupKFold por IES de 5 pliegues idénticos para todas, más las líneas base mediana e ingenua (tasa del año anterior de la IES). Escribe `reports/tables/experimentos_v1.csv` (por pliegue) y `experimentos_v1_resumen.csv`, `reports/historico/resultados_v1.md` y `reports/figures/mae_configuraciones.png`.
+- **Formulaciones con historia** (`formulaciones.py`, `informe_formulaciones.py`; `desercion evaluar v2`): A contexto, B historia + contexto, B solo historia y C corrección sobre la ingenua (+ C solo historia), con los mismos pliegues que la v1; reporta el MAE total y por filas con/sin historia. Las columnas de historia (`tasa_t1`, `tasa_t2`, `tasa_media_previa`, `n_anios_previos`, `falta_historia`, solo años anteriores a t) las agrega el ETL (`incluir_historia`) y no son explicativas por defecto. Salidas: `reports/tables/experimentos_v2.csv`, `reports/historico/resultados_v2.md`, `reports/figures/mae_formulaciones.png`.
+- **Protocolo v3** (`protocolo.py`, `informe_v3.py`; `desercion evaluar tarea1`): evaluación rigurosa de un conjunto de 15 configuraciones fijado antes de correr, con GroupKFold por IES repetido 5 veces (25 ajustes), IC 95 % con la corrección de Nadeau y Bengio, prueba de Wilcoxon pareada contra la ingenua y MAE por filas con/sin historia. Incluye la variante «historia rezagada» (sin la tasa de t-1) y su ingenua rezagada. La historia del dataset usa las tasas anuales de SPADIES desde 1999 (`historia_previa_a_ventana`); las filas sin historia (34) se listan en `reports/etl/sin_historia.csv`.
+- **Tarea 2: estimación sin historia** (`metodos.py`, `tarea2.py`, `informe_tarea2.py`; `desercion evaluar tarea2`; notebook `notebooks/03_tarea2.ipynb`): predice la tasa solo con el contexto (formulación A) con GroupKFold por IES. Líneas base: mediana y mediana por carácter × sector. Métodos del profesor como transformers de scikit-learn (KernelPCA RBF, autoencoder n→16→8→16→n con parada temprana, clusters K-means con k por silueta que agregan el cluster y las distancias a los centroides). Protocolo en dos etapas: cribado de 120 configuraciones (una semilla) y confirmación 5 × 5 con semillas distintas, IC 95 % y t corregida. Salidas: `reports/03_tarea2.md`, `reports/tables/experimentos_tarea2_*.csv`, `reports/figures/tarea2_metodologias.png` y `clusters.png`.
+- **Ajuste, particiones temporales y arranque en frío** (`ajuste.py`, `temporal.py`, `arranque_frio.py`, `informe_ajuste.py`; `desercion evaluar ajuste`; notebook `notebooks/04_ajuste_temporal.ipynb`): ajuste de hiperparámetros con validación anidada (externa GroupKFold por IES 5 × 5, interna RandomizedSearchCV de 30 iteraciones), particiones temporales (prepandemia y estrés, con bootstrap por IES) y arranque en frío estricto agrupando por municipio. Salidas: `reports/04_ajuste_temporal.md`, `reports/tables/ajuste.csv`, `temporal.csv`, `arranque_frio_municipio.csv`, `reports/figures/ajuste_vs_defecto.png` y `temporal_por_anio.png`.
+- **Sesgo medido, sensibilidad e interpretabilidad** (`evaluacion_final.py`, `subgrupos.py`, `sensibilidad.py`, `diagnostico_colapso.py`, `interpretabilidad.py`; `desercion evaluar sesgo`; notebook `notebooks/05_sesgo_interpretabilidad.ipynb`): error por subgrupo de los modelos finales frente a su línea base (IC por bootstrap sobre IES), cuatro escenarios de sensibilidad (sin Bogotá, denominador mínimo 200, sin SENA, 2017–2021), diagnóstico reproducible del colapso del ridge ajustado de la Tarea 2, y SHAP, importancia por permutación y estabilidad de coeficientes. Salidas: `reports/06_sesgo_modelos.md`, `reports/tables/{subgrupos,sensibilidad,colapso_ridge,shap_top}.csv` y `reports/figures/{error_subgrupos,shap_t1,shap_t2,coeficientes_ridge}.png`.
+- **Complejidad medida** (`complejidad.py`, `costo_protocolo.py`, `informe_complejidad.py`; `desercion evaluar complejidad`; notebook `notebooks/06_complejidad.ipynb`): costo de ajuste, predicción y memoria de cada modelo y método con un solo hilo (calentamiento, 5 repeticiones, mediana y RIQ), escalado empírico con submuestras por IES y exponente log-log frente al teórico, y costo del protocolo de evaluación. Salidas: `reports/07_complejidad.md`, `reports/tables/complejidad*.csv` y `reports/figures/complejidad_{costo_error,escalado}.png`.
+- **Sesgo** (`sesgo.py`, `geografia.py`, `mitigacion.py`): análisis de sesgo del dataset y opciones de mitigación, **todas apagadas por defecto** (el dataset y los valores por defecto no cambian): `modelado.pesos_muestrales` (`ninguno` | `matriculados` | `raiz_matriculados` | `inverso_grupo` | `inverso_ies`), `modelado.umbral_denominador` (p. ej. 200), `modelado.indicador_panel_incompleto`, `particion.agrupar_por` (`departamento`) y `particion.estratificar_por` (`[sector, caracter]`); además `particion_dejando_fuera` (prueba en Bogotá) y `metricas_por_subgrupo` (MAE por sector, carácter, región, ciudad y tamaño). Informe en `reports/05_sesgo_dataset.md` y figuras en `notebooks/02_sesgo.ipynb` (`python notebooks/construir/construir_sesgo.py`).
 
-Filtros del ETL (todos configurables en `config.yaml`): `min_matriculados_t2` (por defecto 100), `excluir_posible_cierre`, `excluir_inconsistencias` (ratio SPADIES/SNIES fuera de 1/3–3) y `excluir_regimen_especial` (lista explícita de 16 escuelas militares y policiales), todos `true`; `es_sena` marca al SENA (9110) y `excluir_sena` (`false`) lo saca. El detalle está en `reports/exclusiones_calidad.csv` y las tasas > 50 % en `reports/tasas_altas.csv`. El dataset no incluye variables de mercado laboral (ver `reports/etl_log.md`).
+Filtros del ETL (todos configurables en `config.yaml`): `min_matriculados_t2` (por defecto 100), `excluir_posible_cierre`, `excluir_inconsistencias` (ratio SPADIES/SNIES fuera de 1/3–3) y `excluir_regimen_especial` (lista explícita de 16 escuelas militares y policiales), todos `true`; `es_sena` marca al SENA (9110) y `excluir_sena` (`false`) lo saca. El detalle está en `reports/etl/exclusiones_calidad.csv` y las tasas > 50 % en `reports/etl/tasas_altas.csv`. El dataset no incluye variables de mercado laboral (ver `reports/01_etl.md`).
 
 ### Salidas
-`data/processed/dataset_<unidad>.csv` · `reports/data_dictionary.md` · `reports/etl_log.md` (la parte posterior a `<!-- pipeline:inicio -->` se regenera en cada corrida; lo anterior es manual) · `notebooks/01_eda.ipynb` · `notebooks/02_sesgo.ipynb` · `reports/analisis_sesgo.md` · `reports/diagrama_pipeline.md` · `reports/resultados_v1.md` · `reports/resultados_v2.md` · `reports/resultados_v3.md` · `reports/resultados_tarea2.md` · `reports/resultados_ajuste_temporal.md` · `reports/resultados_sesgo_sensibilidad.md` · `reports/resultados_complejidad.md` · `reports/sin_historia.csv` · `reports/resultados/` · `reports/figuras/`.
+`data/processed/dataset_<unidad>.csv` · `reports/etl/data_dictionary.md` · `reports/01_etl.md` (la parte posterior a `<!-- pipeline:inicio -->` se regenera en cada corrida; lo anterior es manual) · `notebooks/01_eda.ipynb` · `notebooks/02_sesgo.ipynb` · `reports/05_sesgo_dataset.md` · `reports/etl/diagrama_pipeline.md` · `reports/historico/resultados_v1.md` · `reports/historico/resultados_v2.md` · `reports/02_tarea1.md` · `reports/03_tarea2.md` · `reports/04_ajuste_temporal.md` · `reports/06_sesgo_modelos.md` · `reports/07_complejidad.md` · `reports/etl/sin_historia.csv` · `reports/tables/` · `reports/figures/`.

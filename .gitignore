@@ -5,8 +5,11 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 docs/superpowers/
-reports/resultados/_parcial_ajuste/
-reports/resultados/_parcial_sesgo/
-reports/resultados/_parcial_complejidad/
+reports/tables/_parcial_ajuste/
+reports/tables/_parcial_sesgo/
+reports/tables/_parcial_complejidad/
 reproduccion/
 .venv/
+*.egg-info/
+build/
+.ruff_cache/

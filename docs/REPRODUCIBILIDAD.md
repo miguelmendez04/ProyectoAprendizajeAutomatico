@@ -3,8 +3,8 @@
 Fecha: 2026-11-18. Entorno: Windows 11, Python 3.14.6, Intel Core i5-12500H (16 hilos), versiones de `requirements.txt`.
 
 ## Qué se verificó
-1. **ETL desde los crudos.** `python reproducir.py --etapa etl --rapido` (14 archivos crudos con SHA-256 verificado) genera un `dataset_ies.csv` **byte a byte idéntico** al publicado (mismo SHA-256, 1.928 filas, 295 IES). Tarda ~104 s con los crudos ya descargados.
-2. **Modelado desde un clon limpio.** `git clone` del commit a una carpeta nueva (sin `data/raw/`, solo el dataset versionado) y `python reproducir.py --etapa todo --rapido`: **381 s** (6,3 min). `etl` y `eda` se omiten con aviso, porque necesitan los crudos. En la máquina original, con crudos, la misma orden tardó 585 s (9,8 min).
+1. **ETL desde los crudos.** `desercion reproducir --etapa etl --rapido` (14 archivos crudos con SHA-256 verificado) genera un `dataset_ies.csv` **byte a byte idéntico** al publicado (mismo SHA-256, 1.928 filas, 295 IES). Tarda ~104 s con los crudos ya descargados.
+2. **Modelado desde un clon limpio.** `git clone` del commit a una carpeta nueva (sin `data/raw/`, solo el dataset versionado) y `desercion reproducir --etapa todo --rapido`: **381 s** (6,3 min). `etl` y `eda` se omiten con aviso, porque necesitan los crudos. En la máquina original, con crudos, la misma orden tardó 585 s (9,8 min).
 3. **Cuadernos.** Los seis (01, 02, 04–07) se ejecutan de punta a punta sin errores con `jupyter nbconvert --execute` (01 y 02 requieren los crudos y el ETL; 04–07 también se ejecutaron en el clon limpio).
 4. **Pruebas.** `python -m pytest -q`: 399 pasan.
 
@@ -26,7 +26,7 @@ Igualdad **exacta** (diferencia absoluta 0) de MAE, RMSE, R² y tamaños, fila a
 | `sensibilidad_pliegues` (modelos «ajustado») | 100 | 0 | **difiere (esperado)** |
 
 ## Diferencias y su causa
-- **v2, formulaciones con historia (C solo historia).** El `experimentos_v2.csv` publicado se calculó con la historia que empieza en 2015 (commit 422e3a1); desde la v3 la historia usa también las tasas de SPADIES de 1999 a 2014 y las columnas del dataset cambiaron. Volver a correr `run_formulaciones.py` da otras cifras (diferencia máxima 0,263 de MAE por pliegue). Estaba documentado en la nota de `reports/resultados_v2.md`; la referencia vigente es la v3. La formulación A (sin historia) sí coincide exactamente.
+- **v2, formulaciones con historia (C solo historia).** El `experimentos_v2.csv` publicado se calculó con la historia que empieza en 2015 (commit 422e3a1); desde la v3 la historia usa también las tasas de SPADIES de 1999 a 2014 y las columnas del dataset cambiaron. Volver a correr `desercion evaluar v2` da otras cifras (diferencia máxima 0,263 de MAE por pliegue). Estaba documentado en la nota de `reports/historico/resultados_v2.md`; la referencia vigente es la v3. La formulación A (sin historia) sí coincide exactamente.
 - **Hiperparámetros «ajustados».** El modo rápido hace la búsqueda interna con `n_iter` = 3 en lugar de 30 y con una semilla externa: otro conjunto de hiperparámetros, otro error. Los modelos con hiperparámetros por defecto y las líneas base coinciden exactamente. Los modelos «ajustado» de la sensibilidad usan los hiperparámetros de ese ajuste rápido.
 - **Tiempos y complejidad.** Los tiempos medidos (`t_ajuste_s`, `complejidad*.csv`) dependen de la máquina y de la carga: nunca coinciden. En el modo rápido el componente más lento medía ~3,4 s frente a ~2,4 s publicados (autoencoder), por medirse con 2 repeticiones y sin las condiciones controladas de la corrida oficial.
 - **Paralelismo.** Las etapas de Tarea 2, ajuste, sesgo corren con 16 procesos (`n_jobs: -1`), pero cada modelo usa un hilo y las particiones y semillas están fijas: los resultados por pliegue no cambian con el paralelismo (comprobado por la igualdad exacta de arriba).

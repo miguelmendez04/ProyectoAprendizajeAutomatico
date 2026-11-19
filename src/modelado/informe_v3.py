@@ -42,7 +42,7 @@ def _ref(fila) -> str:
 def _veredicto(dif: float, p_w: float, p_t: float) -> str:
     sw = (not np.isnan(p_w)) and p_w < 0.05
     st = (not np.isnan(p_t)) and p_t < 0.05
-    verbo = "mejora" if dif > 0 else ("empeora" if (sw and st) else "no mejora")
+    verbo = "mejora" if dif > 0 else ("empeora" if (sw or st) else "no mejora")
     if sw and st:
         return f"{verbo}, significativa en ambas pruebas"
     if sw:

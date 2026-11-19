@@ -171,6 +171,34 @@ modelado:
       informe: reports/resultados_v3.md
       figura: reports/figuras/mae_v3_ic.png
 
+  # --- Tarea 2: estimación sin historia («arranque en frío»), formulación A de contexto (src/modelado/tarea2.py; python run_tarea2.py) ---
+  # Etapa a) cribado: GroupKFold por IES (5 pliegues, UNA semilla) sobre la grilla completa. Etapa b) confirmación: protocolo v3
+  # (GroupKFold repetido 5 x 5, IC 95 % y t corregida de Nadeau y Bengio) con semillas DISTINTAS a la del cribado, para las líneas
+  # base, la mejor configuración de cada modelo y la mejor de cada método de reducción del cribado.
+  tarea2:
+    semilla_cribado: 11
+    semillas_confirmacion: [201, 202, 203, 204, 205]
+    n_splits: 5
+    nivel_confianza: 0.95
+    n_jobs: -1                         # paralelo sobre (configuración, pliegue); cada modelo usa 1 hilo
+    grilla:
+      objetivo: [ninguna, logit]
+      imputacion: [mediana, knn]
+      reduccion: [ninguna, info_mutua, pca, kernel_pca, autoencoder]
+      clusters: [false, true]
+      modelo: [ridge, random_forest, xgboost]
+    kernel_pca: {gamma: null}          # RBF; null = 1 / n_variables. Mismo nº de componentes que PCA al varianza_pca de experimentos
+    autoencoder: {oculta: 16, cuello: 8, activacion: tanh, max_iter: 500, validation_fraction: 0.15, n_iter_no_change: 15, alpha: 0.0001}
+    clusters: {k_min: 3, k_max: 8, n_init: 10}   # k por silueta; agrega cluster (one-hot) y distancias a los centroides
+    salidas:
+      cribado: reports/resultados/experimentos_tarea2_cribado.csv
+      confirmacion: reports/resultados/experimentos_tarea2_confirmacion.csv
+      resumen_confirmacion: reports/resultados/experimentos_tarea2_confirmacion_resumen.csv
+      clusters: reports/resultados/clusters_tarea2.csv
+      informe: reports/resultados_tarea2.md
+      figura_metodologias: reports/figuras/tarea2_metodologias.png
+      figura_clusters: reports/figuras/clusters.png
+
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021

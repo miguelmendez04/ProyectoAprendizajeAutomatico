@@ -7,6 +7,7 @@ openpyxl
 matplotlib
 scipy
 scikit-learn
+joblib
 xgboost
 nbformat
 nbconvert

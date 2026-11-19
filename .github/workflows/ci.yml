@@ -44,7 +44,13 @@ jobs:
         run: ruff format --check src tests tools notebooks/construir
 
       - name: Pruebas (sin integración)
-        run: python -m pytest -q -m "not integration"
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q -m "not integration" -rfE --tb=short -p no:cacheprovider 2>&1 | tee pytest.log
+          codigo=${PIPESTATUS[0]}
+          if [ "$codigo" -ne 0 ]; then python tools/anotar_pytest.py pytest.log; fi
+          exit "$codigo"
 
       - name: Checksums de los datos
         run: desercion verificar

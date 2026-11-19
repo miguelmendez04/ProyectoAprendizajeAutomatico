@@ -1,4 +1,5 @@
 """Reglas de calidad del dataset integrado (pandera)."""
+
 import pandera.pandas as pa
 
 # Llave que identifica una fila según la unidad de análisis
@@ -25,7 +26,9 @@ def construir_esquema(
     def nulos_dentro_del_tope(df) -> bool:
         proporcion = df.isna().mean()
         # La historia de la tasa es nula por construcción en el primer año de cada entidad (no es un defecto de calidad)
-        proporcion = proporcion.drop(["tasa_t1", "tasa_t2", "tasa_media_previa", "tasa_media_rezagada"], errors="ignore")
+        proporcion = proporcion.drop(
+            ["tasa_t1", "tasa_t2", "tasa_media_previa", "tasa_media_rezagada"], errors="ignore"
+        )
         if not objetivo_obligatorio:
             proporcion = proporcion.drop("tasa_desercion", errors="ignore")
         return bool((proporcion <= max_nulos_pct).all())
@@ -46,19 +49,25 @@ def construir_esquema(
             "cod_divipola_mpio": pa.Column(
                 checks=pa.Check.str_matches(r"^\d{5}$"), required=False, nullable=False
             ),  # código DANE de 5 dígitos con ceros a la izquierda
-            r"^punt_global_(media|mediana)_t\d+$": col(checks=pa.Check.in_range(0, PUNTAJE_MAX_SABER11)),
+            r"^punt_global_(media|mediana)_t\d+$": col(
+                checks=pa.Check.in_range(0, PUNTAJE_MAX_SABER11)
+            ),
             r"^pct_.*": col(checks=pa.Check.in_range(0, 1)),
             r"^tasa_(t1|t2|media_previa|media_rezagada)$": col(checks=pa.Check.in_range(0, 1)),
             r"^n_anios_(previos|rezagados)$": col(checks=pa.Check.ge(0)),
             r"^nbi_pct$": col(checks=pa.Check.in_range(0, 100)),
             r"^(n_estudiantes|n_ies|matriculados|mpio_|poblacion).*": col(checks=pa.Check.ge(0)),
-            r"^td_(poblacion_total|pct_|nbi_pct|miseria_pct|ipm_censo|cob_|desercion_|repitencia_|transito_).*": col(checks=pa.Check.ge(0)),
+            r"^td_(poblacion_total|pct_|nbi_pct|miseria_pct|ipm_censo|cob_|desercion_|repitencia_|transito_).*": col(
+                checks=pa.Check.ge(0)
+            ),
         },
         checks=[
-            pa.Check(nulos_dentro_del_tope, error=f"alguna columna supera {max_nulos_pct:.0%} de nulos"),
+            pa.Check(
+                nulos_dentro_del_tope, error=f"alguna columna supera {max_nulos_pct:.0%} de nulos"
+            ),
             pa.Check(matriculados_mayor_que_desertores, error="matriculados < desertores"),
         ],
-        unique=LLAVES[unidad] + (['semestre'] if semestral else []),
+        unique=LLAVES[unidad] + (["semestre"] if semestral else []),
         report_duplicates="all",
         strict=False,
         coerce=False,
@@ -68,4 +77,6 @@ def construir_esquema(
 def validar(df, unidad: str, max_nulos_pct: float, objetivo_obligatorio: bool = True):
     """Valida `df`; lanza `pandera.errors.SchemaErrors` con todas las violaciones (lazy)."""
     semestral = "semestre" in df.columns
-    return construir_esquema(unidad, max_nulos_pct, objetivo_obligatorio, semestral).validate(df, lazy=True)
+    return construir_esquema(unidad, max_nulos_pct, objetivo_obligatorio, semestral).validate(
+        df, lazy=True
+    )

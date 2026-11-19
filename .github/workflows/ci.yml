@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # todas las dependencias fijadas en pyproject.toml admiten 3.12 y 3.14
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalación
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Lint (ruff check)
+        run: ruff check src tests tools notebooks/construir
+
+      - name: Formato (ruff format --check)
+        run: ruff format --check src tests tools notebooks/construir
+
+      - name: Pruebas (sin integración)
+        run: python -m pytest -q -m "not integration"
+
+      - name: Checksums de los datos
+        run: desercion verificar

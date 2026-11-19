@@ -9,6 +9,7 @@ Tasa de deserción (definición de SPADIES): desertores del periodo t / matricul
 con t-2 = dos semestres antes (mismo semestre del año anterior). La anual es la razón de las sumas de
 los dos semestres, es decir, el promedio de las tasas semestrales ponderado por su denominador.
 """
+
 from pathlib import Path
 
 import pandas as pd
@@ -54,7 +55,9 @@ def leer_nacional(path: Path) -> pd.DataFrame:
     crudo = pd.read_csv(path, sep=";", dtype=str, encoding="utf-8-sig")
     if "TIPO" not in crudo.columns:
         raise KeyError(f"SPADIES ({path.name}): falta la columna TIPO")
-    return _serie_a_largo(crudo.set_index(crudo["TIPO"].str.strip().str.upper()).drop(columns="TIPO"), path.name)
+    return _serie_a_largo(
+        crudo.set_index(crudo["TIPO"].str.strip().str.upper()).drop(columns="TIPO"), path.name
+    )
 
 
 def leer_diferenciado(path: Path) -> pd.DataFrame:
@@ -82,7 +85,9 @@ def tasas_semestrales(largo: pd.DataFrame) -> pd.DataFrame:
     partes = out["periodo"].str.extract(_PATRON_PERIODO)
     out["anio"], out["semestre"] = partes[0].astype(int), partes[1].astype(int)
     out["_idx"] = out["anio"] * 2 + out["semestre"] - 1
-    denominador = out[["ies", "_idx", "matriculados"]].assign(_idx=lambda d: d["_idx"] + REZAGO_PERIODOS)
+    denominador = out[["ies", "_idx", "matriculados"]].assign(
+        _idx=lambda d: d["_idx"] + REZAGO_PERIODOS
+    )
     denominador = denominador.rename(columns={"matriculados": "matriculados_t2"})
     out = out.merge(denominador, on=["ies", "_idx"], how="left")
     out["matriculados_t2"] = out["matriculados_t2"].where(out["matriculados_t2"] > 0)
@@ -93,7 +98,11 @@ def tasas_semestrales(largo: pd.DataFrame) -> pd.DataFrame:
 def _anual_completo(semestrales: pd.DataFrame) -> pd.DataFrame:
     """Tasa anual con su denominador medio y, si las filas traen la bandera, `posible_cierre` (cualquier semestre)."""
     validas = semestrales.dropna(subset=["tasa_desercion"])
-    agregados = dict(desertores=("desertores", "sum"), denominador=("matriculados_t2", "sum"), n=("semestre", "nunique"))
+    agregados = dict(
+        desertores=("desertores", "sum"),
+        denominador=("matriculados_t2", "sum"),
+        n=("semestre", "nunique"),
+    )
     if "posible_cierre" in validas.columns:
         agregados["posible_cierre"] = ("posible_cierre", "any")
     g = validas.groupby(["ies", "anio"], as_index=False).agg(**agregados)
@@ -113,7 +122,9 @@ def tasa_anual(semestrales: pd.DataFrame, min_denominador: float = 0) -> pd.Data
     """
     g = _anual_completo(semestrales)
     g = g[g["matriculados_t2_spadies"] >= min_denominador]
-    columnas = ["cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies"] + (["posible_cierre"] if "posible_cierre" in g.columns else [])
+    columnas = ["cod_ies", "anio", "tasa_desercion", "matriculados_t2_spadies"] + (
+        ["posible_cierre"] if "posible_cierre" in g.columns else []
+    )
     return g[columnas].reset_index(drop=True)
 
 
@@ -146,7 +157,9 @@ def ultimo_reporte(largo: pd.DataFrame) -> tuple[pd.Series, int]:
     return ultimo, int(idx.max())
 
 
-def marcar_posible_cierre(semestrales: pd.DataFrame, ultimo: pd.Series, global_ultimo: int) -> pd.DataFrame:
+def marcar_posible_cierre(
+    semestrales: pd.DataFrame, ultimo: pd.Series, global_ultimo: int
+) -> pd.DataFrame:
     """Agrega `posible_cierre`: el semestre cae entre los `VENTANA_CIERRE` previos al último reporte de la IES o es ese reporte.
 
     Solo cuenta si la IES dejó de reportar antes del final del archivo: una IES que sigue activa no se marca.
@@ -154,12 +167,21 @@ def marcar_posible_cierre(semestrales: pd.DataFrame, ultimo: pd.Series, global_u
     out = semestrales.copy()
     idx = _indice(out["anio"], out["semestre"])
     fin = out["ies"].map(ultimo)
-    out["posible_cierre"] = ((fin < global_ultimo) & (idx >= fin - VENTANA_CIERRE) & (idx <= fin)).fillna(False).astype(bool)
+    out["posible_cierre"] = (
+        ((fin < global_ultimo) & (idx >= fin - VENTANA_CIERRE) & (idx <= fin))
+        .fillna(False)
+        .astype(bool)
+    )
     return out
 
 
-def tabla_tasas_altas(semestrales: pd.DataFrame, largo: pd.DataFrame, umbral: float = 0.5,
-                      min_matriculados_t2: float = 0, periodicidad: str = "anual") -> pd.DataFrame:
+def tabla_tasas_altas(
+    semestrales: pd.DataFrame,
+    largo: pd.DataFrame,
+    umbral: float = 0.5,
+    min_matriculados_t2: float = 0,
+    periodicidad: str = "anual",
+) -> pd.DataFrame:
     """Filas con tasa mayor que `umbral` (tras el denominador mínimo), con su último reporte y la bandera de cierre."""
     ultimo, global_ultimo = ultimo_reporte(largo)
     marcadas = marcar_posible_cierre(semestrales, ultimo, global_ultimo)
@@ -167,11 +189,21 @@ def tabla_tasas_altas(semestrales: pd.DataFrame, largo: pd.DataFrame, umbral: fl
         tabla = _anual_completo(marcadas)
         llave = ["cod_ies", "anio"]
     else:
-        tabla = marcadas.dropna(subset=["tasa_desercion"]).rename(columns={"ies": "cod_ies", "matriculados_t2": "matriculados_t2_spadies"})
+        tabla = marcadas.dropna(subset=["tasa_desercion"]).rename(
+            columns={"ies": "cod_ies", "matriculados_t2": "matriculados_t2_spadies"}
+        )
         llave = ["cod_ies", "anio", "semestre"]
-    tabla = tabla[(tabla["tasa_desercion"] > umbral) & (tabla["matriculados_t2_spadies"] >= min_matriculados_t2)].copy()
+    tabla = tabla[
+        (tabla["tasa_desercion"] > umbral)
+        & (tabla["matriculados_t2_spadies"] >= min_matriculados_t2)
+    ].copy()
     tabla["ultimo_periodo"] = tabla["cod_ies"].map(ultimo).map(_periodo_texto)
-    columnas = llave + ["tasa_desercion", "matriculados_t2_spadies", "ultimo_periodo", "posible_cierre"]
+    columnas = llave + [
+        "tasa_desercion",
+        "matriculados_t2_spadies",
+        "ultimo_periodo",
+        "posible_cierre",
+    ]
     return tabla[columnas].sort_values(llave).reset_index(drop=True)
 
 
@@ -228,10 +260,17 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
     cfg_s = cfg["spadies"]
     periodicidad = cfg_s.get("periodicidad", "anual")
     if periodicidad not in PERIODICIDADES:
-        raise ValueError(f"spadies.periodicidad inválida: {periodicidad!r}; debe ser una de {sorted(PERIODICIDADES)}")
+        raise ValueError(
+            f"spadies.periodicidad inválida: {periodicidad!r}; debe ser una de {sorted(PERIODICIDADES)}"
+        )
     archivo = Path(cfg_s["archivo"])
     largo = leer_diferenciado(archivo)
-    write_metadata(archivo, fuente="SPADIES (export manual, IES: Diferenciado)", url=str(archivo), filas=len(largo))
+    write_metadata(
+        archivo,
+        fuente="SPADIES (export manual, IES: Diferenciado)",
+        url=str(archivo),
+        filas=len(largo),
+    )
     notas.append(
         f"SPADIES: {largo['ies'].nunique()} IES leídas de {archivo.name} "
         f"(periodos {largo['periodo'].min()} a {largo['periodo'].max()})"
@@ -240,12 +279,16 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
     if nacional.exists():
         notas.extend(validar_contra_nacional(largo, leer_nacional(nacional)))
     else:
-        notas.append(f"SPADIES: no existe {nacional}; no se validó la suma de IES contra el total nacional")
+        notas.append(
+            f"SPADIES: no existe {nacional}; no se validó la suma de IES contra el total nacional"
+        )
 
     semestrales = tasas_semestrales(largo)
     excesivas = int((semestrales["tasa_desercion"] > 1).sum())
     if excesivas:
-        notas.append(f"SPADIES: {excesivas} tasa(s) semestral(es) mayor que 1 (desertores > matrícula t-2); se descartan")
+        notas.append(
+            f"SPADIES: {excesivas} tasa(s) semestral(es) mayor que 1 (desertores > matrícula t-2); se descartan"
+        )
         semestrales.loc[semestrales["tasa_desercion"] > 1, "tasa_desercion"] = float("nan")
 
     anios = cfg.get("anios")
@@ -255,7 +298,9 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
         n_sin = sum(len(v) for v in motivos.values())
         if n_sin:
             detalle = "; ".join(f"{m} ({len(c)}: {', '.join(c)})" for m, c in motivos.items())
-            notas.append(f"SPADIES: {n_sin} de {total} IES de SPADIES no tienen tasa anual en {min(anios)}–{max(anios)}: {detalle}")
+            notas.append(
+                f"SPADIES: {n_sin} de {total} IES de SPADIES no tienen tasa anual en {min(anios)}–{max(anios)}: {detalle}"
+            )
 
     minimo = cfg.get("min_matriculados_t2", 100)
     ultimo, global_ultimo = ultimo_reporte(largo)
@@ -268,8 +313,19 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
             fil = tasa_anual(semestrales, minimo_t2)
         else:
             fil = semestrales.dropna(subset=["tasa_desercion"])
-            fil = fil[fil["matriculados_t2"] >= minimo_t2].rename(columns={"ies": "cod_ies", "matriculados_t2": "matriculados_t2_spadies"})
-            fil = fil[["cod_ies", "anio", "semestre", "tasa_desercion", "matriculados_t2_spadies", "posible_cierre"]]
+            fil = fil[fil["matriculados_t2"] >= minimo_t2].rename(
+                columns={"ies": "cod_ies", "matriculados_t2": "matriculados_t2_spadies"}
+            )
+            fil = fil[
+                [
+                    "cod_ies",
+                    "anio",
+                    "semestre",
+                    "tasa_desercion",
+                    "matriculados_t2_spadies",
+                    "posible_cierre",
+                ]
+            ]
         if quitar_cierre and excluir_cierre:
             fil = fil[~fil["posible_cierre"]]
         return fil.reset_index(drop=True)
@@ -280,22 +336,36 @@ def leer_spadies(cfg: dict, notas: list[str]) -> pd.DataFrame:
     # los efectos se cuentan en orden: primero el denominador mínimo y después los posibles cierres
     out = filas(minimo)
     if minimo > 0:
-        antes, despues = en_ventana(filas(0, quitar_cierre=False)), en_ventana(filas(minimo, quitar_cierre=False))
+        antes, despues = (
+            en_ventana(filas(0, quitar_cierre=False)),
+            en_ventana(filas(minimo, quitar_cierre=False)),
+        )
         quitadas = len(antes) - len(despues)
         sin_filas = sorted(set(antes["cod_ies"]) - set(despues["cod_ies"]))
         notas.append(
             f"SPADIES: min_matriculados_t2={minimo} excluye {quitadas} IES-año ({quitadas / max(len(antes), 1):.1%} de {len(antes)}) "
             f"con denominador menor; {len(sin_filas)} IES quedan sin ninguna fila"
-            + (f" ({', '.join(sin_filas[:15])}{', …' if len(sin_filas) > 15 else ''})" if sin_filas else "")
+            + (
+                f" ({', '.join(sin_filas[:15])}{', …' if len(sin_filas) > 15 else ''})"
+                if sin_filas
+                else ""
+            )
         )
     marcadas = en_ventana(filas(minimo, quitar_cierre=False))
     marcadas = marcadas[marcadas["posible_cierre"]]
     accion = "excluye" if excluir_cierre else "marca (no excluye)"
-    sin_cierre = sorted(set(en_ventana(filas(minimo, quitar_cierre=False))["cod_ies"]) - set(en_ventana(out)["cod_ies"]))
+    sin_cierre = sorted(
+        set(en_ventana(filas(minimo, quitar_cierre=False))["cod_ies"])
+        - set(en_ventana(out)["cod_ies"])
+    )
     notas.append(
         f"SPADIES: posible cierre ({VENTANA_CIERRE} semestres previos al último reporte de una IES que dejó de reportar): "
         f"{accion} {len(marcadas)} fila(s) de {marcadas['cod_ies'].nunique()} IES"
         + (f" ({', '.join(sorted(marcadas['cod_ies'].unique())[:15])})" if len(marcadas) else "")
-        + (f"; {len(sin_cierre)} IES quedan sin ninguna fila ({', '.join(sin_cierre[:15])})" if sin_cierre else "")
+        + (
+            f"; {len(sin_cierre)} IES quedan sin ninguna fila ({', '.join(sin_cierre[:15])})"
+            if sin_cierre
+            else ""
+        )
     )
     return out

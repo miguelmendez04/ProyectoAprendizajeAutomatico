@@ -8,6 +8,7 @@ Dos esquemas de validación, ambos pensados para no inflar el desempeño:
 
 Limitación: el dataset no trae variables de mercado laboral (ninguna serie municipal de TerriData cubre 2015–2021).
 """
+
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -24,13 +25,20 @@ _TEXTO = ["cod_ies", "cod_divipola_mpio", *COLUMNAS_CATEGORICAS]
 # id_sector de SNIES; coincide con el sector (Oficial / Privado) del catálogo oficial de IES
 ETIQUETAS_SECTOR = {"1": "oficial", "2": "privada"}
 # id_caracter de SNIES, verificado contra el carácter académico del catálogo oficial de IES (ver la bitácora)
-ETIQUETAS_CARACTER = {"1": "técnica profesional", "2": "tecnológica", "3": "institución universitaria", "4": "universidad"}
+ETIQUETAS_CARACTER = {
+    "1": "técnica profesional",
+    "2": "tecnológica",
+    "3": "institución universitaria",
+    "4": "universidad",
+}
 # Indicadores de nulo por bloque de años (Saber 11, MDM y SNIES), que construye el ETL
 INDICADORES_FALTA = ["falta_saber11", "falta_mdm", "falta_snies"]
 VENTANA_POR_DEFECTO = (2015, 2021)
 
 
-def cargar_dataset(cfg: dict, excluir_sena: bool | None = None, ventana_modelado: tuple[int, int] | None = None) -> pd.DataFrame:
+def cargar_dataset(
+    cfg: dict, excluir_sena: bool | None = None, ventana_modelado: tuple[int, int] | None = None
+) -> pd.DataFrame:
     """Lee `data/processed/dataset_<unidad>.csv` con los códigos y las categorías como texto.
 
     - Sensibilidad del SENA: con `excluir_sena=True` (o `config.yaml: modelado.excluir_sena: true` si no se pasa el
@@ -50,13 +58,22 @@ def cargar_dataset(cfg: dict, excluir_sena: bool | None = None, ventana_modelado
         excluir_sena = bool(modelado.get("excluir_sena", False))
     if excluir_sena and "es_sena" in df.columns:
         df = df[~df["es_sena"]]
-    ventana = tuple(ventana_modelado if ventana_modelado is not None else modelado.get("ventana_modelado", VENTANA_POR_DEFECTO))
+    ventana = tuple(
+        ventana_modelado
+        if ventana_modelado is not None
+        else modelado.get("ventana_modelado", VENTANA_POR_DEFECTO)
+    )
     if len(ventana) != 2 or ventana[0] > ventana[1]:
-        raise ValueError(f"ventana_modelado inválida: {ventana}; debe ser (año_inicial, año_final) con inicial <= final")
+        raise ValueError(
+            f"ventana_modelado inválida: {ventana}; debe ser (año_inicial, año_final) con inicial <= final"
+        )
     df = df[df["anio"].between(*ventana)].reset_index(drop=True)
     umbral = modelado.get("umbral_denominador")
     if umbral is not None or modelado.get("indicador_panel_incompleto", False):
-        from desercion_ies.analysis.mitigacion import agregar_panel_incompleto, filtrar_denominador_minimo  # evita el import circular
+        from desercion_ies.analysis.mitigacion import (
+            agregar_panel_incompleto,
+            filtrar_denominador_minimo,
+        )  # evita el import circular
 
         if umbral is not None:
             df = filtrar_denominador_minimo(df, umbral, cfg.get("min_matriculados_t2", 100))
@@ -83,21 +100,43 @@ NUNCA_EXPLICATIVAS = ("n_anios_ies",)
 # (`src/desercion_ies/evaluation/formulaciones.py`).
 COLUMNAS_HISTORIA = ("tasa_t1", "tasa_t2", "tasa_media_previa", "n_anios_previos", "falta_historia")
 # Variante rezagada (sin t-1): la usa la sensibilidad «historia rezagada»; también es de opt-in
-COLUMNAS_HISTORIA_REZAGADA = ("tasa_t2", "tasa_media_rezagada", "n_anios_rezagados", "falta_historia_rezagada")
-EXCLUIDAS_POR_DEFECTO = ["td_poblacion_total_t1", "ratio_spadies_snies", "matriculados_ies_t2", "log_matriculados_ies_t2"]
+COLUMNAS_HISTORIA_REZAGADA = (
+    "tasa_t2",
+    "tasa_media_rezagada",
+    "n_anios_rezagados",
+    "falta_historia_rezagada",
+)
+EXCLUIDAS_POR_DEFECTO = [
+    "td_poblacion_total_t1",
+    "ratio_spadies_snies",
+    "matriculados_ies_t2",
+    "log_matriculados_ies_t2",
+]
 
 
-def columnas_explicativas(df: pd.DataFrame, objetivo: str = "tasa_desercion", excluir: list[str] | None = None) -> list[str]:
+def columnas_explicativas(
+    df: pd.DataFrame, objetivo: str = "tasa_desercion", excluir: list[str] | None = None
+) -> list[str]:
     """Variables numéricas que pueden entrar como explicativas (sin llaves, año, objetivo ni `excluir`).
 
     `excluir=None` aplica `EXCLUIDAS_POR_DEFECTO`; con `[]` no se excluye nada más. Las banderas (booleanas) nunca entran.
     """
-    fuera = {objetivo, "anio", "semestre", *NUNCA_EXPLICATIVAS, *COLUMNAS_HISTORIA, *COLUMNAS_HISTORIA_REZAGADA, *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir)}
+    fuera = {
+        objetivo,
+        "anio",
+        "semestre",
+        *NUNCA_EXPLICATIVAS,
+        *COLUMNAS_HISTORIA,
+        *COLUMNAS_HISTORIA_REZAGADA,
+        *(EXCLUIDAS_POR_DEFECTO if excluir is None else excluir),
+    }
     numericas = df.select_dtypes("number").columns
     return [c for c in numericas if c not in fuera and not c.startswith("cod_")]
 
 
-def columnas_explicativas_desde_config(df: pd.DataFrame, cfg: dict, objetivo: str = "tasa_desercion") -> list[str]:
+def columnas_explicativas_desde_config(
+    df: pd.DataFrame, cfg: dict, objetivo: str = "tasa_desercion"
+) -> list[str]:
     """Como `columnas_explicativas`, con la lista `config.yaml: modelado.excluir_variables` (o la de por defecto)."""
     return columnas_explicativas(df, objetivo, cfg.get("modelado", {}).get("excluir_variables"))
 
@@ -117,7 +156,10 @@ def etiquetar_categoricas(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def variables_modelado(
-    df: pd.DataFrame, objetivo: str = "tasa_desercion", excluir: list[str] | None = None, incluir_indicadores_falta: bool = True,
+    df: pd.DataFrame,
+    objetivo: str = "tasa_desercion",
+    excluir: list[str] | None = None,
+    incluir_indicadores_falta: bool = True,
     incluir_panel_incompleto: bool = False,
 ) -> tuple[list[str], list[str]]:
     """(numéricas, categóricas) por separado, para un ColumnTransformer (ver `construir_preprocesador`).
@@ -134,11 +176,18 @@ def variables_modelado(
     return numericas, columnas_categoricas(df)
 
 
-def variables_modelado_desde_config(df: pd.DataFrame, cfg: dict, objetivo: str = "tasa_desercion") -> tuple[list[str], list[str]]:
+def variables_modelado_desde_config(
+    df: pd.DataFrame, cfg: dict, objetivo: str = "tasa_desercion"
+) -> tuple[list[str], list[str]]:
     """Como `variables_modelado`, con `modelado.excluir_variables` e `incluir_indicadores_falta` de `config.yaml`."""
     m = cfg.get("modelado", {})
-    return variables_modelado(df, objetivo, m.get("excluir_variables"), m.get("incluir_indicadores_falta", True),
-                              m.get("indicador_panel_incompleto", False))
+    return variables_modelado(
+        df,
+        objetivo,
+        m.get("excluir_variables"),
+        m.get("incluir_indicadores_falta", True),
+        m.get("indicador_panel_incompleto", False),
+    )
 
 
 def preparar_x(df: pd.DataFrame, numericas: list[str], categoricas: list[str]) -> pd.DataFrame:
@@ -165,15 +214,31 @@ def construir_preprocesador(
     """
     if imputacion not in IMPUTACIONES:
         raise ValueError(f"imputacion inválida: {imputacion!r}; debe ser una de {IMPUTACIONES}")
-    imputador = SimpleImputer(strategy="median") if imputacion == "mediana" else KNNImputer(n_neighbors=k_vecinos)
-    return ColumnTransformer([
-        ("num", Pipeline([("imputar", imputador), ("escalar", StandardScaler())]), numericas),
-        ("cat", Pipeline([("imputar", SimpleImputer(strategy="most_frequent")),
-                          ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categoricas),
-    ])
+    imputador = (
+        SimpleImputer(strategy="median")
+        if imputacion == "mediana"
+        else KNNImputer(n_neighbors=k_vecinos)
+    )
+    return ColumnTransformer(
+        [
+            ("num", Pipeline([("imputar", imputador), ("escalar", StandardScaler())]), numericas),
+            (
+                "cat",
+                Pipeline(
+                    [
+                        ("imputar", SimpleImputer(strategy="most_frequent")),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+                    ]
+                ),
+                categoricas,
+            ),
+        ]
+    )
 
 
-def particion_group_kfold(df: pd.DataFrame, n_splits: int = 5, grupo: str = "cod_ies") -> Iterator[tuple[np.ndarray, np.ndarray]]:
+def particion_group_kfold(
+    df: pd.DataFrame, n_splits: int = 5, grupo: str = "cod_ies"
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """Genera (índices de entrenamiento, índices de prueba) posicionales con GroupKFold por `grupo`."""
     n_grupos = df[grupo].nunique()
     if n_splits > n_grupos:
@@ -181,7 +246,9 @@ def particion_group_kfold(df: pd.DataFrame, n_splits: int = 5, grupo: str = "cod
     yield from GroupKFold(n_splits=n_splits).split(df, groups=df[grupo])
 
 
-def particion_temporal(df: pd.DataFrame, ultimo_anio_entrenamiento: int = 2019) -> tuple[np.ndarray, np.ndarray]:
+def particion_temporal(
+    df: pd.DataFrame, ultimo_anio_entrenamiento: int = 2019
+) -> tuple[np.ndarray, np.ndarray]:
     """(entrenamiento, prueba): años <= `ultimo_anio_entrenamiento` frente a los posteriores (índices posicionales)."""
     entrena = np.flatnonzero((df["anio"] <= ultimo_anio_entrenamiento).to_numpy())
     prueba = np.flatnonzero((df["anio"] > ultimo_anio_entrenamiento).to_numpy())
@@ -195,15 +262,20 @@ def particion_temporal(df: pd.DataFrame, ultimo_anio_entrenamiento: int = 2019) 
 
 def _etiqueta_estrato(df: pd.DataFrame, estratos: list[str], grupo: str, minimo: int) -> pd.Series:
     """Etiqueta de estrato por IES (combinación de `estratos`); los estratos con menos de `minimo` IES pasan a 'otros'."""
-    por_ies = df.drop_duplicates(grupo).set_index(grupo)[list(estratos)].astype(str).agg("|".join, axis=1)
+    por_ies = (
+        df.drop_duplicates(grupo).set_index(grupo)[list(estratos)].astype(str).agg("|".join, axis=1)
+    )
     escasos = por_ies.value_counts()[lambda s: s < minimo].index
     por_ies = por_ies.where(~por_ies.isin(escasos), "otros")
     return df[grupo].map(por_ies)
 
 
 def particion_group_kfold_estratificado(
-    df: pd.DataFrame, n_splits: int = 5, estratos: list[str] | tuple[str, ...] = ("sector", "caracter"),
-    grupo: str = "cod_ies", semilla: int = 0,
+    df: pd.DataFrame,
+    n_splits: int = 5,
+    estratos: list[str] | tuple[str, ...] = ("sector", "caracter"),
+    grupo: str = "cod_ies",
+    semilla: int = 0,
 ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """GroupKFold por IES con los pliegues estratificados por `estratos` (sector y carácter por defecto).
 
@@ -215,21 +287,29 @@ def particion_group_kfold_estratificado(
     if n_splits > n_grupos:
         raise ValueError(f"n_splits={n_splits} supera el número de IES distintas ({n_grupos})")
     etiquetas = _etiqueta_estrato(df, list(estratos), grupo, n_splits)
-    yield from StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=semilla).split(df, etiquetas, groups=df[grupo])
+    yield from StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=semilla).split(
+        df, etiquetas, groups=df[grupo]
+    )
 
 
-def particion_por_departamento(df: pd.DataFrame, n_splits: int = 5) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+def particion_por_departamento(
+    df: pd.DataFrame, n_splits: int = 5
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """GroupKFold por departamento sede: un departamento nunca está a la vez en entrenamiento y prueba.
 
     Mide la generalización a territorios no vistos. Bogotá pesa mucho y un solo pliegue queda desbalanceado.
     """
     dep = df.assign(cod_depto=df["cod_divipola_mpio"].astype("string").str[:2])
     if dep["cod_depto"].isna().any():
-        raise ValueError("hay IES sin municipio sede (cod_divipola_mpio nulo): no se pueden agrupar por departamento")
+        raise ValueError(
+            "hay IES sin municipio sede (cod_divipola_mpio nulo): no se pueden agrupar por departamento"
+        )
     yield from particion_group_kfold(dep, n_splits=n_splits, grupo="cod_depto")
 
 
-def particion_dejando_fuera(df: pd.DataFrame, prefijos: list[str] | tuple[str, ...] = ("11",)) -> tuple[np.ndarray, np.ndarray]:
+def particion_dejando_fuera(
+    df: pd.DataFrame, prefijos: list[str] | tuple[str, ...] = ("11",)
+) -> tuple[np.ndarray, np.ndarray]:
     """(entrenamiento, prueba): la prueba son las filas cuyo municipio sede empieza por alguno de `prefijos`.
 
     `("11",)` deja fuera a Bogotá; `("11001", "05001", "76001")`, a las tres ciudades principales. Entrena con el resto del
@@ -238,7 +318,9 @@ def particion_dejando_fuera(df: pd.DataFrame, prefijos: list[str] | tuple[str, .
     municipio = df["cod_divipola_mpio"].astype("string")
     es_prueba = municipio.str.startswith(tuple(prefijos)).fillna(False).to_numpy(dtype=bool)
     if not es_prueba.any() or es_prueba.all():
-        raise ValueError(f"los prefijos {tuple(prefijos)} dejan vacío el conjunto de {'prueba' if not es_prueba.any() else 'entrenamiento'}")
+        raise ValueError(
+            f"los prefijos {tuple(prefijos)} dejan vacío el conjunto de {'prueba' if not es_prueba.any() else 'entrenamiento'}"
+        )
     return np.flatnonzero(~es_prueba), np.flatnonzero(es_prueba)
 
 
@@ -252,7 +334,9 @@ def kfold_desde_config(df: pd.DataFrame, cfg: dict) -> Iterator[tuple[np.ndarray
     agrupar = p.get("agrupar_por", "ies")
     estratos = p.get("estratificar_por") or []
     if agrupar not in ("ies", "departamento"):
-        raise ValueError(f"particion.agrupar_por inválido: {agrupar!r}; debe ser 'ies' o 'departamento'")
+        raise ValueError(
+            f"particion.agrupar_por inválido: {agrupar!r}; debe ser 'ies' o 'departamento'"
+        )
     if agrupar == "departamento":
         if estratos:
             raise ValueError("particion.estratificar_por solo aplica con agrupar_por: ies")
@@ -265,4 +349,6 @@ def kfold_desde_config(df: pd.DataFrame, cfg: dict) -> Iterator[tuple[np.ndarray
 def particiones_desde_config(df: pd.DataFrame, cfg: dict):
     """(generador de pliegues, partición temporal) con los parámetros de `config.yaml: particion`."""
     p = cfg.get("particion", {})
-    return kfold_desde_config(df, cfg), particion_temporal(df, p.get("ultimo_anio_entrenamiento", 2019))
+    return kfold_desde_config(df, cfg), particion_temporal(
+        df, p.get("ultimo_anio_entrenamiento", 2019)
+    )

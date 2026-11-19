@@ -1,4 +1,5 @@
 """Pruebas de la homologación DIVIPOLA."""
+
 import pandas as pd
 import pytest
 
@@ -11,13 +12,21 @@ from desercion_ies.etl.homologation.divipola import (
 
 @pytest.mark.parametrize(
     "entrada, esperado",
-    [(5001, "05001"), (5001.0, "05001"), ("5001", "05001"), ("11001", "11001"), (" 5001 ", "05001")],
+    [
+        (5001, "05001"),
+        (5001.0, "05001"),
+        ("5001", "05001"),
+        ("11001", "11001"),
+        (" 5001 ", "05001"),
+    ],
 )
 def test_normalizar_codigo_agrega_ceros(entrada, esperado):
     assert normalizar_codigo(entrada) == esperado
 
 
-@pytest.mark.parametrize("entrada", [0, "0", 99999, "99999", "SIN INFORMACION", "", None, float("nan")])
+@pytest.mark.parametrize(
+    "entrada", [0, "0", 99999, "99999", "SIN INFORMACION", "", None, float("nan")]
+)
 def test_normalizar_codigo_especiales_son_nulos(entrada):
     assert normalizar_codigo(entrada) is None
 

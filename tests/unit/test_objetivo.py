@@ -1,9 +1,14 @@
 """Transformación opcional del objetivo (logit) para el modelado."""
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from desercion_ies.features.objetivo import invertir_objetivo, objetivo_para_modelado, transformar_objetivo
+from desercion_ies.features.objetivo import (
+    invertir_objetivo,
+    objetivo_para_modelado,
+    transformar_objetivo,
+)
 
 
 def test_ninguna_deja_el_objetivo_igual():
@@ -25,7 +30,9 @@ def test_logit_recorta_los_extremos_con_epsilon():
 
 def test_inversion_recupera_la_tasa():
     y = pd.Series([0.05, 0.1, 0.4, 0.9])
-    assert invertir_objetivo(transformar_objetivo(y, "logit"), "logit").tolist() == pytest.approx(y.tolist())
+    assert invertir_objetivo(transformar_objetivo(y, "logit"), "logit").tolist() == pytest.approx(
+        y.tolist()
+    )
     assert invertir_objetivo(y, "ninguna").tolist() == y.tolist()
 
 
@@ -38,4 +45,7 @@ def test_objetivo_para_modelado_lee_la_configuracion():
     df = pd.DataFrame({"tasa_desercion": [0.2, 0.5]})
     cfg = {"modelado": {"transformacion_objetivo": "logit", "epsilon_logit": 0.001}}
     assert objetivo_para_modelado(df, cfg).iloc[1] == pytest.approx(0.0)
-    assert objetivo_para_modelado(df, {}).tolist() == [0.2, 0.5]  # sin configuración: sin transformar
+    assert objetivo_para_modelado(df, {}).tolist() == [
+        0.2,
+        0.5,
+    ]  # sin configuración: sin transformar

@@ -7,6 +7,7 @@
 
 Las particiones alternativas (estratificada, por departamento, dejando fuera a Bogotá) están en `particion.py`.
 """
+
 import numpy as np
 import pandas as pd
 
@@ -17,7 +18,11 @@ ESQUEMAS_PESOS = ("ninguno", "matriculados", "raiz_matriculados", "inverso_grupo
 GRUPOS_POR_DEFECTO = ("sector", "caracter")
 
 
-def pesos_muestrales(df: pd.DataFrame, esquema: str = "ninguno", grupos: list[str] | tuple[str, ...] = GRUPOS_POR_DEFECTO) -> np.ndarray:
+def pesos_muestrales(
+    df: pd.DataFrame,
+    esquema: str = "ninguno",
+    grupos: list[str] | tuple[str, ...] = GRUPOS_POR_DEFECTO,
+) -> np.ndarray:
     """Pesos por fila con media 1 (así la escala de la pérdida no cambia).
 
     - `ninguno`: todos 1.
@@ -30,14 +35,18 @@ def pesos_muestrales(df: pd.DataFrame, esquema: str = "ninguno", grupos: list[st
       sesgo de supervivencia (las IES con panel completo aportan más filas).
     """
     if esquema not in ESQUEMAS_PESOS:
-        raise ValueError(f"esquema de pesos inválido: {esquema!r}; debe ser uno de {list(ESQUEMAS_PESOS)}")
+        raise ValueError(
+            f"esquema de pesos inválido: {esquema!r}; debe ser uno de {list(ESQUEMAS_PESOS)}"
+        )
     n = len(df)
     if esquema == "ninguno":
         w = np.ones(n)
     elif esquema in ("matriculados", "raiz_matriculados"):
         base = denominador(df).to_numpy(dtype=float)
         if np.isnan(base).any():
-            raise ValueError("hay filas sin denominador (log_matriculados_spadies_t2 nulo): no se pueden ponderar por tamaño")
+            raise ValueError(
+                "hay filas sin denominador (log_matriculados_spadies_t2 nulo): no se pueden ponderar por tamaño"
+            )
         w = base if esquema == "matriculados" else np.sqrt(base)
     elif esquema == "inverso_grupo":
         etiqueta = df[list(grupos)].astype(str).agg("|".join, axis=1)
@@ -50,10 +59,14 @@ def pesos_muestrales(df: pd.DataFrame, esquema: str = "ninguno", grupos: list[st
 def pesos_desde_config(df: pd.DataFrame, cfg: dict) -> np.ndarray:
     """Pesos según `config.yaml: modelado.pesos_muestrales` (`ninguno` por defecto)."""
     m = cfg.get("modelado", {})
-    return pesos_muestrales(df, m.get("pesos_muestrales", "ninguno"), m.get("grupos_pesos", GRUPOS_POR_DEFECTO))
+    return pesos_muestrales(
+        df, m.get("pesos_muestrales", "ninguno"), m.get("grupos_pesos", GRUPOS_POR_DEFECTO)
+    )
 
 
-def agregar_panel_incompleto(df: pd.DataFrame, anios: tuple[int, int] | None = None) -> pd.DataFrame:
+def agregar_panel_incompleto(
+    df: pd.DataFrame, anios: tuple[int, int] | None = None
+) -> pd.DataFrame:
     """Copia con `n_anios_ies` (años con tasa de la IES) y `panel_incompleto` (True si no cubre todos los años de la ventana).
 
     La ventana es `anios=(inicial, final)` o, si no se da, el rango de años del propio dataframe.
@@ -64,12 +77,16 @@ def agregar_panel_incompleto(df: pd.DataFrame, anios: tuple[int, int] | None = N
     esperados = fin - inicio + 1
     out = df.copy()
     dentro = out["anio"].between(inicio, fin)
-    out["n_anios_ies"] = out["cod_ies"].map(out[dentro].groupby("cod_ies")["anio"].nunique()).fillna(0).astype(int)
+    out["n_anios_ies"] = (
+        out["cod_ies"].map(out[dentro].groupby("cod_ies")["anio"].nunique()).fillna(0).astype(int)
+    )
     out["panel_incompleto"] = out["n_anios_ies"] < esperados
     return out
 
 
-def filtrar_denominador_minimo(df: pd.DataFrame, minimo: float, minimo_pipeline: float = 100) -> pd.DataFrame:
+def filtrar_denominador_minimo(
+    df: pd.DataFrame, minimo: float, minimo_pipeline: float = 100
+) -> pd.DataFrame:
     """Filas con denominador (matrícula SPADIES en t-2) de al menos `minimo`: sensibilidad al umbral del pipeline.
 
     Solo permite umbrales mayores o iguales al del pipeline (`min_matriculados_t2`): las filas por debajo ya no están en el
@@ -85,7 +102,16 @@ def filtrar_denominador_minimo(df: pd.DataFrame, minimo: float, minimo_pipeline:
 
 
 def metricas_por_subgrupo(
-    df: pd.DataFrame, y_true, y_pred, columnas: list[str] | tuple[str, ...] = ("sector", "caracter", "region", "ciudad_principal", "tramo_tamano"),
+    df: pd.DataFrame,
+    y_true,
+    y_pred,
+    columnas: list[str] | tuple[str, ...] = (
+        "sector",
+        "caracter",
+        "region",
+        "ciudad_principal",
+        "tramo_tamano",
+    ),
     peso=None,
 ) -> pd.DataFrame:
     """MAE, RMSE y sesgo medio (predicho − observado) por subgrupo, más el total.
@@ -93,9 +119,16 @@ def metricas_por_subgrupo(
     `df` debe estar alineado por posición con `y_true` y `y_pred`. Las columnas geográficas y de tamaño se agregan solas
     si faltan. Devuelve (variable, grupo, filas, ies, mae, rmse, sesgo_medio); con `peso`, MAE y RMSE ponderados.
     """
-    datos = agregar_geografia(df) if {"region", "ciudad_principal"} - set(df.columns) and "cod_divipola_mpio" in df.columns else df.copy()
+    datos = (
+        agregar_geografia(df)
+        if {"region", "ciudad_principal"} - set(df.columns) and "cod_divipola_mpio" in df.columns
+        else df.copy()
+    )
     datos = datos.reset_index(drop=True)
-    for col, etiquetas in (("sector", ETIQUETAS_SECTOR), ("caracter", ETIQUETAS_CARACTER)):  # ids de SNIES -> etiqueta legible
+    for col, etiquetas in (
+        ("sector", ETIQUETAS_SECTOR),
+        ("caracter", ETIQUETAS_CARACTER),
+    ):  # ids de SNIES -> etiqueta legible
         if col in datos.columns and datos[col].astype(str).isin(etiquetas).all():
             datos[col] = datos[col].astype(str).map(etiquetas)
     y_true, y_pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
@@ -106,9 +139,13 @@ def metricas_por_subgrupo(
 
     def resumen(parte: pd.DataFrame) -> dict:
         w, e = parte["_peso"].to_numpy(), parte["_error"].to_numpy()
-        return {"filas": len(parte), "ies": parte["cod_ies"].nunique() if "cod_ies" in parte else np.nan,
-                "mae": np.average(np.abs(e), weights=w), "rmse": float(np.sqrt(np.average(e**2, weights=w))),
-                "sesgo_medio": np.average(e, weights=w)}
+        return {
+            "filas": len(parte),
+            "ies": parte["cod_ies"].nunique() if "cod_ies" in parte else np.nan,
+            "mae": np.average(np.abs(e), weights=w),
+            "rmse": float(np.sqrt(np.average(e**2, weights=w))),
+            "sesgo_medio": np.average(e, weights=w),
+        }
 
     filas = [{"variable": "total", "grupo": "todas", **resumen(datos)}]
     for col in columnas:

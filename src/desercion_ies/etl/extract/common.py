@@ -1,9 +1,10 @@
 """Utilidades de extracción comunes: descarga Socrata y trazabilidad (metadata.json)."""
+
 import csv
 import hashlib
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -23,12 +24,18 @@ def write_metadata(path: Path, fuente: str, url: str, filas: int) -> Path:
         for bloque in iter(lambda: f.read(1 << 20), b""):
             sha.update(bloque)
     destino = path.parent / f"{path.stem}.metadata.json"
-    fecha = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    fecha = datetime.now(UTC).isoformat(timespec="seconds")
     if destino.exists():
         previo = json.loads(destino.read_text(encoding="utf-8"))
         if previo.get("sha256") == sha.hexdigest():
             fecha = previo.get("fecha_descarga", fecha)
-    meta = {"fuente": fuente, "url": url, "fecha_descarga": fecha, "filas": filas, "sha256": sha.hexdigest()}
+    meta = {
+        "fuente": fuente,
+        "url": url,
+        "fecha_descarga": fecha,
+        "filas": filas,
+        "sha256": sha.hexdigest(),
+    }
     destino.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
     return destino
 

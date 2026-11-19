@@ -10,6 +10,7 @@
 - **Coeficientes del ridge** (Tarea 2 con información mutua, y Tarea 1 C solo historia): los coeficientes sobre variables estandarizadas en cada uno de los 25 pliegues de entrenamiento
   (5 × 5), con cuántas veces entra cada variable, su media ± desviación y si el signo es constante.
 """
+
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
@@ -49,7 +50,11 @@ def matriz_y_nombres(est, X: pd.DataFrame) -> tuple[np.ndarray, list[str], objec
         return pre.transform(X), list(pre.get_feature_names_out()), interno.named_steps["modelo"]
     partes = dict(union.transformer_list)
     base, cl = partes["base"], partes["clusters"]
-    nombres = list(base.named_steps["pre"].get_feature_names_out()) + [f"cluster_{i}" for i in range(cl.k_)] + [f"distancia_cluster_{i}" for i in range(cl.k_)]
+    nombres = (
+        list(base.named_steps["pre"].get_feature_names_out())
+        + [f"cluster_{i}" for i in range(cl.k_)]
+        + [f"distancia_cluster_{i}" for i in range(cl.k_)]
+    )
     return union.transform(X), nombres, interno.named_steps["modelo"]
 
 
@@ -67,34 +72,62 @@ def _direccion(valores: np.ndarray, shap_v: np.ndarray) -> float:
     return float(spearmanr(valores, shap_v).statistic)
 
 
-def tabla_shap(sv: np.ndarray, M: np.ndarray, nombres: list[str], modelo: str, top: int | None = None) -> pd.DataFrame:
+def tabla_shap(
+    sv: np.ndarray, M: np.ndarray, nombres: list[str], modelo: str, top: int | None = None
+) -> pd.DataFrame:
     """Importancia por columna (|SHAP| medio) y dirección (Spearman del valor con su SHAP), de mayor a menor."""
-    t = pd.DataFrame({"modelo": modelo, "variable": [_limpio(n) for n in nombres], "mean_abs_shap": np.abs(sv).mean(0),
-                      "spearman": [_direccion(M[:, j], sv[:, j]) for j in range(M.shape[1])]})
+    t = pd.DataFrame(
+        {
+            "modelo": modelo,
+            "variable": [_limpio(n) for n in nombres],
+            "mean_abs_shap": np.abs(sv).mean(0),
+            "spearman": [_direccion(M[:, j], sv[:, j]) for j in range(M.shape[1])],
+        }
+    )
     t = t.sort_values("mean_abs_shap", ascending=False).reset_index(drop=True)
     t.insert(1, "rank", np.arange(1, len(t) + 1))
     return t.head(top) if top else t
 
 
-def shap_por_variable(sv: np.ndarray, M: np.ndarray, nombres: list[str], modelo: str) -> pd.DataFrame:
+def shap_por_variable(
+    sv: np.ndarray, M: np.ndarray, nombres: list[str], modelo: str
+) -> pd.DataFrame:
     """SHAP agregado por variable original (suma de las columnas de cada categoría o grupo de clusters) y dirección en las numéricas."""
     grupos = pd.Series([_grupo(n) for n in nombres])
     filas = []
     for g in grupos.unique():
         cols = np.flatnonzero((grupos == g).to_numpy())
         suma = sv[:, cols].sum(1)
-        filas.append({"modelo": modelo, "variable": g, "mean_abs_shap": float(np.abs(suma).mean()),
-                      "spearman": _direccion(M[:, cols[0]], sv[:, cols[0]]) if len(cols) == 1 else float("nan")})
+        filas.append(
+            {
+                "modelo": modelo,
+                "variable": g,
+                "mean_abs_shap": float(np.abs(suma).mean()),
+                "spearman": _direccion(M[:, cols[0]], sv[:, cols[0]])
+                if len(cols) == 1
+                else float("nan"),
+            }
+        )
     t = pd.DataFrame(filas).sort_values("mean_abs_shap", ascending=False).reset_index(drop=True)
     t.insert(1, "rank_shap", np.arange(1, len(t) + 1))
     return t
 
 
 # ---------- permutación ----------
-def _pliegue_permutacion(m, X, y, entrena, prueba, numericas, categoricas, p_exp, p_t2, n_rep, semilla):
+def _pliegue_permutacion(
+    m, X, y, entrena, prueba, numericas, categoricas, p_exp, p_t2, n_rep, semilla
+):
     est = construir_final(m, numericas, categoricas, p_exp, p_t2)
     est.fit(X.iloc[entrena], y.iloc[entrena].to_numpy())
-    r = permutation_importance(est, X.iloc[prueba], y.iloc[prueba].to_numpy(), scoring="neg_mean_absolute_error", n_repeats=n_rep, random_state=semilla, n_jobs=1)
+    r = permutation_importance(
+        est,
+        X.iloc[prueba],
+        y.iloc[prueba].to_numpy(),
+        scoring="neg_mean_absolute_error",
+        n_repeats=n_rep,
+        random_state=semilla,
+        n_jobs=1,
+    )
     return r.importances_mean
 
 
@@ -105,9 +138,32 @@ def permutacion(cfg: dict, df: pd.DataFrame, m: dict, n_jobs: int = -1) -> pd.Da
     X, num, cat = aj.preparar(m["spec"], cfg, df)
     y = df["tasa_desercion"].astype(float)
     pliegues = particiones_repetidas(df, p["n_splits"], [p["permutacion"]["semilla"]])[0]
-    res = Parallel(n_jobs=n_jobs)(delayed(_pliegue_permutacion)(m, X, y, e, t, num, cat, p_exp, p_t2, p["permutacion"]["n_repeticiones"], p["permutacion"]["semilla"]) for e, t in pliegues)
+    res = Parallel(n_jobs=n_jobs)(
+        delayed(_pliegue_permutacion)(
+            m,
+            X,
+            y,
+            e,
+            t,
+            num,
+            cat,
+            p_exp,
+            p_t2,
+            p["permutacion"]["n_repeticiones"],
+            p["permutacion"]["semilla"],
+        )
+        for e, t in pliegues
+    )
     a = np.vstack(res)
-    t = pd.DataFrame({"modelo": m["nombre"], "variable": list(X.columns), "aumento_mae_medio": a.mean(0), "aumento_mae_sd": a.std(0, ddof=1), "n_pliegues": len(a)})
+    t = pd.DataFrame(
+        {
+            "modelo": m["nombre"],
+            "variable": list(X.columns),
+            "aumento_mae_medio": a.mean(0),
+            "aumento_mae_sd": a.std(0, ddof=1),
+            "n_pliegues": len(a),
+        }
+    )
     t = t.sort_values("aumento_mae_medio", ascending=False).reset_index(drop=True)
     t.insert(2, "rank_permutacion", np.arange(1, len(t) + 1))
     return t
@@ -122,7 +178,9 @@ def _coeficientes(m, X, y, entrena, num, cat, p_exp, p_t2) -> pd.DataFrame:
     nombres = np.array(pre.get_feature_names_out())
     if "red" in interno.named_steps:
         nombres = nombres[interno.named_steps["red"].get_support()]
-    return pd.DataFrame({"variable": [_limpio(n) for n in nombres], "coef": interno.named_steps["modelo"].coef_})
+    return pd.DataFrame(
+        {"variable": [_limpio(n) for n in nombres], "coef": interno.named_steps["modelo"].coef_}
+    )
 
 
 def coeficientes_ridge(cfg: dict, df: pd.DataFrame, m: dict, n_jobs: int = -1) -> pd.DataFrame:
@@ -131,13 +189,28 @@ def coeficientes_ridge(cfg: dict, df: pd.DataFrame, m: dict, n_jobs: int = -1) -
     p_exp, p_t2 = parametros_experimentos(cfg), t2.parametros_tarea2(cfg)
     X, num, cat = aj.preparar(m["spec"], cfg, df)
     y = df["tasa_desercion"].astype(float)
-    entrenamientos = [e for pliegues in particiones_repetidas(df, p["n_splits"], p["semillas"]) for e, _ in pliegues]
-    partes = Parallel(n_jobs=n_jobs)(delayed(_coeficientes)(m, X, y, e, num, cat, p_exp, p_t2) for e in entrenamientos)
+    entrenamientos = [
+        e
+        for pliegues in particiones_repetidas(df, p["n_splits"], p["semillas"])
+        for e, _ in pliegues
+    ]
+    partes = Parallel(n_jobs=n_jobs)(
+        delayed(_coeficientes)(m, X, y, e, num, cat, p_exp, p_t2) for e in entrenamientos
+    )
     largo = pd.concat([d.assign(pliegue=i) for i, d in enumerate(partes)], ignore_index=True)
     filas = []
     for v, g in largo.groupby("variable"):
         c = g["coef"].to_numpy()
-        filas.append({"modelo": m["nombre"], "variable": v, "n_pliegues_seleccionada": len(c), "de_pliegues": len(entrenamientos), "media": float(c.mean()),
-                      "desviacion": float(c.std(ddof=1)) if len(c) > 1 else float("nan"), "signo_constante": bool((c > 0).all() or (c < 0).all())})
+        filas.append(
+            {
+                "modelo": m["nombre"],
+                "variable": v,
+                "n_pliegues_seleccionada": len(c),
+                "de_pliegues": len(entrenamientos),
+                "media": float(c.mean()),
+                "desviacion": float(c.std(ddof=1)) if len(c) > 1 else float("nan"),
+                "signo_constante": bool((c > 0).all() or (c < 0).all()),
+            }
+        )
     t = pd.DataFrame(filas)
     return t.reindex(t["media"].abs().sort_values(ascending=False).index).reset_index(drop=True)

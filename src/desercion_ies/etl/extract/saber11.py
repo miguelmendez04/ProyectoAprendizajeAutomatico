@@ -1,4 +1,5 @@
 """Extracción de Saber 11 desde datos.gov.co (dataset unificado)."""
+
 from pathlib import Path
 
 from desercion_ies.etl.extract.common import download_socrata

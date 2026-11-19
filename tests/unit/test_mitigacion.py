@@ -1,4 +1,5 @@
 """Opciones de mitigación de sesgo: pesos, panel incompleto, umbral de denominador, métricas por subgrupo y particiones."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -33,10 +34,17 @@ def _df(n_ies=40):
     filas = []
     for i in range(n_ies):
         for a in range(2015, 2022):
-            filas.append({
-                "cod_ies": str(1000 + i), "anio": a, "tasa_desercion": 0.05 + 0.002 * i, "cod_divipola_mpio": MUNICIPIOS[i % len(MUNICIPIOS)],
-                "sector": str(1 + i % 2), "caracter": str(1 + (i // 2) % 4), "log_matriculados_spadies_t2": np.log1p(100 * (i + 1)),
-            })
+            filas.append(
+                {
+                    "cod_ies": str(1000 + i),
+                    "anio": a,
+                    "tasa_desercion": 0.05 + 0.002 * i,
+                    "cod_divipola_mpio": MUNICIPIOS[i % len(MUNICIPIOS)],
+                    "sector": str(1 + i % 2),
+                    "caracter": str(1 + (i // 2) % 4),
+                    "log_matriculados_spadies_t2": np.log1p(100 * (i + 1)),
+                }
+            )
     return pd.DataFrame(filas)
 
 
@@ -87,7 +95,9 @@ def test_pesos_esquema_invalido_o_sin_denominador_falla():
 
 def test_pesos_desde_config_por_defecto_son_uno():
     assert (pesos_desde_config(_df(), {}) == 1).all()
-    assert pesos_desde_config(_df(), {"modelado": {"pesos_muestrales": "inverso_ies"}}).std() == pytest.approx(0, abs=1e-9)  # panel completo: todos 1
+    assert pesos_desde_config(
+        _df(), {"modelado": {"pesos_muestrales": "inverso_ies"}}
+    ).std() == pytest.approx(0, abs=1e-9)  # panel completo: todos 1
 
 
 # ---- panel incompleto ---------------------------------------------------------------------------------------
@@ -104,7 +114,9 @@ def test_panel_incompleto_marca_las_ies_con_menos_anios():
 def test_panel_incompleto_respeta_la_ventana():
     df = _df(3)
     df = df[~((df.cod_ies == "1002") & (df.anio < 2017))]
-    assert agregar_panel_incompleto(df, (2017, 2021))["panel_incompleto"].sum() == 0  # en 2017-2021 todas están completas
+    assert (
+        agregar_panel_incompleto(df, (2017, 2021))["panel_incompleto"].sum() == 0
+    )  # en 2017-2021 todas están completas
     assert agregar_panel_incompleto(df, (2015, 2021))["panel_incompleto"].sum() == 5
 
 
@@ -112,7 +124,11 @@ def test_panel_incompleto_respeta_la_ventana():
 def test_filtrar_denominador_minimo_deja_solo_los_mayores_o_iguales():
     df = _df(10)  # denominadores 100..1000
     out = filtrar_denominador_minimo(df, 500)
-    assert denominador(out).min() == pytest.approx(500) and len(out) == 6 * 7 and out.cod_ies.nunique() == 6
+    assert (
+        denominador(out).min() == pytest.approx(500)
+        and len(out) == 6 * 7
+        and out.cod_ies.nunique() == 6
+    )
 
 
 def test_filtrar_denominador_por_debajo_del_pipeline_falla_con_mensaje_claro():
@@ -123,7 +139,11 @@ def test_filtrar_denominador_por_debajo_del_pipeline_falla_con_mensaje_claro():
 # ---- cargar_dataset con las opciones ------------------------------------------------------------------------
 def _csv(tmp_path, df):
     df.to_csv(tmp_path / "dataset_ies.csv", index=False)
-    return {"unidad_analisis": "ies", "rutas": {"processed": str(tmp_path)}, "min_matriculados_t2": 100}
+    return {
+        "unidad_analisis": "ies",
+        "rutas": {"processed": str(tmp_path)},
+        "min_matriculados_t2": 100,
+    }
 
 
 def test_cargar_dataset_por_defecto_no_agrega_columnas_ni_filtra(tmp_path):
@@ -137,7 +157,10 @@ def test_cargar_dataset_con_umbral_y_panel_desde_la_config(tmp_path):
     cfg = _csv(tmp_path, _df(10))
     cfg["modelado"] = {"umbral_denominador": 500, "indicador_panel_incompleto": True}
     out = cargar_dataset(cfg)
-    assert denominador(out).min() == pytest.approx(500) and {"n_anios_ies", "panel_incompleto"} <= set(out.columns)
+    assert denominador(out).min() == pytest.approx(500) and {
+        "n_anios_ies",
+        "panel_incompleto",
+    } <= set(out.columns)
     num, _ = variables_modelado_desde_config(out, cfg)
     assert "panel_incompleto" in num
     sin, _ = variables_modelado(out)
@@ -148,11 +171,17 @@ def test_cargar_dataset_con_umbral_y_panel_desde_la_config(tmp_path):
 def test_metricas_por_subgrupo_calcula_mae_rmse_y_sesgo():
     df = _df(8)
     y = df["tasa_desercion"].to_numpy()
-    pred = y + np.where(df["sector"] == "1", 0.02, -0.04)  # error +0,02 en oficial, −0,04 en privada
+    pred = y + np.where(
+        df["sector"] == "1", 0.02, -0.04
+    )  # error +0,02 en oficial, −0,04 en privada
     m = metricas_por_subgrupo(df, y, pred, columnas=["sector"])
     sec = m[m.variable == "sector"].set_index("grupo")
-    assert sec.loc["oficial", "mae"] == pytest.approx(0.02) and sec.loc["oficial", "sesgo_medio"] == pytest.approx(0.02)
-    assert sec.loc["privada", "mae"] == pytest.approx(0.04) and sec.loc["privada", "sesgo_medio"] == pytest.approx(-0.04)
+    assert sec.loc["oficial", "mae"] == pytest.approx(0.02) and sec.loc[
+        "oficial", "sesgo_medio"
+    ] == pytest.approx(0.02)
+    assert sec.loc["privada", "mae"] == pytest.approx(0.04) and sec.loc[
+        "privada", "sesgo_medio"
+    ] == pytest.approx(-0.04)
     assert sec.loc["privada", "rmse"] == pytest.approx(0.04)
     total = m[m.variable == "total"].iloc[0]
     assert total["filas"] == len(df) and total["mae"] == pytest.approx(0.03)
@@ -162,9 +191,15 @@ def test_metricas_por_subgrupo_agrega_geografia_y_acepta_pesos():
     df = _df(8)
     y = df["tasa_desercion"].to_numpy()
     pred = y + np.where(df["cod_divipola_mpio"] == "11001", 0.1, 0.0)
-    m = metricas_por_subgrupo(df, y, pred, columnas=["ciudad_principal"]).set_index(["variable", "grupo"])
-    assert m.loc[("ciudad_principal", "Bogotá"), "mae"] == pytest.approx(0.1) and m.loc[("ciudad_principal", "Cali"), "mae"] == pytest.approx(0)
-    ponderado = metricas_por_subgrupo(df, y, pred, columnas=[], peso=np.where(df["cod_divipola_mpio"] == "11001", 0.0, 1.0))
+    m = metricas_por_subgrupo(df, y, pred, columnas=["ciudad_principal"]).set_index(
+        ["variable", "grupo"]
+    )
+    assert m.loc[("ciudad_principal", "Bogotá"), "mae"] == pytest.approx(0.1) and m.loc[
+        ("ciudad_principal", "Cali"), "mae"
+    ] == pytest.approx(0)
+    ponderado = metricas_por_subgrupo(
+        df, y, pred, columnas=[], peso=np.where(df["cod_divipola_mpio"] == "11001", 0.0, 1.0)
+    )
     assert ponderado.iloc[0]["mae"] == pytest.approx(0)  # Bogotá con peso 0
 
 
@@ -177,7 +212,9 @@ def test_geografia_asigna_region_ciudad_y_tramo():
     g = agregar_geografia(_df(8))
     assert g.loc[g.cod_divipola_mpio == "11001", "region"].unique().tolist() == ["Bogotá D.C."]
     assert set(g["ciudad_principal"]) == {"Bogotá", "Medellín", "Cali", "Resto del país"}
-    assert g.loc[g.cod_ies == "1000", "tramo_tamano"].astype(str).unique().tolist() == ["menos de 200"]
+    assert g.loc[g.cod_ies == "1000", "tramo_tamano"].astype(str).unique().tolist() == [
+        "menos de 200"
+    ]
 
 
 # ---- particiones alternativas -------------------------------------------------------------------------------
@@ -207,7 +244,7 @@ def test_estratificado_es_reproducible_con_semilla():
 def test_por_departamento_nunca_reparte_un_departamento():
     df = _df(40)
     for entrena, prueba in particion_por_departamento(df, n_splits=4):
-        dep = lambda idx: set(df.iloc[idx].cod_divipola_mpio.str[:2])  # noqa: E731
+        dep = lambda idx: set(df.iloc[idx].cod_divipola_mpio.str[:2])  # noqa: E731  (lambda local de un solo uso)
         assert dep(entrena).isdisjoint(dep(prueba))
 
 
@@ -237,20 +274,36 @@ def test_kfold_desde_config_por_defecto_es_el_group_kfold_de_siempre():
     df = _df(20)
     base = [p.tolist() for _, p in particion_group_kfold(df, 5)]
     assert [p.tolist() for _, p in kfold_desde_config(df, {})] == base
-    assert [p.tolist() for _, p in kfold_desde_config(df, {"particion": {"estratificar_por": []}})] == base
+    assert [
+        p.tolist() for _, p in kfold_desde_config(df, {"particion": {"estratificar_por": []}})
+    ] == base
     pliegues, temporal = particiones_desde_config(df, {})
     assert [p.tolist() for _, p in pliegues] == base and len(temporal[0]) > 0
 
 
 def test_kfold_desde_config_elige_estratificado_o_departamento_y_valida():
     df = _df(40)
-    estr = [p.tolist() for _, p in kfold_desde_config(df, {"particion": {"estratificar_por": ["sector"]}})]
+    estr = [
+        p.tolist()
+        for _, p in kfold_desde_config(df, {"particion": {"estratificar_por": ["sector"]}})
+    ]
     assert estr != [p.tolist() for _, p in particion_group_kfold(df, 5)]
-    assert len(list(kfold_desde_config(df, {"particion": {"agrupar_por": "departamento", "n_splits": 3}}))) == 3
+    assert (
+        len(
+            list(
+                kfold_desde_config(
+                    df, {"particion": {"agrupar_por": "departamento", "n_splits": 3}}
+                )
+            )
+        )
+        == 3
+    )
     with pytest.raises(ValueError, match="agrupar_por"):
         kfold_desde_config(df, {"particion": {"agrupar_por": "region"}})
     with pytest.raises(ValueError, match="estratificar_por"):
-        kfold_desde_config(df, {"particion": {"agrupar_por": "departamento", "estratificar_por": ["sector"]}})
+        kfold_desde_config(
+            df, {"particion": {"agrupar_por": "departamento", "estratificar_por": ["sector"]}}
+        )
 
 
 def test_n_anios_ies_nunca_entra_en_las_explicativas_por_defecto():
@@ -258,7 +311,9 @@ def test_n_anios_ies_nunca_entra_en_las_explicativas_por_defecto():
     df = agregar_panel_incompleto(_df(10))
     assert "n_anios_ies" in df.columns
     assert "n_anios_ies" not in columnas_explicativas(df)
-    assert "n_anios_ies" not in columnas_explicativas(df, excluir=[])  # ni siquiera sin lista de exclusión
+    assert "n_anios_ies" not in columnas_explicativas(
+        df, excluir=[]
+    )  # ni siquiera sin lista de exclusión
     num, _ = variables_modelado(df)
     assert "n_anios_ies" not in num
     num, _ = variables_modelado(df, incluir_panel_incompleto=True)

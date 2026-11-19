@@ -9,34 +9,48 @@ Etapas: base (modelos finales, hiperparámetros, error por subgrupo) → sensibi
 Salidas (rutas en config.yaml: modelado.sesgo_sensibilidad.salidas): reports/tables/{subgrupos,sensibilidad,colapso_ridge,shap_top}.csv (y auxiliares),
 reports/06_sesgo_modelos.md y reports/figures/{error_subgrupos,shap_t1,shap_t2,coeficientes_ridge}.png.
 """
-import logging
+
 import argparse
 import json
+import logging
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from desercion_ies.config import load_config
-from desercion_ies.evaluation import evaluacion_final as ef
 from desercion_ies.analysis import interpretabilidad as it
 from desercion_ies.analysis import sensibilidad as sn
 from desercion_ies.analysis import subgrupos as sg
-from desercion_ies.evaluation import tarea2 as t2
 from desercion_ies.analysis.diagnostico_colapso import ejecutar_diagnostico
+from desercion_ies.config import load_config
+from desercion_ies.evaluation import evaluacion_final as ef
+from desercion_ies.evaluation import tarea2 as t2
 from desercion_ies.evaluation.experimentos import parametros_experimentos
 from desercion_ies.features.particion import cargar_dataset
 
 SALIDAS = {
-    "subgrupos": "reports/tables/subgrupos.csv", "sensibilidad": "reports/tables/sensibilidad.csv", "sensibilidad_pliegues": "reports/tables/sensibilidad_pliegues.csv",
-    "colapso": "reports/tables/colapso_ridge.csv", "colapso_z": "reports/tables/colapso_ridge_z.csv", "colapso_peores": "reports/tables/colapso_ridge_peores.csv",
-    "shap_top": "reports/tables/shap_top.csv", "shap_grupos": "reports/tables/shap_grupos.csv", "permutacion": "reports/tables/permutacion.csv",
-    "coeficientes": "reports/tables/coeficientes_ridge.csv", "hiperparametros": "reports/tables/hiperparametros_finales.csv",
-    "informe": "reports/06_sesgo_modelos.md", "figura_subgrupos": "reports/figures/error_subgrupos.png", "figura_shap_t1": "reports/figures/shap_t1.png",
-    "figura_shap_t2": "reports/figures/shap_t2.png", "figura_coeficientes": "reports/figures/coeficientes_ridge.png",
+    "subgrupos": "reports/tables/subgrupos.csv",
+    "sensibilidad": "reports/tables/sensibilidad.csv",
+    "sensibilidad_pliegues": "reports/tables/sensibilidad_pliegues.csv",
+    "colapso": "reports/tables/colapso_ridge.csv",
+    "colapso_z": "reports/tables/colapso_ridge_z.csv",
+    "colapso_peores": "reports/tables/colapso_ridge_peores.csv",
+    "shap_top": "reports/tables/shap_top.csv",
+    "shap_grupos": "reports/tables/shap_grupos.csv",
+    "permutacion": "reports/tables/permutacion.csv",
+    "coeficientes": "reports/tables/coeficientes_ridge.csv",
+    "hiperparametros": "reports/tables/hiperparametros_finales.csv",
+    "informe": "reports/06_sesgo_modelos.md",
+    "figura_subgrupos": "reports/figures/error_subgrupos.png",
+    "figura_shap_t1": "reports/figures/shap_t1.png",
+    "figura_shap_t2": "reports/figures/shap_t2.png",
+    "figura_coeficientes": "reports/figures/coeficientes_ridge.png",
 }
-XGB_T1, XGB_T2 = "T1 B historia+contexto | xgboost logit (ajustado)", "T2 xgboost con clusters (ajustado)"
+XGB_T1, XGB_T2 = (
+    "T1 B historia+contexto | xgboost logit (ajustado)",
+    "T2 xgboost con clusters (ajustado)",
+)
 RIDGE_T1, RIDGE_T2 = "T1 C solo historia | ridge (ajustado)", "T2 ridge info_mutua (ajustado)"
 
 
@@ -60,7 +74,11 @@ def ejecutar(args: argparse.Namespace) -> None:
     s["subgrupos"].parent.mkdir(parents=True, exist_ok=True)
     parcial = s["subgrupos"].parent / "_parcial_sesgo"
     tiempos = s["subgrupos"].with_name("sesgo_sensibilidad_tiempos.json")
-    marcas = json.loads(tiempos.read_text()) if tiempos.exists() and (args.reanudar or args.solo_informe) else {}
+    marcas = (
+        json.loads(tiempos.read_text())
+        if tiempos.exists() and (args.reanudar or args.solo_informe)
+        else {}
+    )
 
     def etapa(nombre: str, salidas: list[str]) -> bool:
         """Si hay que calcular la etapa (no se reanuda con las salidas ya guardadas)."""
@@ -76,16 +94,36 @@ def ejecutar(args: argparse.Namespace) -> None:
         y = df["tasa_desercion"].astype(float)
 
         # --- base: hiperparámetros finales y error por subgrupo ---
-        if etapa("base", ["subgrupos", "hiperparametros"]) or not (parcial / "escenario_base.csv").exists():
+        if (
+            etapa("base", ["subgrupos", "hiperparametros"])
+            or not (parcial / "escenario_base.csv").exists()
+        ):
             t = time.perf_counter()
             parcial.mkdir(parents=True, exist_ok=True)
-            hp = ef.hiperparametros_finales(pd.read_csv(p["ajuste"]))  # noqa: F841
-            pd.DataFrame([{"modelo": m["nombre"], "variante": m["variante"], "hiperparametros": json.dumps(m["hiperparametros"], sort_keys=True)} for m in modelos]).to_csv(s["hiperparametros"], index=False)
+            hp = ef.hiperparametros_finales(pd.read_csv(p["ajuste"]))  # noqa: F841  (se conserva: documenta el valor)
+            pd.DataFrame(
+                [
+                    {
+                        "modelo": m["nombre"],
+                        "variante": m["variante"],
+                        "hiperparametros": json.dumps(m["hiperparametros"], sort_keys=True),
+                    }
+                    for m in modelos
+                ]
+            ).to_csv(s["hiperparametros"], index=False)
             res, oof = ef.evaluar_oof(cfg, df, modelos, verbose=True)
             res.to_csv(parcial / "escenario_base.csv", index=False)
             np.savez_compressed(parcial / "oof_base.npz", **{k: v for k, v in oof.items()})
             sub, cortes = sg.asignar_subgrupos(df, p["ciudades"])
-            tabla = sg.analizar_subgrupos(df, sub, oof, modelos, p["bootstrap"]["replicas"], p["bootstrap"]["semilla"], p["nivel_confianza"])
+            tabla = sg.analizar_subgrupos(
+                df,
+                sub,
+                oof,
+                modelos,
+                p["bootstrap"]["replicas"],
+                p["bootstrap"]["semilla"],
+                p["nivel_confianza"],
+            )
             tabla.attrs["cortes"] = cortes
             tabla.to_csv(s["subgrupos"], index=False)
             marcas["cortes_tamano"] = cortes
@@ -97,7 +135,9 @@ def ejecutar(args: argparse.Namespace) -> None:
         if etapa("sensibilidad", ["sensibilidad", "sensibilidad_pliegues"]):
             t = time.perf_counter()
             base_res = pd.read_csv(parcial / "escenario_base.csv")
-            r, pl = sn.ejecutar_sensibilidad(cfg, df, modelos, parcial=parcial, verbose=True, base=(base_res, {}))
+            r, pl = sn.ejecutar_sensibilidad(
+                cfg, df, modelos, parcial=parcial, verbose=True, base=(base_res, {})
+            )
             r.to_csv(s["sensibilidad"], index=False)
             pl.to_csv(s["sensibilidad_pliegues"], index=False)
             marcas["t_sensibilidad_s"] = time.perf_counter() - t
@@ -131,15 +171,28 @@ def ejecutar(args: argparse.Namespace) -> None:
                 g = it.shap_por_variable(sv, M, cols, nombre)
                 pm = it.permutacion(cfg, df, m, p["n_jobs"])
                 perms.append(pm)
-                grupos.append(g.merge(pm[["variable", "aumento_mae_medio", "aumento_mae_sd", "rank_permutacion"]], on="variable", how="left"))
+                grupos.append(
+                    g.merge(
+                        pm[["variable", "aumento_mae_medio", "aumento_mae_sd", "rank_permutacion"]],
+                        on="variable",
+                        how="left",
+                    )
+                )
             pd.concat(tops).to_csv(s["shap_top"], index=False)
             pd.concat(grupos).to_csv(s["shap_grupos"], index=False)
             pd.concat(perms).to_csv(s["permutacion"], index=False)
-            pd.concat([it.coeficientes_ridge(cfg, df, nombres[n], p["n_jobs"]) for n in (RIDGE_T2, RIDGE_T1)]).to_csv(s["coeficientes"], index=False)
+            pd.concat(
+                [
+                    it.coeficientes_ridge(cfg, df, nombres[n], p["n_jobs"])
+                    for n in (RIDGE_T2, RIDGE_T1)
+                ]
+            ).to_csv(s["coeficientes"], index=False)
             marcas["t_interpretabilidad_s"] = time.perf_counter() - t
             tiempos.write_text(json.dumps(marcas), encoding="utf-8")
             log.info(f"Interpretabilidad: {marcas['t_interpretabilidad_s']:.0f} s")
-        marcas["t_total_s"] = sum(v for k, v in marcas.items() if k.startswith("t_") and k != "t_total_s")
+        marcas["t_total_s"] = sum(
+            v for k, v in marcas.items() if k.startswith("t_") and k != "t_total_s"
+        )
         tiempos.write_text(json.dumps(marcas), encoding="utf-8")
         log.info(f"Total: {marcas['t_total_s']:.0f} s")
 
@@ -147,4 +200,3 @@ def ejecutar(args: argparse.Namespace) -> None:
         from desercion_ies.reporting.informe_sesgo import generar_informe
 
         generar_informe(cfg, s, marcas)
-

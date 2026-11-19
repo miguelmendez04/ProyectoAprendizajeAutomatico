@@ -1,4 +1,5 @@
-﻿"""Pruebas de la descarga genÃ©rica Socrata y del metadata.json."""
+"""Pruebas de la descarga genÃ©rica Socrata y del metadata.json."""
+
 import json
 
 import pandas as pd
@@ -58,7 +59,9 @@ def test_metadata_json(monkeypatch, tmp_path):
 
 def test_where_filtra_en_servidor(monkeypatch, tmp_path):
     llamadas = _simular(monkeypatch, [[{"a": "1"}], []])
-    common.download_socrata("abcd-1234", tmp_path / "d.csv", where="periodo >= '20141'", page_size=5)
+    common.download_socrata(
+        "abcd-1234", tmp_path / "d.csv", where="periodo >= '20141'", page_size=5
+    )
     assert llamadas[0]["$where"] == "periodo >= '20141'"
 
 
@@ -72,7 +75,12 @@ class _RespuestaError(_Respuesta):
 
 
 def test_reintenta_ante_error_5xx_transitorio(monkeypatch, tmp_path):
-    respuestas = [_RespuestaError(503), _RespuestaError(500), _Respuesta([{"a": "1"}]), _Respuesta([])]
+    respuestas = [
+        _RespuestaError(503),
+        _RespuestaError(500),
+        _Respuesta([{"a": "1"}]),
+        _Respuesta([]),
+    ]
     llamadas = []
 
     def falso_get(url, params=None, timeout=None):
@@ -87,7 +95,9 @@ def test_reintenta_ante_error_5xx_transitorio(monkeypatch, tmp_path):
 
 
 def test_se_rinde_tras_agotar_reintentos(monkeypatch, tmp_path):
-    monkeypatch.setattr(common.requests, "get", lambda url, params=None, timeout=None: _RespuestaError(503))
+    monkeypatch.setattr(
+        common.requests, "get", lambda url, params=None, timeout=None: _RespuestaError(503)
+    )
     monkeypatch.setattr(common.time, "sleep", lambda s: None)
     with pytest.raises(common.requests.HTTPError):
         common.download_socrata("abcd-1234", tmp_path / "d.csv", page_size=5, reintentos=3)
@@ -119,8 +129,14 @@ def test_reintenta_corte_de_flujo_y_json_invalido(monkeypatch, tmp_path):
         def json(self):
             raise ValueError("json truncado")
 
-    eventos = iter([common.requests.exceptions.ChunkedEncodingError("corte"), _JsonRoto([]),
-                    _Respuesta([{"a": "1"}]), _Respuesta([])])
+    eventos = iter(
+        [
+            common.requests.exceptions.ChunkedEncodingError("corte"),
+            _JsonRoto([]),
+            _Respuesta([{"a": "1"}]),
+            _Respuesta([]),
+        ]
+    )
 
     def falso_get(url, params=None, timeout=None):
         e = next(eventos)
@@ -146,7 +162,9 @@ def test_descarga_fallida_no_deja_csv_truncado(monkeypatch, tmp_path):
     monkeypatch.setattr(common.time, "sleep", lambda s: None)
     with pytest.raises(common.requests.HTTPError):
         common.download_socrata("abcd-1234", tmp_path / "d.csv", page_size=1)
-    assert not (tmp_path / "d.csv").exists()  # el CSV parcial no se publica como si estuviera completo
+    assert not (
+        tmp_path / "d.csv"
+    ).exists()  # el CSV parcial no se publica como si estuviera completo
     assert not list(tmp_path.glob("*.part"))
 
 
@@ -154,7 +172,10 @@ def test_metadata_por_archivo_no_se_sobrescribe(monkeypatch, tmp_path):
     _simular(monkeypatch, [[{"a": "1"}], [], [{"a": "1"}], []])
     common.download_socrata("aaaa-1111", tmp_path / "uno.csv", page_size=5)
     common.download_socrata("bbbb-2222", tmp_path / "dos.csv", page_size=5)
-    fuentes = {json.loads((tmp_path / f"{n}.metadata.json").read_text(encoding="utf-8"))["fuente"] for n in ("uno", "dos")}
+    fuentes = {
+        json.loads((tmp_path / f"{n}.metadata.json").read_text(encoding="utf-8"))["fuente"]
+        for n in ("uno", "dos")
+    }
     assert fuentes == {"aaaa-1111", "bbbb-2222"}
 
 
@@ -166,5 +187,7 @@ def test_metadata_conserva_fecha_si_el_archivo_no_cambio(tmp_path):
     vieja["fecha_descarga"] = "2020-01-01T00:00:00+00:00"
     ruta.write_text(json.dumps(vieja), encoding="utf-8")
     common.write_metadata(archivo, "f", "u", 1)
-    assert json.loads(ruta.read_text(encoding="utf-8"))["fecha_descarga"] == "2020-01-01T00:00:00+00:00"
-
+    assert (
+        json.loads(ruta.read_text(encoding="utf-8"))["fecha_descarga"]
+        == "2020-01-01T00:00:00+00:00"
+    )

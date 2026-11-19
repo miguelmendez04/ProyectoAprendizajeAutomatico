@@ -13,8 +13,9 @@ Formulaciones (todas con GroupKFold por `cod_ies` y los mismos pliegues que la v
 Las predicciones finales se recortan a [0, 1]. Además de las métricas globales se miden por separado las filas con historia
 (hay `tasa_t1`) y sin ella (primer año de la IES en el dataset, o sin fila del año anterior): la ingenua solo aplica a las primeras.
 """
-import logging
+
 import itertools
+import logging
 import time
 from collections.abc import Sequence
 
@@ -23,10 +24,21 @@ import pandas as pd
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 
 from desercion_ies.evaluation.experimentos import (
-    BASE_INGENUA, BASE_MEDIANA, construir_pipeline, hash_pliegue, metricas, parametros_experimentos, prediccion_ingenua,
+    BASE_INGENUA,
+    BASE_MEDIANA,
+    construir_pipeline,
+    hash_pliegue,
+    metricas,
+    parametros_experimentos,
+    prediccion_ingenua,
 )
 from desercion_ies.features.particion import (
-    COLUMNAS_HISTORIA, COLUMNAS_HISTORIA_REZAGADA, cargar_dataset, kfold_desde_config, preparar_x, variables_modelado_desde_config,
+    COLUMNAS_HISTORIA,
+    COLUMNAS_HISTORIA_REZAGADA,
+    cargar_dataset,
+    kfold_desde_config,
+    preparar_x,
+    variables_modelado_desde_config,
 )
 
 FORMULACIONES = {
@@ -41,18 +53,48 @@ FORMULACIONES = {
 FORMULACIONES_REZAGADAS = {
     "B_historia_rezagada_contexto": {"conjunto": "historia_rezagada_contexto", "correccion": False},
     "B_solo_historia_rezagada": {"conjunto": "solo_historia_rezagada", "correccion": False},
-    "C_correccion_rezagada": {"conjunto": "historia_rezagada_contexto", "correccion": True, "base": "tasa_t2"},
-    "C_correccion_solo_historia_rezagada": {"conjunto": "solo_historia_rezagada", "correccion": True, "base": "tasa_t2"},
+    "C_correccion_rezagada": {
+        "conjunto": "historia_rezagada_contexto",
+        "correccion": True,
+        "base": "tasa_t2",
+    },
+    "C_correccion_solo_historia_rezagada": {
+        "conjunto": "solo_historia_rezagada",
+        "correccion": True,
+        "base": "tasa_t2",
+    },
 }
 TODAS_LAS_FORMULACIONES = {**FORMULACIONES, **FORMULACIONES_REZAGADAS}
 COLUMNAS_RESULTADO = [
-    "configuracion", "tipo", "formulacion", "modelo", "objetivo", "imputacion", "seleccion", "n_variables", "pliegue",
-    "n_entrenamiento", "n_prueba", "n_con_historia", "n_sin_historia", "mae", "rmse", "r2", "mae_con_historia",
-    "mae_sin_historia", "t_ajuste_s", "t_prediccion_s", "hash_prueba",
+    "configuracion",
+    "tipo",
+    "formulacion",
+    "modelo",
+    "objetivo",
+    "imputacion",
+    "seleccion",
+    "n_variables",
+    "pliegue",
+    "n_entrenamiento",
+    "n_prueba",
+    "n_con_historia",
+    "n_sin_historia",
+    "mae",
+    "rmse",
+    "r2",
+    "mae_con_historia",
+    "mae_sin_historia",
+    "t_ajuste_s",
+    "t_prediccion_s",
+    "hash_prueba",
 ]
 _DEFECTO = {
-    "incluir": list(FORMULACIONES), "objetivo": ["ninguna", "logit"], "imputacion": ["mediana"],
-    "seleccion": ["ninguna", "info_mutua", "pca"], "modelo": ["ridge", "random_forest", "xgboost"], "recortar_predicciones": True,
+    "incluir": list(FORMULACIONES),
+    "objetivo": ["ninguna", "logit"],
+    "imputacion": ["mediana"],
+    "seleccion": ["ninguna", "info_mutua", "pca"],
+    "modelo": ["ridge", "random_forest", "xgboost"],
+    "recortar_predicciones": True,
 }
 
 
@@ -90,11 +132,15 @@ def parametros_formulaciones(cfg: dict) -> dict:
     p.update(cfg.get("modelado", {}).get("formulaciones") or {})
     malas = [f for f in p["incluir"] if f not in TODAS_LAS_FORMULACIONES]
     if malas:
-        raise ValueError(f"modelado.formulaciones.incluir: {malas} no existen; las válidas son {list(TODAS_LAS_FORMULACIONES)}")
+        raise ValueError(
+            f"modelado.formulaciones.incluir: {malas} no existen; las válidas son {list(TODAS_LAS_FORMULACIONES)}"
+        )
     return p
 
 
-def variables_formulacion(df: pd.DataFrame, cfg: dict, conjunto: str) -> tuple[list[str], list[str]]:
+def variables_formulacion(
+    df: pd.DataFrame, cfg: dict, conjunto: str
+) -> tuple[list[str], list[str]]:
     """(numéricas, categóricas) de cada conjunto: `contexto` | `historia_contexto` | `solo_historia` y las rezagadas
     `historia_rezagada_contexto` | `solo_historia_rezagada` (sin t-1)."""
     if conjunto == "contexto":
@@ -102,7 +148,9 @@ def variables_formulacion(df: pd.DataFrame, cfg: dict, conjunto: str) -> tuple[l
     requeridas = COLUMNAS_HISTORIA_REZAGADA if "rezagada" in conjunto else COLUMNAS_HISTORIA
     falta = [c for c in requeridas if c not in df.columns]
     if falta:
-        raise ValueError(f"el dataset no trae las columnas de historia {falta}: regenerarlo con `desercion etl` (incluir_historia: true)")
+        raise ValueError(
+            f"el dataset no trae las columnas de historia {falta}: regenerarlo con `desercion etl` (incluir_historia: true)"
+        )
     if conjunto == "solo_historia":
         return list(COLUMNAS_HISTORIA), []
     if conjunto == "historia_contexto":
@@ -112,26 +160,34 @@ def variables_formulacion(df: pd.DataFrame, cfg: dict, conjunto: str) -> tuple[l
         return list(COLUMNAS_HISTORIA_REZAGADA), []
     if conjunto == "historia_rezagada_contexto":
         numericas, categoricas = variables_modelado_desde_config(df, cfg)
-        return numericas + [c for c in COLUMNAS_HISTORIA_REZAGADA if c not in numericas], categoricas
+        return numericas + [
+            c for c in COLUMNAS_HISTORIA_REZAGADA if c not in numericas
+        ], categoricas
     raise ValueError(f"conjunto inválido: {conjunto!r}")
 
 
 def grilla_formulacion(nombre: str, p: dict) -> list[dict]:
     """Configuraciones de una formulación; en la corrección el objetivo es el cambio, así que no hay logit."""
     objetivos = ["ninguna"] if TODAS_LAS_FORMULACIONES[nombre]["correccion"] else p["objetivo"]
-    return [{"formulacion": nombre, "objetivo": o, "imputacion": i, "seleccion": s, "modelo": m}
-            for o, i, s, m in itertools.product(objetivos, p["imputacion"], p["seleccion"], p["modelo"])]
+    return [
+        {"formulacion": nombre, "objetivo": o, "imputacion": i, "seleccion": s, "modelo": m}
+        for o, i, s, m in itertools.product(objetivos, p["imputacion"], p["seleccion"], p["modelo"])
+    ]
 
 
 def nombre_configuracion(c: dict) -> str:
     return f"{c['formulacion']} | {c['modelo']} | {c['objetivo']} | {c['imputacion']} | {c['seleccion']}"
 
 
-def construir_pipeline_formulacion(c: dict, numericas: list[str], categoricas: list[str], p_exp: dict):
+def construir_pipeline_formulacion(
+    c: dict, numericas: list[str], categoricas: list[str], p_exp: dict
+):
     """Pipeline de la configuración; con `correccion` lo envuelve en `CorreccionSobreIngenua`."""
     spec = TODAS_LAS_FORMULACIONES[c["formulacion"]]
     p = dict(p_exp)
-    if not categoricas:  # SelectKBest exige k <= nº de columnas: sin categóricas, a lo sumo las numéricas
+    if (
+        not categoricas
+    ):  # SelectKBest exige k <= nº de columnas: sin categóricas, a lo sumo las numéricas
         p["k_info_mutua"] = min(p["k_info_mutua"], len(numericas))
     pipe = construir_pipeline(c, numericas, categoricas, p)
     return CorreccionSobreIngenua(pipe, spec.get("base", "tasa_t1")) if spec["correccion"] else pipe
@@ -141,18 +197,35 @@ def _mae(real, pred) -> float:
     return float(np.mean(np.abs(real - pred))) if len(real) else float("nan")
 
 
-def _fila(nombre, tipo, c, k, df, entrena, prueba, real, pred, con_historia, t_ajuste, t_pred, n_variables) -> dict:
+def _fila(
+    nombre, tipo, c, k, df, entrena, prueba, real, pred, con_historia, t_ajuste, t_pred, n_variables
+) -> dict:
     return {
-        "configuracion": nombre, "tipo": tipo, "formulacion": c.get("formulacion", "linea_base"), "modelo": c.get("modelo", nombre),
-        "objetivo": c.get("objetivo", ""), "imputacion": c.get("imputacion", ""), "seleccion": c.get("seleccion", ""),
-        "n_variables": n_variables, "pliegue": k, "n_entrenamiento": len(entrena), "n_prueba": len(prueba),
-        "n_con_historia": int(con_historia.sum()), "n_sin_historia": int((~con_historia).sum()), **metricas(real, pred),
-        "mae_con_historia": _mae(real[con_historia], pred[con_historia]), "mae_sin_historia": _mae(real[~con_historia], pred[~con_historia]),
-        "t_ajuste_s": t_ajuste, "t_prediccion_s": t_pred, "hash_prueba": hash_pliegue(df, prueba),
+        "configuracion": nombre,
+        "tipo": tipo,
+        "formulacion": c.get("formulacion", "linea_base"),
+        "modelo": c.get("modelo", nombre),
+        "objetivo": c.get("objetivo", ""),
+        "imputacion": c.get("imputacion", ""),
+        "seleccion": c.get("seleccion", ""),
+        "n_variables": n_variables,
+        "pliegue": k,
+        "n_entrenamiento": len(entrena),
+        "n_prueba": len(prueba),
+        "n_con_historia": int(con_historia.sum()),
+        "n_sin_historia": int((~con_historia).sum()),
+        **metricas(real, pred),
+        "mae_con_historia": _mae(real[con_historia], pred[con_historia]),
+        "mae_sin_historia": _mae(real[~con_historia], pred[~con_historia]),
+        "t_ajuste_s": t_ajuste,
+        "t_prediccion_s": t_pred,
+        "hash_prueba": hash_pliegue(df, prueba),
     }
 
 
-def evaluar_lineas_base(df: pd.DataFrame, y: pd.Series, pliegues: Sequence[tuple[np.ndarray, np.ndarray]]) -> list[dict]:
+def evaluar_lineas_base(
+    df: pd.DataFrame, y: pd.Series, pliegues: Sequence[tuple[np.ndarray, np.ndarray]]
+) -> list[dict]:
     con = df["tasa_t1"].notna().to_numpy()
     filas = []
     for k, (entrena, prueba) in enumerate(pliegues):
@@ -160,14 +233,36 @@ def evaluar_lineas_base(df: pd.DataFrame, y: pd.Series, pliegues: Sequence[tuple
         mediana = np.full(len(prueba), float(np.median(y.iloc[entrena])))
         ingenua, _, _ = prediccion_ingenua(df, y, entrena, prueba)
         for nombre, pred in ((BASE_MEDIANA, mediana), (BASE_INGENUA, ingenua)):
-            filas.append(_fila(nombre, "linea_base", {"modelo": nombre.removeprefix("base_")}, k, df, entrena, prueba, real, pred,
-                               con[prueba], 0.0, 0.0, 0))
+            filas.append(
+                _fila(
+                    nombre,
+                    "linea_base",
+                    {"modelo": nombre.removeprefix("base_")},
+                    k,
+                    df,
+                    entrena,
+                    prueba,
+                    real,
+                    pred,
+                    con[prueba],
+                    0.0,
+                    0.0,
+                    0,
+                )
+            )
     return filas
 
 
 def evaluar_configuracion(
-    c: dict, df: pd.DataFrame, y: pd.Series, X: pd.DataFrame, pliegues, numericas: list[str], categoricas: list[str],
-    p_exp: dict, recortar: bool = True,
+    c: dict,
+    df: pd.DataFrame,
+    y: pd.Series,
+    X: pd.DataFrame,
+    pliegues,
+    numericas: list[str],
+    categoricas: list[str],
+    p_exp: dict,
+    recortar: bool = True,
 ) -> list[dict]:
     con = df["tasa_t1"].notna().to_numpy()
     filas = []
@@ -181,12 +276,29 @@ def evaluar_configuracion(
         t_pred = time.perf_counter() - t0
         if recortar:
             pred = np.clip(pred, 0.0, 1.0)
-        filas.append(_fila(nombre_configuracion(c), "modelo", c, k, df, entrena, prueba, y.iloc[prueba].to_numpy(), pred, con[prueba],
-                           t_ajuste, t_pred, len(numericas) + len(categoricas)))
+        filas.append(
+            _fila(
+                nombre_configuracion(c),
+                "modelo",
+                c,
+                k,
+                df,
+                entrena,
+                prueba,
+                y.iloc[prueba].to_numpy(),
+                pred,
+                con[prueba],
+                t_ajuste,
+                t_pred,
+                len(numericas) + len(categoricas),
+            )
+        )
     return filas
 
 
-def ejecutar_formulaciones(cfg: dict, df: pd.DataFrame | None = None, verbose: bool = False) -> pd.DataFrame:
+def ejecutar_formulaciones(
+    cfg: dict, df: pd.DataFrame | None = None, verbose: bool = False
+) -> pd.DataFrame:
     """Líneas base + todas las configuraciones de las formulaciones elegidas, con los mismos pliegues."""
     p_exp, p = parametros_experimentos(cfg), parametros_formulaciones(cfg)
     if df is None:
@@ -195,11 +307,15 @@ def ejecutar_formulaciones(cfg: dict, df: pd.DataFrame | None = None, verbose: b
     pliegues = list(kfold_desde_config(df, cfg))  # una sola vez
     filas = evaluar_lineas_base(df, y, pliegues)
     for nombre in p["incluir"]:
-        numericas, categoricas = variables_formulacion(df, cfg, TODAS_LAS_FORMULACIONES[nombre]["conjunto"])
+        numericas, categoricas = variables_formulacion(
+            df, cfg, TODAS_LAS_FORMULACIONES[nombre]["conjunto"]
+        )
         X = preparar_x(df, numericas, categoricas)
         for c in grilla_formulacion(nombre, p):
             t0 = time.perf_counter()
-            filas += evaluar_configuracion(c, df, y, X, pliegues, numericas, categoricas, p_exp, p["recortar_predicciones"])
+            filas += evaluar_configuracion(
+                c, df, y, X, pliegues, numericas, categoricas, p_exp, p["recortar_predicciones"]
+            )
             if verbose:
                 log.info(f"{nombre_configuracion(c)}: {time.perf_counter() - t0:.1f} s")
     return pd.DataFrame(filas, columns=COLUMNAS_RESULTADO)
@@ -209,17 +325,35 @@ def resumen(resultados: pd.DataFrame) -> pd.DataFrame:
     """Media y desviación entre pliegues por configuración, ordenado por MAE; mejora % frente a la ingenua en cada subconjunto."""
     g = resultados.groupby("configuracion", sort=False)
     out = g.agg(
-        tipo=("tipo", "first"), formulacion=("formulacion", "first"), modelo=("modelo", "first"), objetivo=("objetivo", "first"),
-        imputacion=("imputacion", "first"), seleccion=("seleccion", "first"), n_variables=("n_variables", "first"),
-        n_pliegues=("pliegue", "nunique"), mae_media=("mae", "mean"), mae_desv=("mae", "std"), rmse_media=("rmse", "mean"),
-        rmse_desv=("rmse", "std"), r2_media=("r2", "mean"), r2_desv=("r2", "std"),
-        mae_con_historia_media=("mae_con_historia", "mean"), mae_con_historia_desv=("mae_con_historia", "std"),
-        mae_sin_historia_media=("mae_sin_historia", "mean"), mae_sin_historia_desv=("mae_sin_historia", "std"),
+        tipo=("tipo", "first"),
+        formulacion=("formulacion", "first"),
+        modelo=("modelo", "first"),
+        objetivo=("objetivo", "first"),
+        imputacion=("imputacion", "first"),
+        seleccion=("seleccion", "first"),
+        n_variables=("n_variables", "first"),
+        n_pliegues=("pliegue", "nunique"),
+        mae_media=("mae", "mean"),
+        mae_desv=("mae", "std"),
+        rmse_media=("rmse", "mean"),
+        rmse_desv=("rmse", "std"),
+        r2_media=("r2", "mean"),
+        r2_desv=("r2", "std"),
+        mae_con_historia_media=("mae_con_historia", "mean"),
+        mae_con_historia_desv=("mae_con_historia", "std"),
+        mae_sin_historia_media=("mae_sin_historia", "mean"),
+        mae_sin_historia_desv=("mae_sin_historia", "std"),
         t_ajuste_media_s=("t_ajuste_s", "mean"),
     ).reset_index()
     ing = out.set_index("configuracion").loc[BASE_INGENUA]
-    for sufijo, col in (("", "mae_media"), ("_con_historia", "mae_con_historia_media"), ("_sin_historia", "mae_sin_historia_media")):
+    for sufijo, col in (
+        ("", "mae_media"),
+        ("_con_historia", "mae_con_historia_media"),
+        ("_sin_historia", "mae_sin_historia_media"),
+    ):
         out[f"mejora_vs_ingenua{sufijo}_pct"] = 100 * (ing[col] - out[col]) / ing[col]
     mae = resultados.pivot(index="pliegue", columns="configuracion", values="mae")
-    out["pliegues_mejor_que_ingenua"] = out["configuracion"].map(lambda c: int((mae[c] < mae[BASE_INGENUA]).sum()))
+    out["pliegues_mejor_que_ingenua"] = out["configuracion"].map(
+        lambda c: int((mae[c] < mae[BASE_INGENUA]).sum())
+    )
     return out.sort_values("mae_media", kind="stable").reset_index(drop=True)

@@ -301,4 +301,3 @@ particion:
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021
   agrupar_por: ies             # ies | departamento (por departamento no se repite ningún territorio entre entrenamiento y prueba)
   estratificar_por: []         # [] = GroupKFold simple; [sector, caracter] estratifica los pliegues (solo con agrupar_por: ies)
-

@@ -1,4 +1,5 @@
 """Pruebas de los transformadores de SNIES, DANE y TerriData."""
+
 import pandas as pd
 
 from desercion_ies.etl.transform.snies import (
@@ -7,7 +8,14 @@ from desercion_ies.etl.transform.snies import (
     transformar_snies_matricula_programa,
 )
 
-NIVELES = ["tecnica_profesional", "tecnologica", "universitaria", "especializacion", "maestria", "doctorado"]
+NIVELES = [
+    "tecnica_profesional",
+    "tecnologica",
+    "universitaria",
+    "especializacion",
+    "maestria",
+    "doctorado",
+]
 
 
 def _matricula_mpio():
@@ -19,8 +27,16 @@ def _matricula_mpio():
         ("2018", "0", "SIN INFORMACION", [9, 9, 9, 9, 9, 9], "1"),
     ]
     return pd.DataFrame(
-        [{"a_o": a, "c_digo_delmunicipio": c, "nombre_del_municipio": n, **dict(zip(NIVELES, map(str, v))), "ies_con_oferta": i}
-         for a, c, n, v, i in filas]
+        [
+            {
+                "a_o": a,
+                "c_digo_delmunicipio": c,
+                "nombre_del_municipio": n,
+                **dict(zip(NIVELES, map(str, v), strict=False)),
+                "ies_con_oferta": i,
+            }
+            for a, c, n, v, i in filas
+        ]
     )
 
 
@@ -31,14 +47,20 @@ def test_matricula_municipio_llave_unica_y_suma_de_niveles():
     assert (out["matriculados"] >= 0).all()
     medellin = out[out["cod_divipola_mpio"] == "05001"].iloc[0]
     assert medellin["anio"] == 2018 and medellin["matriculados"] == 119  # (2+4+100+1+1+1) + 10
-    assert "00000" not in set(out["cod_divipola_mpio"]) and len(out) == 2  # código especial descartado
+    assert (
+        "00000" not in set(out["cod_divipola_mpio"]) and len(out) == 2
+    )  # código especial descartado
 
 
 def _programas():
     base = {
-        "c_digo_de_la_instituci_n": "1208", "c_digo_snies_delprograma": "3612",
-        "c_digo_del_municipio_ies": "5001", "c_digo_del_municipio_programa": "76109",
-        "id_sector": "1", "id_caracter": "4", "a_o": "2019",
+        "c_digo_de_la_instituci_n": "1208",
+        "c_digo_snies_delprograma": "3612",
+        "c_digo_del_municipio_ies": "5001",
+        "c_digo_del_municipio_programa": "76109",
+        "id_sector": "1",
+        "id_caracter": "4",
+        "a_o": "2019",
     }
     # dos géneros en el semestre 1 y una fila en el semestre 2
     return pd.DataFrame(

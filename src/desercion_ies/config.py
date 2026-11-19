@@ -1,4 +1,5 @@
 """Carga y validación de la configuración del ETL."""
+
 from pathlib import Path
 
 import yaml

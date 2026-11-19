@@ -1,4 +1,5 @@
 """Pruebas de las reglas de calidad (pandera) y del diccionario de datos."""
+
 import pandas as pd
 import pytest
 from pandera.errors import SchemaErrors

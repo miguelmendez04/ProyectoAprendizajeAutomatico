@@ -4,6 +4,7 @@ Uso, desde la raíz del proyecto:  python notebooks/construir/construir_ajuste_t
 Requiere haber corrido antes `desercion evaluar ajuste` (el cuaderno lee sus CSV y figuras; no repite la validación anidada completa).
 La sección final de conclusiones se toma de `reports/04_ajuste_temporal.md`.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -26,7 +27,7 @@ def seccion(titulo: str) -> str:
     texto = INFORME.read_text(encoding="utf-8")
     i = texto.index(f"## {titulo}")
     j = texto.find("\n## ", i + 3)
-    return texto[i:j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
+    return texto[i : j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
 
 
 celdas = [
@@ -182,16 +183,22 @@ ies = pd.read_csv(p["confirmacion_tarea2"]).set_index("configuracion")
 tabla = frio.assign(mae_por_ies=frio.configuracion.map(ies.mae_media), mejora_por_ies_pct=frio.configuracion.map(ies.mejora_grupo_pct))
 display(tabla[["configuracion", "mae_media", "mae_ic_inf", "mae_ic_sup", "mae_por_ies", "mejora_grupo_pct", "mejora_por_ies_pct", "p_wilcoxon_grupo", "p_t_grupo"]].sort_values("mae_media").reset_index(drop=True))
 """),
-    md("## 5. Conclusión\n\n(Tomada de `reports/04_ajuste_temporal.md`; todas las cifras salen de la corrida.)\n\n__CONCLUSION__"),
+    md(
+        "## 5. Conclusión\n\n(Tomada de `reports/04_ajuste_temporal.md`; todas las cifras salen de la corrida.)\n\n__CONCLUSION__"
+    ),
 ]
 
 nb = nbf.v4.new_notebook()
-conclusion = seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar ajuste`."
+conclusion = (
+    seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar ajuste`."
+)
 for c in celdas:
     if c.cell_type == "markdown" and "__CONCLUSION__" in c.source:
         c.source = c.source.replace("__CONCLUSION__", conclusion)
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
 print("escrito", DESTINO)

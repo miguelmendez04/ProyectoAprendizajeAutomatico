@@ -12,6 +12,7 @@ de los mismos datos, el resultado es algo optimista (igual para todos los escena
 **Evaluación.** GroupKFold por IES, 5 pliegues × las semillas 301–305. Se guardan las predicciones fuera de muestra de cada fila en cada repetición
 (`oof`: modelo → matriz repetición × fila), recortadas a [0, 1], y las métricas por pliegue.
 """
+
 import json
 import time
 from collections import Counter
@@ -23,19 +24,43 @@ from joblib import Parallel, delayed
 from desercion_ies.evaluation import ajuste as aj
 from desercion_ies.evaluation import tarea2 as t2
 from desercion_ies.evaluation.experimentos import hash_pliegue, metricas, parametros_experimentos
-from desercion_ies.evaluation.protocolo import comparar_pareado, media_e_intervalo, particiones_repetidas, prediccion_base
+from desercion_ies.evaluation.protocolo import (
+    comparar_pareado,
+    media_e_intervalo,
+    particiones_repetidas,
+    prediccion_base,
+)
 
 BASES = {"T1": "T1 base_ingenua", "T2": "T2 base_mediana_grupo"}
 BASE_MEDIANA = {"T1": "T1 base_mediana", "T2": "T2 base_mediana"}
 FINALES = [  # (nombre del modelo final, tarea, modelo del ajuste, variante)
     ("T1 C solo historia | ridge (ajustado)", "T1", "T1 C solo historia | ridge", "ajustado"),
-    ("T1 B historia+contexto | xgboost logit (ajustado)", "T1", "T1 B historia+contexto | xgboost logit", "ajustado"),
+    (
+        "T1 B historia+contexto | xgboost logit (ajustado)",
+        "T1",
+        "T1 B historia+contexto | xgboost logit",
+        "ajustado",
+    ),
     ("T2 ridge info_mutua (defecto)", "T2", "ridge", "defecto"),
     ("T2 ridge info_mutua (ajustado)", "T2", "ridge", "ajustado"),
     ("T2 xgboost con clusters (ajustado)", "T2", "xgboost", "ajustado"),
 ]
-COLUMNAS_RESULTADO = ["configuracion", "tarea", "tipo", "repeticion", "semilla", "pliegue", "n_entrenamiento", "n_prueba", "mae", "rmse", "r2",
-                      "t_ajuste_s", "t_prediccion_s", "hash_prueba"]
+COLUMNAS_RESULTADO = [
+    "configuracion",
+    "tarea",
+    "tipo",
+    "repeticion",
+    "semilla",
+    "pliegue",
+    "n_entrenamiento",
+    "n_prueba",
+    "mae",
+    "rmse",
+    "r2",
+    "t_ajuste_s",
+    "t_prediccion_s",
+    "hash_prueba",
+]
 
 
 def hiperparametros_finales(ajuste: pd.DataFrame) -> dict[str, dict]:
@@ -66,8 +91,15 @@ def modelos_finales(cfg: dict, ajuste: pd.DataFrame | None = None) -> list[dict]
     modelos = []
     for nombre, tarea, origen, variante in FINALES:
         spec = por_nombre[origen] if tarea == "T1" else t2s[origen]
-        modelos.append({"nombre": nombre, "tarea": tarea, "spec": spec, "variante": variante,
-                        "hiperparametros": hp[spec["nombre"]] if variante == "ajustado" else {}})
+        modelos.append(
+            {
+                "nombre": nombre,
+                "tarea": tarea,
+                "spec": spec,
+                "variante": variante,
+                "hiperparametros": hp[spec["nombre"]] if variante == "ajustado" else {},
+            }
+        )
     return modelos
 
 
@@ -80,13 +112,19 @@ def construir_final(m: dict, numericas: list[str], categoricas: list[str], p_exp
     pre = aj._prefijo(est)
     params = {}
     for k, v in m["hiperparametros"].items():
-        nombre = next(n for n in est.get_params() if n.endswith("red__k") or n.endswith("sel__k")) if k == "k" else f"{pre}modelo__{k}"
+        nombre = (
+            next(n for n in est.get_params() if n.endswith("red__k") or n.endswith("sel__k"))
+            if k == "k"
+            else f"{pre}modelo__{k}"
+        )
         params[nombre] = v
     return est.set_params(**params)
 
 
 # ---------- evaluación ----------
-def _tarea(m, idx, rep, semilla, k, entrena, prueba, X, y, numericas, categoricas, p_exp, p_t2, hash_p):
+def _tarea(
+    m, idx, rep, semilla, k, entrena, prueba, X, y, numericas, categoricas, p_exp, p_t2, hash_p
+):
     est = construir_final(m, numericas, categoricas, p_exp, p_t2)
     t0 = time.perf_counter()
     est.fit(X.iloc[entrena], y.iloc[entrena].to_numpy())
@@ -96,12 +134,28 @@ def _tarea(m, idx, rep, semilla, k, entrena, prueba, X, y, numericas, categorica
     return idx, rep, k, pred, t_aj, time.perf_counter() - t0, hash_p
 
 
-def _fila(nombre, tarea, tipo, rep, semilla, k, entrena, prueba, real, pred, hash_p, t_aj=0.0, t_pr=0.0) -> dict:
-    return {"configuracion": nombre, "tarea": tarea, "tipo": tipo, "repeticion": rep, "semilla": int(semilla), "pliegue": k, "n_entrenamiento": len(entrena),
-            "n_prueba": len(prueba), **metricas(real, pred), "t_ajuste_s": t_aj, "t_prediccion_s": t_pr, "hash_prueba": hash_p}
+def _fila(
+    nombre, tarea, tipo, rep, semilla, k, entrena, prueba, real, pred, hash_p, t_aj=0.0, t_pr=0.0
+) -> dict:
+    return {
+        "configuracion": nombre,
+        "tarea": tarea,
+        "tipo": tipo,
+        "repeticion": rep,
+        "semilla": int(semilla),
+        "pliegue": k,
+        "n_entrenamiento": len(entrena),
+        "n_prueba": len(prueba),
+        **metricas(real, pred),
+        "t_ajuste_s": t_aj,
+        "t_prediccion_s": t_pr,
+        "hash_prueba": hash_p,
+    }
 
 
-def evaluar_oof(cfg: dict, df: pd.DataFrame, modelos: list[dict], verbose: bool = False) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+def evaluar_oof(
+    cfg: dict, df: pd.DataFrame, modelos: list[dict], verbose: bool = False
+) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
     """Modelos finales y líneas base con GroupKFold por IES 5 × 5: (métricas por pliegue, predicciones fuera de muestra por modelo).
 
     Líneas base: ingenua y mediana en la Tarea 1; mediana por carácter × sector y mediana en la Tarea 2. La ingenua usa `tasa_t1` del dataset recibido
@@ -115,23 +169,69 @@ def evaluar_oof(cfg: dict, df: pd.DataFrame, modelos: list[dict], verbose: bool 
     n_rep = len(reps)
     oof = {m["nombre"]: np.full((n_rep, len(df)), np.nan) for m in modelos}
     filas = []
-    for rep, (pliegues, semilla) in enumerate(zip(reps, p["semillas"])):
+    for rep, (pliegues, semilla) in enumerate(zip(reps, p["semillas"], strict=False)):
         for k, (entrena, prueba) in enumerate(pliegues):
             real, h = y.iloc[prueba].to_numpy(), hash_pliegue(df, prueba)
             med = np.full(len(prueba), float(np.median(y.iloc[entrena])))
             grupo, _ = t2.prediccion_mediana_grupo(df, y, entrena, prueba)
-            for tarea, nombre, pred in (("T1", BASES["T1"], prediccion_base(df, y, entrena, prueba, "tasa_t1")), ("T1", BASE_MEDIANA["T1"], med),
-                                        ("T2", BASES["T2"], grupo), ("T2", BASE_MEDIANA["T2"], med)):
+            for tarea, nombre, pred in (
+                ("T1", BASES["T1"], prediccion_base(df, y, entrena, prueba, "tasa_t1")),
+                ("T1", BASE_MEDIANA["T1"], med),
+                ("T2", BASES["T2"], grupo),
+                ("T2", BASE_MEDIANA["T2"], med),
+            ):
                 oof.setdefault(nombre, np.full((n_rep, len(df)), np.nan))[rep, prueba] = pred
-                filas.append(_fila(nombre, tarea, "linea_base", rep, semilla, k, entrena, prueba, real, pred, h))
-    tareas = [(m, i, rep, int(semilla), k, entrena, prueba)
-              for i, m in enumerate(modelos) for rep, (pliegues, semilla) in enumerate(zip(reps, p["semillas"])) for k, (entrena, prueba) in enumerate(pliegues)]
+                filas.append(
+                    _fila(
+                        nombre, tarea, "linea_base", rep, semilla, k, entrena, prueba, real, pred, h
+                    )
+                )
+    tareas = [
+        (m, i, rep, int(semilla), k, entrena, prueba)
+        for i, m in enumerate(modelos)
+        for rep, (pliegues, semilla) in enumerate(zip(reps, p["semillas"], strict=False))
+        for k, (entrena, prueba) in enumerate(pliegues)
+    ]
     salida = Parallel(n_jobs=p["n_jobs"], batch_size=1, verbose=10 if verbose else 0)(
-        delayed(_tarea)(m, i, rep, semilla, k, entrena, prueba, datos[m["nombre"]][0], y, datos[m["nombre"]][1], datos[m["nombre"]][2], p_exp, p_t2,
-                        hash_pliegue(df, prueba)) for m, i, rep, semilla, k, entrena, prueba in tareas)
-    for (m, i, rep, semilla, k, entrena, prueba), (_, _, _, pred, t_aj, t_pr, h) in zip(tareas, salida):
+        delayed(_tarea)(
+            m,
+            i,
+            rep,
+            semilla,
+            k,
+            entrena,
+            prueba,
+            datos[m["nombre"]][0],
+            y,
+            datos[m["nombre"]][1],
+            datos[m["nombre"]][2],
+            p_exp,
+            p_t2,
+            hash_pliegue(df, prueba),
+        )
+        for m, i, rep, semilla, k, entrena, prueba in tareas
+    )
+    for (m, _i, rep, semilla, k, entrena, prueba), (_, _, _, pred, t_aj, t_pr, h) in zip(
+        tareas, salida, strict=False
+    ):
         oof[m["nombre"]][rep, prueba] = pred
-        filas.append(_fila(m["nombre"], m["tarea"], "modelo", rep, semilla, k, entrena, prueba, y.iloc[prueba].to_numpy(), pred, h, t_aj, t_pr))
+        filas.append(
+            _fila(
+                m["nombre"],
+                m["tarea"],
+                "modelo",
+                rep,
+                semilla,
+                k,
+                entrena,
+                prueba,
+                y.iloc[prueba].to_numpy(),
+                pred,
+                h,
+                t_aj,
+                t_pr,
+            )
+        )
     return pd.DataFrame(filas, columns=COLUMNAS_RESULTADO), oof
 
 
@@ -151,13 +251,30 @@ def resumen_escenario(res: pd.DataFrame, nivel: float = 0.95) -> pd.DataFrame:
     filas = []
     for nombre in dict.fromkeys(res["configuracion"]):
         m, lo, hi = media_e_intervalo(mae[nombre], rho, nivel)
-        f = {"configuracion": nombre, **meta.loc[nombre].to_dict(), "mae": m, "mae_ic_inf": lo, "mae_ic_sup": hi, "rmse": float(res.loc[res["configuracion"] == nombre, "rmse"].mean()),
-             "r2": float(res.loc[res["configuracion"] == nombre, "r2"].mean())}
+        f = {
+            "configuracion": nombre,
+            **meta.loc[nombre].to_dict(),
+            "mae": m,
+            "mae_ic_inf": lo,
+            "mae_ic_sup": hi,
+            "rmse": float(res.loc[res["configuracion"] == nombre, "rmse"].mean()),
+            "r2": float(res.loc[res["configuracion"] == nombre, "r2"].mean()),
+        }
         base = BASES[f["tarea"]]
         if f["tipo"] == "modelo":
             c = comparar_pareado(mae[base] - mae[nombre], rho, nivel)
-            f.update({"linea_base": base, "dif_base": c["dif_media"], "dif_base_ic_inf": c["dif_ic_inf"], "dif_base_ic_sup": c["dif_ic_sup"],
-                      "mejora_base_pct": 100 * c["dif_media"] / float(mae[base].mean()), "p_wilcoxon": c["p_wilcoxon"], "p_t_corregida": c["p_t_corregido"],
-                      "gana_base": c["prop_gana"], "clase": clase(c["dif_media"], c["p_wilcoxon"], c["p_t_corregido"])})
+            f.update(
+                {
+                    "linea_base": base,
+                    "dif_base": c["dif_media"],
+                    "dif_base_ic_inf": c["dif_ic_inf"],
+                    "dif_base_ic_sup": c["dif_ic_sup"],
+                    "mejora_base_pct": 100 * c["dif_media"] / float(mae[base].mean()),
+                    "p_wilcoxon": c["p_wilcoxon"],
+                    "p_t_corregida": c["p_t_corregido"],
+                    "gana_base": c["prop_gana"],
+                    "clase": clase(c["dif_media"], c["p_wilcoxon"], c["p_t_corregido"]),
+                }
+            )
         filas.append(f)
     return pd.DataFrame(filas)

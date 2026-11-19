@@ -1,4 +1,5 @@
 """Métodos del profesor: KernelPCA, autoencoder y clusters (ajuste solo con entrenamiento, dimensiones, semillas)."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,7 +15,9 @@ def _matriz(n: int = 150, d: int = 12, semilla: int = 0) -> np.ndarray:
     return base @ rng.normal(size=(4, d)) + 0.1 * rng.normal(size=(n, d))  # rango efectivo ~4
 
 
-def _blobs(n_por_grupo: int = 40, centros=((0, 0), (6, 0), (0, 6), (6, 6)), semilla: int = 0) -> pd.DataFrame:
+def _blobs(
+    n_por_grupo: int = 40, centros=((0, 0), (6, 0), (0, 6), (6, 6)), semilla: int = 0
+) -> pd.DataFrame:
     rng = np.random.default_rng(semilla)
     filas = [rng.normal(c, 0.5, size=(n_por_grupo, 2)) for c in centros]
     df = pd.DataFrame(np.vstack(filas), columns=["x1", "x2"])
@@ -30,7 +33,10 @@ def test_kernel_pca_tiene_tantos_componentes_como_pca_al_90_del_entrenamiento():
     k = KernelPCAComoPCA(varianza=0.90, random_state=0).fit(entrena)
     esperado = PCA(n_components=0.90, svd_solver="full").fit(entrena).n_components_
     assert k.n_componentes_ == esperado
-    assert k.transform(entrena).shape == (100, esperado) and k.transform(prueba).shape == (50, esperado)
+    assert k.transform(entrena).shape == (100, esperado) and k.transform(prueba).shape == (
+        50,
+        esperado,
+    )
 
 
 def test_kernel_pca_se_ajusta_solo_con_el_entrenamiento():
@@ -38,7 +44,9 @@ def test_kernel_pca_se_ajusta_solo_con_el_entrenamiento():
     entrena = X[:100]
     prueba_distinta = X[100:] + 1000.0
     k = KernelPCAComoPCA(random_state=0).fit(entrena)
-    assert k.kpca_.X_fit_.shape == entrena.shape and np.allclose(k.kpca_.X_fit_, entrena)  # el kernel solo ve el entrenamiento
+    assert k.kpca_.X_fit_.shape == entrena.shape and np.allclose(
+        k.kpca_.X_fit_, entrena
+    )  # el kernel solo ve el entrenamiento
     k.transform(prueba_distinta)  # transformar la prueba no cambia lo ajustado
     assert np.allclose(k.kpca_.X_fit_, entrena)
 
@@ -74,7 +82,11 @@ def test_el_cuello_de_botella_es_coherente_con_la_reconstruccion_del_mlp():
 def test_el_autoencoder_usa_parada_temprana_con_validacion_interna_y_semilla():
     X = _matriz()
     ae = AutoencoderPequeno(max_iter=2000, validation_fraction=0.2, random_state=3).fit(X)
-    assert ae.mlp_.early_stopping and ae.mlp_.validation_fraction == 0.2 and ae.mlp_.validation_scores_ is not None
+    assert (
+        ae.mlp_.early_stopping
+        and ae.mlp_.validation_fraction == 0.2
+        and ae.mlp_.validation_scores_ is not None
+    )
     assert ae.paro_temprano_ and ae.n_iter_ < 2000
     otro = AutoencoderPequeno(max_iter=2000, validation_fraction=0.2, random_state=3).fit(X)
     assert np.allclose(ae.transform(X), otro.transform(X))  # misma semilla, mismo resultado
@@ -88,7 +100,7 @@ def test_el_autoencoder_se_ajusta_solo_con_el_entrenamiento_y_se_puede_clonar():
     ae = AutoencoderPequeno(max_iter=50, random_state=0).fit(entrena)
     antes = [w.copy() for w in ae.mlp_.coefs_]
     ae.transform(X[100:] + 500.0)  # transformar la prueba no toca los pesos
-    assert all(np.array_equal(a, b) for a, b in zip(antes, ae.mlp_.coefs_))
+    assert all(np.array_equal(a, b) for a, b in zip(antes, ae.mlp_.coefs_, strict=False))
     assert ae.n_features_in_ == entrena.shape[1] and isinstance(clone(ae), AutoencoderPequeno)
 
 
@@ -100,7 +112,9 @@ def test_activacion_invalida_falla():
 # ---------- clusters ----------
 def test_k_se_elige_por_silueta_entre_3_y_8():
     df = _blobs()
-    ag = AgregarClusters(["x1", "x2", "falta_saber11"], [], k_min=3, k_max=8, random_state=0).fit(df)  # solo numéricas: el sector alterno no agrupa
+    ag = AgregarClusters(["x1", "x2", "falta_saber11"], [], k_min=3, k_max=8, random_state=0).fit(
+        df
+    )  # solo numéricas: el sector alterno no agrupa
     assert ag.k_ == 4  # los datos tienen 4 grupos bien separados
     assert set(ag.siluetas_) == set(range(3, 9)) and max(ag.siluetas_, key=ag.siluetas_.get) == 4
 
@@ -113,7 +127,9 @@ def test_los_clusters_se_agregan_como_one_hot_y_distancias():
     assert salida.shape == (len(df), 2 * k)
     onehot, distancias = salida[:, :k], salida[:, k:]
     assert np.array_equal(onehot.sum(axis=1), np.ones(len(df))) and (distancias >= 0).all()
-    assert np.array_equal(distancias.argmin(axis=1), onehot.argmax(axis=1))  # el cluster es el del centroide más cercano
+    assert np.array_equal(
+        distancias.argmin(axis=1), onehot.argmax(axis=1)
+    )  # el cluster es el del centroide más cercano
 
 
 def test_el_clustering_no_usa_los_indicadores_falta_y_si_la_categoria():
@@ -133,7 +149,9 @@ def test_los_clusters_se_ajustan_solo_con_el_entrenamiento():
     centros = ag.kmeans_.cluster_centers_.copy()
     ag.transform(prueba)
     assert np.array_equal(centros, ag.kmeans_.cluster_centers_)
-    assert ag.pre_.transformers_[0][1].named_steps["escalar"].mean_ == pytest.approx(entrena[["x1", "x2"]].mean().to_numpy())
+    assert ag.pre_.transformers_[0][1].named_steps["escalar"].mean_ == pytest.approx(
+        entrena[["x1", "x2"]].mean().to_numpy()
+    )
 
 
 def test_los_clusters_son_reproducibles_con_semilla_y_toleran_categorias_nuevas():

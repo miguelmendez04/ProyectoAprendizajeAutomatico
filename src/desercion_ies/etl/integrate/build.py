@@ -6,6 +6,7 @@ Reglas de diseño:
   NBI) no llevan sufijo.
 - Cada join registra las filas de la base sin pareja en el log.
 """
+
 import re
 from pathlib import Path
 
@@ -39,8 +40,12 @@ def sede_por_ies(catalogo: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     la sede principal, de modo que asignar toda la IES a un municipio es una aproximación.
     """
     cat = catalogo.dropna(subset=["cod_divipola_mpio"])
-    conteo = cat.groupby(["cod_ies", "cod_divipola_mpio", "sector", "caracter"], as_index=False).size()
-    conteo = conteo.sort_values(["cod_ies", "size", "cod_divipola_mpio"], ascending=[True, False, True])
+    conteo = cat.groupby(
+        ["cod_ies", "cod_divipola_mpio", "sector", "caracter"], as_index=False
+    ).size()
+    conteo = conteo.sort_values(
+        ["cod_ies", "size", "cod_divipola_mpio"], ascending=[True, False, True]
+    )
     sede = conteo.drop_duplicates("cod_ies")[["cod_ies", "cod_divipola_mpio", "sector", "caracter"]]
     multisede = cat.groupby("cod_ies")["cod_divipola_mpio"].nunique()
     return sede.reset_index(drop=True), sorted(multisede[multisede > 1].index)
@@ -97,7 +102,11 @@ def construir_dataset_desde_tablas(
             sale |= base["es_sena"]
         # Tamaño según SPADIES: log1p del denominador de la tasa. Es información de t-2 (no fuga) y está completa 2015-2021
         base["log_matriculados_spadies_t2"] = np.log1p(base["matriculados_t2_spadies"])
-        base = base[~sale].drop(columns=["matriculados_t2_spadies", "matriculados_t2_snies"]).reset_index(drop=True)
+        base = (
+            base[~sale]
+            .drop(columns=["matriculados_t2_spadies", "matriculados_t2_snies"])
+            .reset_index(drop=True)
+        )
 
     sede_ies, _ = sede_por_ies(catalogo)
 
@@ -105,22 +114,38 @@ def construir_dataset_desde_tablas(
         base = unir_con_perdida(base, sede_ies, ["cod_ies"], "catalogo_ies", log)
         mat = snies_programa.groupby(["cod_ies", "anio"], as_index=False)["matriculados"].sum()
         mat = mat.rename(columns={"matriculados": "matriculados_ies"})
-        base = _unir_rezagada(base, mat, ["cod_ies", "anio"], ["matriculados_ies"], "matricula_ies", log, rezago_matricula)
+        base = _unir_rezagada(
+            base,
+            mat,
+            ["cod_ies", "anio"],
+            ["matriculados_ies"],
+            "matricula_ies",
+            log,
+            rezago_matricula,
+        )
     elif unidad == "programa":
         if "cod_snies_programa" not in base.columns:
             raise ValueError(
                 "unidad 'programa' requiere cod_snies_programa en el objetivo (export de SPADIES por programa)"
             )
-        prog = catalogo[["cod_ies", "cod_snies_programa", "cod_divipola_mpio_programa", "sector", "caracter"]]
+        prog = catalogo[
+            ["cod_ies", "cod_snies_programa", "cod_divipola_mpio_programa", "sector", "caracter"]
+        ]
         prog = prog.rename(columns={"cod_divipola_mpio_programa": "cod_divipola_mpio"})
-        base = unir_con_perdida(base, prog, ["cod_ies", "cod_snies_programa"], "catalogo_programa", log)
+        base = unir_con_perdida(
+            base, prog, ["cod_ies", "cod_snies_programa"], "catalogo_programa", log
+        )
         mat = snies_programa.rename(columns={"matriculados": "matriculados_programa"})
         llave = ["cod_ies", "cod_snies_programa", "anio"]
-        base = _unir_rezagada(base, mat, llave, ["matriculados_programa"], "matricula_programa", log, rezago_matricula)
+        base = _unir_rezagada(
+            base, mat, llave, ["matriculados_programa"], "matricula_programa", log, rezago_matricula
+        )
     else:  # municipio
         if "cod_divipola_mpio" not in base.columns:
             # la tasa de cada IES se asigna a su municipio sede
-            base = unir_con_perdida(base, sede_ies[["cod_ies", "cod_divipola_mpio"]], ["cod_ies"], "sede_ies", log)
+            base = unir_con_perdida(
+                base, sede_ies[["cod_ies", "cod_divipola_mpio"]], ["cod_ies"], "sede_ies", log
+            )
             base = base.dropna(subset=["cod_divipola_mpio"])
         # No se conserva el número de IES: se calcula con el objetivo del año t y sería fuga
         llave = LLAVE_MPIO + [c for c in ("semestre",) if c in base.columns]
@@ -129,8 +154,18 @@ def construir_dataset_desde_tablas(
     # Variables municipales (todas rezagadas t-1)
     cols_saber = [c for c in saber_mpio.columns if c not in LLAVE_MPIO]
     base = _unir_rezagada(base, saber_mpio, LLAVE_MPIO, cols_saber, "saber11", log)
-    mpio = snies_mpio.rename(columns={"matriculados": "mpio_matriculados", "ies_con_oferta": "mpio_ies_con_oferta"})
-    base = _unir_rezagada(base, mpio, LLAVE_MPIO, ["mpio_matriculados", "mpio_ies_con_oferta"], "snies_municipio", log, rezago_matricula)
+    mpio = snies_mpio.rename(
+        columns={"matriculados": "mpio_matriculados", "ies_con_oferta": "mpio_ies_con_oferta"}
+    )
+    base = _unir_rezagada(
+        base,
+        mpio,
+        LLAVE_MPIO,
+        ["mpio_matriculados", "mpio_ies_con_oferta"],
+        "snies_municipio",
+        log,
+        rezago_matricula,
+    )
     if terridata is not None:
         cols_td = [c for c in terridata.columns if c not in LLAVE_MPIO]
         base = _unir_rezagada(base, terridata, LLAVE_MPIO, cols_td, "terridata", log)
@@ -138,8 +173,11 @@ def construir_dataset_desde_tablas(
     for col in [c for c in base.columns if re.fullmatch(r"matriculados_ies_t\d+", c)]:
         base[f"log_{col}"] = np.log1p(base[col])
     # Indicadores de nulo por bloques de años: Saber 11 (2019 y 2021), MDM y SNIES (2015-2016)
-    for indicador, col in (("falta_saber11", "punt_global_media_t1"), ("falta_mdm", "td_mdm_t1"),
-                           ("falta_snies", f"matriculados_ies_t{rezago_matricula}")):
+    for indicador, col in (
+        ("falta_saber11", "punt_global_media_t1"),
+        ("falta_mdm", "td_mdm_t1"),
+        ("falta_snies", f"matriculados_ies_t{rezago_matricula}"),
+    ):
         if col in base.columns:
             base[indicador] = base[col].isna()
     return base.reset_index(drop=True), log
@@ -154,7 +192,9 @@ def _cargar_terridata(cfg: dict, interim: Path, notas: list[str]) -> pd.DataFram
     directorio = Path(cfg["terridata"]["directorio"])
     zips = sorted(directorio.glob("TerriData_Dim*.txt.zip")) if directorio.is_dir() else []
     if not zips:
-        notas.append(f"TerriData: no hay zips TerriData_Dim<N>.txt.zip en {directorio}; la fuente no se integró")
+        notas.append(
+            f"TerriData: no hay zips TerriData_Dim<N>.txt.zip en {directorio}; la fuente no se integró"
+        )
         return None
     cache = interim / "terridata_largo.csv"
     # la lectura pesa ~1 min (la dimensión 2 son ~1 GB): se reutiliza mientras ni los zips ni el catálogo cambien
@@ -167,13 +207,20 @@ def _cargar_terridata(cfg: dict, interim: Path, notas: list[str]) -> pd.DataFram
         largo = leer_terridata(directorio, notas=notas)
         largo.to_csv(cache, index=False)
     if largo.empty:
-        notas.append("TerriData: ningún indicador del catálogo con datos municipales; la fuente no se integró")
+        notas.append(
+            "TerriData: ningún indicador del catálogo con datos municipales; la fuente no se integró"
+        )
         return None
     return transformar_terridata(largo, cfg["anios"])
 
 
-def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: str, max_nulos_pct: float,
-                      notas: list[str]) -> pd.DataFrame:
+def depurar_terridata(
+    df: pd.DataFrame,
+    terridata: pd.DataFrame | None,
+    unidad: str,
+    max_nulos_pct: float,
+    notas: list[str],
+) -> pd.DataFrame:
     """Descarta las variables `td_*` con más nulos que el tope y anota las unidades sin municipio en TerriData.
 
     Una variable con tanta falta no aporta y haría fallar la validación. Se informa cuántas IES (o municipios)
@@ -199,7 +246,12 @@ def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: 
         sin = por_unidad[~por_unidad.isin(conocidos)]
         detalle = ""
         if len(sin):
-            detalle = " (" + ", ".join(f"{k}→{v}" for k, v in list(sin.items())[:15]) + (", …" if len(sin) > 15 else "") + ")"
+            detalle = (
+                " ("
+                + ", ".join(f"{k}→{v}" for k, v in list(sin.items())[:15])
+                + (", …" if len(sin) > 15 else "")
+                + ")"
+            )
         notas.append(
             f"TerriData: {len(sin)} de {len(por_unidad)} {etiqueta} sin municipio sede en TerriData{detalle}; "
             f"quedan con sus variables td_* nulas"
@@ -207,49 +259,76 @@ def depurar_terridata(df: pd.DataFrame, terridata: pd.DataFrame | None, unidad: 
     return df
 
 
-def _anotar_sin_historia(cfg: dict, df: pd.DataFrame, nombres: pd.Series | None, destino: Path, notas: list[str]) -> None:
+def _anotar_sin_historia(
+    cfg: dict, df: pd.DataFrame, nombres: pd.Series | None, destino: Path, notas: list[str]
+) -> None:
     """Escribe `reports/etl/sin_historia.csv` (filas sin `tasa_t1` y su motivo) y deja el resumen en la bitácora."""
     from desercion_ies.etl.extract.spadies import tasas_anuales_sin_minimo
 
-    sin = clasificar_sin_historia(df, tasas_anuales_sin_minimo(cfg), cfg.get("min_matriculados_t2", 100))
+    sin = clasificar_sin_historia(
+        df, tasas_anuales_sin_minimo(cfg), cfg.get("min_matriculados_t2", 100)
+    )
     if nombres is not None:
         sin.insert(1, "nombre_ies", sin["cod_ies"].map(nombres))
     destino.parent.mkdir(parents=True, exist_ok=True)
     sin.to_csv(destino, index=False)
     por_motivo = sin.groupby("motivo")["cod_ies"].agg(filas="size", ies="nunique")
-    detalle = "; ".join(f"{m}: {r['filas']} fila(s) de {r['ies']} IES" for m, r in por_motivo.iterrows())
+    detalle = "; ".join(
+        f"{m}: {r['filas']} fila(s) de {r['ies']} IES" for m, r in por_motivo.iterrows()
+    )
     notas.append(
         f"Historia: {len(sin)} de {len(df)} filas sin tasa_t1 ({sin['cod_ies'].nunique()} IES; detalle en {destino.name})"
         + (f" — {detalle}" if detalle else "")
     )
 
 
-def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path, notas: list[str]) -> pd.DataFrame:
+def escribir_tasas_altas(
+    cfg: dict, banderas: pd.DataFrame | None, destino: Path, notas: list[str]
+) -> pd.DataFrame:
     """Lista las IES-año con tasa > `umbral_tasa_alta` tras el denominador mínimo y las escribe en `destino`.
 
     Columnas: código, nombre (catálogo oficial), año, tasa, matrícula t-2 de SPADIES (denominador) y de SNIES, ratio,
     último periodo reportado, `posible_cierre`, `inconsistencia_fuentes` y `regimen_especial`. La lista se hace antes
     de excluir las filas marcadas, para poder verlas; `banderas` es la tabla de `construir_dataset_desde_tablas`.
     """
-    from desercion_ies.etl.extract.spadies import leer_diferenciado, tabla_tasas_altas, tasas_semestrales
+    from desercion_ies.etl.extract.spadies import (
+        leer_diferenciado,
+        tabla_tasas_altas,
+        tasas_semestrales,
+    )
 
     umbral = cfg.get("umbral_tasa_alta", 0.5)
     anios = cfg["anios"]
     largo = leer_diferenciado(Path(cfg["spadies"]["archivo"]))
     semestrales = tasas_semestrales(largo)
     semestrales.loc[semestrales["tasa_desercion"] > 1, "tasa_desercion"] = float("nan")
-    tabla = tabla_tasas_altas(semestrales, largo, umbral, cfg.get("min_matriculados_t2", 100),
-                              cfg["spadies"].get("periodicidad", "anual"))
+    tabla = tabla_tasas_altas(
+        semestrales,
+        largo,
+        umbral,
+        cfg.get("min_matriculados_t2", 100),
+        cfg["spadies"].get("periodicidad", "anual"),
+    )
     tabla = tabla[tabla["anio"].between(min(anios), max(anios))]
 
     catalogo = Path(cfg["rutas"]["raw"]) / "snies" / "ies_catalogo.csv"
     if catalogo.exists():
-        nombres = pd.read_csv(catalogo, dtype=str).rename(columns={"c_digo_instituci_n": "cod_ies", "nombre_instituci_n": "nombre"})
-        tabla = tabla.merge(nombres[["cod_ies", "nombre"]].drop_duplicates("cod_ies"), on="cod_ies", how="left")
+        nombres = pd.read_csv(catalogo, dtype=str).rename(
+            columns={"c_digo_instituci_n": "cod_ies", "nombre_instituci_n": "nombre"}
+        )
+        tabla = tabla.merge(
+            nombres[["cod_ies", "nombre"]].drop_duplicates("cod_ies"), on="cod_ies", how="left"
+        )
     else:
         tabla["nombre"] = pd.NA
     llave = [c for c in ("cod_ies", "anio", "semestre") if c in tabla.columns]
-    extra = ["matriculados_t2_snies", "ratio_spadies_snies", "inconsistencia_fuentes", "regimen_especial", "es_sena"]
+    extra = [
+        "matriculados_t2_snies",
+        "ratio_spadies_snies",
+        "inconsistencia_fuentes",
+        "regimen_especial",
+        "es_sena",
+    ]
     if banderas is not None:
         tabla = tabla.merge(banderas[llave + extra], on=llave, how="left")
     primeras = ["cod_ies", "nombre", "anio"] + (["semestre"] if "semestre" in tabla.columns else [])
@@ -257,10 +336,22 @@ def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path
     tabla = tabla[primeras + resto]
     destino.parent.mkdir(parents=True, exist_ok=True)
     tabla.to_csv(destino, index=False, encoding="utf-8-sig")
-    marcas = {c: tabla[c].fillna(False).astype(bool) for c in ("posible_cierre", "inconsistencia_fuentes", "regimen_especial", "es_sena") if c in tabla}
-    union = pd.concat(marcas.values(), axis=1).any(axis=1) if marcas else pd.Series(False, index=tabla.index)
-    opciones = {"inconsistencia_fuentes": cfg.get("excluir_inconsistencias", True), "regimen_especial": cfg.get("excluir_regimen_especial", True),
-                "posible_cierre": cfg.get("excluir_posible_cierre", True), "es_sena": cfg.get("excluir_sena", False)}
+    marcas = {
+        c: tabla[c].fillna(False).astype(bool)
+        for c in ("posible_cierre", "inconsistencia_fuentes", "regimen_especial", "es_sena")
+        if c in tabla
+    }
+    union = (
+        pd.concat(marcas.values(), axis=1).any(axis=1)
+        if marcas
+        else pd.Series(False, index=tabla.index)
+    )
+    opciones = {
+        "inconsistencia_fuentes": cfg.get("excluir_inconsistencias", True),
+        "regimen_especial": cfg.get("excluir_regimen_especial", True),
+        "posible_cierre": cfg.get("excluir_posible_cierre", True),
+        "es_sena": cfg.get("excluir_sena", False),
+    }
     notas.append(
         f"SPADIES: {len(tabla)} IES-año de {tabla['cod_ies'].nunique()} IES con tasa > {umbral:.0%} tras el denominador mínimo "
         f"(lista en {destino.as_posix()}); marcadas: "
@@ -271,17 +362,24 @@ def escribir_tasas_altas(cfg: dict, banderas: pd.DataFrame | None, destino: Path
     return tabla
 
 
-def _anotar_banderas(cfg: dict, banderas: pd.DataFrame, nombres: pd.Series | None, destino: Path, notas: list[str]) -> None:
+def _anotar_banderas(
+    cfg: dict, banderas: pd.DataFrame, nombres: pd.Series | None, destino: Path, notas: list[str]
+) -> None:
     """Escribe las IES-año marcadas (con su motivo) y anota cuántas se excluyen por cada bandera."""
     umbral = cfg.get("umbral_ratio_inconsistencia", 3.0)
     excl_inc = cfg.get("excluir_inconsistencias", True)
     excl_reg = cfg.get("excluir_regimen_especial", True)
     excl_sena = cfg.get("excluir_sena", False)
-    marcadas = banderas[banderas["inconsistencia_fuentes"] | banderas["regimen_especial"] | banderas["es_sena"]].copy()
+    marcadas = banderas[
+        banderas["inconsistencia_fuentes"] | banderas["regimen_especial"] | banderas["es_sena"]
+    ].copy()
     if nombres is not None:
         marcadas.insert(1, "nombre", marcadas["cod_ies"].map(nombres))
-    marcadas["excluida"] = ((marcadas["inconsistencia_fuentes"] & excl_inc) | (marcadas["regimen_especial"] & excl_reg)
-                            | (marcadas["es_sena"] & excl_sena))
+    marcadas["excluida"] = (
+        (marcadas["inconsistencia_fuentes"] & excl_inc)
+        | (marcadas["regimen_especial"] & excl_reg)
+        | (marcadas["es_sena"] & excl_sena)
+    )
     destino.parent.mkdir(parents=True, exist_ok=True)
     marcadas.to_csv(destino, index=False, encoding="utf-8-sig")
     n = len(banderas)
@@ -304,7 +402,9 @@ def _anotar_banderas(cfg: dict, banderas: pd.DataFrame, nombres: pd.Series | Non
         f"SENA (9110): {len(sena)} IES-año marcados con es_sena; {'se excluyen' if excl_sena else 'no se excluyen (excluir_sena = false)'}"
     )
     quitadas = int(marcadas["excluida"].sum())
-    notas.append(f"Exclusiones por calidad (detalle en {destino.as_posix()}): {quitadas} IES-año de {n} (unión de las banderas activas)")
+    notas.append(
+        f"Exclusiones por calidad (detalle en {destino.as_posix()}): {quitadas} IES-año de {n} (unión de las banderas activas)"
+    )
 
 
 def hay_export_spadies(cfg: dict) -> bool:
@@ -329,9 +429,11 @@ def construir_dataset(
     de calidad (códigos fuera de DIVIPOLA, SPADIES ausente) para la bitácora.
     """
     from desercion_ies.etl.extract.spadies import leer_spadies
-    from desercion_ies.etl.homologation.divipola import cargar_divipola
-    from desercion_ies.etl.homologation.divipola import aplicar_cambios_codigo
-    from desercion_ies.etl.integrate.aggregate import agregar_saber11_municipio, excluir_anios_incompletos
+    from desercion_ies.etl.homologation.divipola import aplicar_cambios_codigo, cargar_divipola
+    from desercion_ies.etl.integrate.aggregate import (
+        agregar_saber11_municipio,
+        excluir_anios_incompletos,
+    )
     from desercion_ies.etl.transform.saber11 import leer_saber11
     from desercion_ies.etl.transform.snies import (
         transformar_snies_catalogo,
@@ -348,7 +450,9 @@ def construir_dataset(
     cambios = {str(k).zfill(5): str(v).zfill(5) for k, v in cfg.get("cambios_codigo", {}).items()}
 
     def con_cambios(tabla, col="cod_divipola_mpio"):
-        return aplicar_cambios_codigo(tabla, col, cambios) if cambios and tabla is not None else tabla
+        return (
+            aplicar_cambios_codigo(tabla, col, cambios) if cambios and tabla is not None else tabla
+        )
 
     saber_est = con_cambios(leer_saber11(raw / "saber11" / "saber11.csv", notas=notas))
     sin_codigo = int(saber_est["cod_divipola_mpio"].isna().sum())
@@ -367,7 +471,9 @@ def construir_dataset(
     for nombre, tabla in (("saber11_municipio", saber), ("snies_matricula_mpio", snies_mpio)):
         fuera = codigos_fuera_de_divipola(tabla, divipola)
         if fuera:
-            notas.append(f"{nombre}: {fuera} filas con código de municipio que no está en DIVIPOLA vigente")
+            notas.append(
+                f"{nombre}: {fuera} filas con código de municipio que no está en DIVIPOLA vigente"
+            )
         tabla.to_csv(interim / f"{nombre}.csv", index=False)
     snies_programa.to_csv(interim / "snies_matricula_programa.csv", index=False)
     catalogo.to_csv(interim / "snies_catalogo.csv", index=False)
@@ -384,32 +490,68 @@ def construir_dataset(
             )
     else:
         objetivo = None
-        notas.append(f"SPADIES: no existe {cfg['spadies']['archivo']}; dataset preliminar con tasa_desercion nula")
+        notas.append(
+            f"SPADIES: no existe {cfg['spadies']['archivo']}; dataset preliminar con tasa_desercion nula"
+        )
 
     catalogo_ies = raw / "snies" / "ies_catalogo.csv"
     nombres_ies = None  # solo para escribir los nombres en los reportes
     if catalogo_ies.exists():
-        nombres_ies = pd.read_csv(catalogo_ies, dtype=str).drop_duplicates("c_digo_instituci_n").set_index("c_digo_instituci_n")["nombre_instituci_n"]
+        nombres_ies = (
+            pd.read_csv(catalogo_ies, dtype=str)
+            .drop_duplicates("c_digo_instituci_n")
+            .set_index("c_digo_instituci_n")["nombre_instituci_n"]
+        )
     registro: dict = {}
     reports = Path(cfg["rutas"].get("reports", "reports"))
     df, log = construir_dataset_desde_tablas(
-        cfg["unidad_analisis"], cfg["anios"], saber, snies_mpio, snies_programa, catalogo,
-        objetivo=objetivo, terridata=terridata, rezago_matricula=cfg.get("rezago_matricula", 2),
+        cfg["unidad_analisis"],
+        cfg["anios"],
+        saber,
+        snies_mpio,
+        snies_programa,
+        catalogo,
+        objetivo=objetivo,
+        terridata=terridata,
+        rezago_matricula=cfg.get("rezago_matricula", 2),
         excluir_inconsistencias=cfg.get("excluir_inconsistencias", True),
-        excluir_regimen_especial=cfg.get("excluir_regimen_especial", True), excluir_sena=cfg.get("excluir_sena", False),
-        umbral_ratio=cfg.get("umbral_ratio_inconsistencia", 3.0), registro=registro,
+        excluir_regimen_especial=cfg.get("excluir_regimen_especial", True),
+        excluir_sena=cfg.get("excluir_sena", False),
+        umbral_ratio=cfg.get("umbral_ratio_inconsistencia", 3.0),
+        registro=registro,
     )
     df = depurar_terridata(df, terridata, cfg["unidad_analisis"], cfg["max_nulos_pct"], notas)
     if "banderas" in registro:
-        _anotar_banderas(cfg, registro["banderas"], nombres_ies, reports / "etl" / "exclusiones_calidad.csv", notas)
+        _anotar_banderas(
+            cfg,
+            registro["banderas"],
+            nombres_ies,
+            reports / "etl" / "exclusiones_calidad.csv",
+            notas,
+        )
         escribir_tasas_altas(cfg, registro["banderas"], reports / "etl" / "tasas_altas.csv", notas)
-    llave = {"ies": ["cod_ies"], "programa": ["cod_ies", "cod_snies_programa"], "municipio": ["cod_divipola_mpio"]}[cfg["unidad_analisis"]]
-    if cfg.get("incluir_historia", True) and "tasa_desercion" in df.columns and "semestre" not in df.columns and set(llave) <= set(df.columns):
+    llave = {
+        "ies": ["cod_ies"],
+        "programa": ["cod_ies", "cod_snies_programa"],
+        "municipio": ["cod_divipola_mpio"],
+    }[cfg["unidad_analisis"]]
+    if (
+        cfg.get("incluir_historia", True)
+        and "tasa_desercion" in df.columns
+        and "semestre" not in df.columns
+        and set(llave) <= set(df.columns)
+    ):
         # Historia de la tasa (solo años anteriores): las filas del dataset ya depurado y, para los años anteriores a la ventana,
         # las tasas anuales de SPADIES con los mismos filtros (denominador mínimo, ceros iniciales faltantes). Ver historia.py
         previa = None
-        if cfg["unidad_analisis"] == "ies" and objetivo is not None and cfg.get("historia_previa_a_ventana", True):
-            previa = objetivo.loc[objetivo["anio"] < min(cfg["anios"]), ["cod_ies", "anio", "tasa_desercion"]]
+        if (
+            cfg["unidad_analisis"] == "ies"
+            and objetivo is not None
+            and cfg.get("historia_previa_a_ventana", True)
+        ):
+            previa = objetivo.loc[
+                objetivo["anio"] < min(cfg["anios"]), ["cod_ies", "anio", "tasa_desercion"]
+            ]
         df = agregar_historia(df, llave, previa=previa)
         if previa is not None:
             _anotar_sin_historia(cfg, df, nombres_ies, reports / "etl" / "sin_historia.csv", notas)

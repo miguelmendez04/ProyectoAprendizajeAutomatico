@@ -4,6 +4,7 @@ Cada `TerriData_Dim<N>.txt.zip` trae un TXT en formato largo separado por `|` (l
 población, pesa ~1 GB descomprimida), así que se lee por bloques y se filtran en el acto las
 entidades municipales y los indicadores del catálogo.
 """
+
 import zipfile
 from pathlib import Path
 
@@ -12,7 +13,14 @@ import pandas as pd
 from desercion_ies.etl.homologation.divipola import normalizar_codigo, normalizar_texto
 from desercion_ies.etl.transform.terridata import DIMENSIONES, clave_catalogo
 
-COLUMNAS_LECTURA = ["Código Departamento", "Código Entidad", "Subcategoría", "Indicador", "Dato Numérico", "Año"]
+COLUMNAS_LECTURA = [
+    "Código Departamento",
+    "Código Entidad",
+    "Subcategoría",
+    "Indicador",
+    "Dato Numérico",
+    "Año",
+]
 BLOQUE_FILAS = 1_000_000
 
 
@@ -26,7 +34,11 @@ def _filtrar_bloque(bloque: pd.DataFrame, catalogo: list[tuple], dimension: int)
     """Deja filas municipales de indicadores del catálogo; añade `columna`."""
     entidad = bloque["Código Entidad"].str.strip()
     # municipio: 5 dígitos que no terminan en 000 (departamento) y no pertenecen a 'Colombia' (dpto 01)
-    municipal = (entidad.str.len() == 5) & ~entidad.str.endswith("000") & (bloque["Código Departamento"].str.strip() != "01")
+    municipal = (
+        (entidad.str.len() == 5)
+        & ~entidad.str.endswith("000")
+        & (bloque["Código Departamento"].str.strip() != "01")
+    )
     bloque = bloque[municipal & (bloque["Dato Numérico"].str.strip() != "")]
     if bloque.empty:
         return bloque.assign(columna=pd.Series(dtype=str))
@@ -39,11 +51,16 @@ def _filtrar_bloque(bloque: pd.DataFrame, catalogo: list[tuple], dimension: int)
             if dim == dimension and s.startswith(cs) and (i.startswith(ci) if prefijo else i == ci):
                 asignado[(sub, ind)] = columna
                 break
-    columna = pd.Series([asignado.get(k) for k in zip(bloque["Subcategoría"], bloque["Indicador"])], index=bloque.index)
+    columna = pd.Series(
+        [asignado.get(k) for k in zip(bloque["Subcategoría"], bloque["Indicador"], strict=False)],
+        index=bloque.index,
+    )
     return bloque.assign(columna=columna).dropna(subset=["columna"])
 
 
-def leer_terridata(directorio: Path, dimensiones: list[int] | None = None, notas: list[str] | None = None) -> pd.DataFrame:
+def leer_terridata(
+    directorio: Path, dimensiones: list[int] | None = None, notas: list[str] | None = None
+) -> pd.DataFrame:
     """Devuelve cod_divipola_mpio, anio, columna, valor para los indicadores del catálogo.
 
     Los zips que falten se omiten y se anotan; las llaves repetidas se promedian y se cuentan.
@@ -55,26 +72,45 @@ def leer_terridata(directorio: Path, dimensiones: list[int] | None = None, notas
         ruta = directorio / f"TerriData_Dim{dim}.txt.zip"
         if not ruta.exists():
             if notas is not None:
-                notas.append(f"TerriData: no existe {ruta.name} (Dim{dim}); sus indicadores no se integraron")
+                notas.append(
+                    f"TerriData: no existe {ruta.name} (Dim{dim}); sus indicadores no se integraron"
+                )
             continue
         with zipfile.ZipFile(ruta) as z, z.open(z.infolist()[0]) as f:
-            lector = pd.read_csv(f, sep="|", dtype=str, usecols=COLUMNAS_LECTURA, keep_default_na=False,
-                                 encoding="utf-8", chunksize=BLOQUE_FILAS)
+            lector = pd.read_csv(
+                f,
+                sep="|",
+                dtype=str,
+                usecols=COLUMNAS_LECTURA,
+                keep_default_na=False,
+                encoding="utf-8",
+                chunksize=BLOQUE_FILAS,
+            )
             for bloque in lector:
                 bloque = _filtrar_bloque(bloque, catalogo, dim)
                 if not bloque.empty:
-                    partes.append(pd.DataFrame({
-                        "cod_divipola_mpio": bloque["Código Entidad"].str.strip().map(normalizar_codigo),
-                        "anio": pd.to_numeric(bloque["Año"], errors="coerce"),
-                        "columna": bloque["columna"],
-                        "valor": _numero(bloque["Dato Numérico"].str.strip()),
-                    }))
+                    partes.append(
+                        pd.DataFrame(
+                            {
+                                "cod_divipola_mpio": bloque["Código Entidad"]
+                                .str.strip()
+                                .map(normalizar_codigo),
+                                "anio": pd.to_numeric(bloque["Año"], errors="coerce"),
+                                "columna": bloque["columna"],
+                                "valor": _numero(bloque["Dato Numérico"].str.strip()),
+                            }
+                        )
+                    )
     if not partes:
         return pd.DataFrame(columns=["cod_divipola_mpio", "anio", "columna", "valor"])
-    largo = pd.concat(partes, ignore_index=True).dropna(subset=["cod_divipola_mpio", "anio", "valor"])
+    largo = pd.concat(partes, ignore_index=True).dropna(
+        subset=["cod_divipola_mpio", "anio", "valor"]
+    )
     largo["anio"] = largo["anio"].astype(int)
     llave = ["cod_divipola_mpio", "anio", "columna"]
     repetidas = int(largo.duplicated(llave).sum())
     if repetidas and notas is not None:
-        notas.append(f"TerriData: {repetidas} fila(s) duplicada(s) por municipio-año-indicador promediada(s)")
+        notas.append(
+            f"TerriData: {repetidas} fila(s) duplicada(s) por municipio-año-indicador promediada(s)"
+        )
     return largo.groupby(llave, as_index=False)["valor"].mean()

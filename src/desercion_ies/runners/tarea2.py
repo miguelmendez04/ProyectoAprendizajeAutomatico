@@ -4,9 +4,10 @@ Uso: desercion evaluar tarea2 [--config RUTA]
 Salidas (rutas en config.yaml: modelado.tarea2.salidas): reports/tables/experimentos_tarea2_cribado.csv,
 ..._confirmacion.csv, reports/03_tarea2.md, reports/figures/tarea2_metodologias.png y reports/figures/clusters.png.
 """
-import logging
+
 import argparse
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -17,13 +18,23 @@ import xgboost
 from desercion_ies.config import load_config
 from desercion_ies.evaluation import tarea2 as t2
 from desercion_ies.evaluation.experimentos import parametros_experimentos
-from desercion_ies.reporting.informe_tarea2 import describir_clusters, escribir_informe, figura_clusters, figura_metodologias
 from desercion_ies.features.particion import cargar_dataset
+from desercion_ies.reporting.informe_tarea2 import (
+    describir_clusters,
+    escribir_informe,
+    figura_clusters,
+    figura_metodologias,
+)
 
-SALIDAS = {"cribado": "reports/tables/experimentos_tarea2_cribado.csv", "confirmacion": "reports/tables/experimentos_tarea2_confirmacion.csv",
-           "resumen_confirmacion": "reports/tables/experimentos_tarea2_confirmacion_resumen.csv", "clusters": "reports/tables/clusters_tarea2.csv",
-           "informe": "reports/03_tarea2.md", "figura_metodologias": "reports/figures/tarea2_metodologias.png",
-           "figura_clusters": "reports/figures/clusters.png"}
+SALIDAS = {
+    "cribado": "reports/tables/experimentos_tarea2_cribado.csv",
+    "confirmacion": "reports/tables/experimentos_tarea2_confirmacion.csv",
+    "resumen_confirmacion": "reports/tables/experimentos_tarea2_confirmacion_resumen.csv",
+    "clusters": "reports/tables/clusters_tarea2.csv",
+    "informe": "reports/03_tarea2.md",
+    "figura_metodologias": "reports/figures/tarea2_metodologias.png",
+    "figura_clusters": "reports/figures/clusters.png",
+}
 
 
 log = logging.getLogger(__name__)
@@ -32,7 +43,11 @@ log = logging.getLogger(__name__)
 def configurar(ap: argparse.ArgumentParser) -> None:
     """Opciones de la línea de comandos de esta etapa."""
     ap.add_argument("--config", default="configs/config.yaml", help="archivo de configuración")
-    ap.add_argument("--solo-informe", action="store_true", help="no repite el cribado ni la confirmación: lee los CSV y los tiempos guardados")
+    ap.add_argument(
+        "--solo-informe",
+        action="store_true",
+        help="no repite el cribado ni la confirmación: lee los CSV y los tiempos guardados",
+    )
 
 
 def ejecutar(args: argparse.Namespace) -> None:
@@ -48,7 +63,11 @@ def ejecutar(args: argparse.Namespace) -> None:
     if args.solo_informe:
         cribado, conf = pd.read_csv(salidas["cribado"]), pd.read_csv(salidas["confirmacion"])
         guardados = json.loads(tiempos.read_text())
-        t_cribado, t_conf, t_total_guardado = guardados["t_cribado_s"], guardados["t_confirmacion_s"], guardados.get("t_total_s")
+        t_cribado, t_conf, t_total_guardado = (
+            guardados["t_cribado_s"],
+            guardados["t_confirmacion_s"],
+            guardados.get("t_total_s"),
+        )
         r = t2.resumen_cribado(cribado)
         nombres = list(dict.fromkeys(conf.loc[conf["tipo"] == "modelo", "configuracion"]))
     else:
@@ -67,7 +86,9 @@ def ejecutar(args: argparse.Namespace) -> None:
         conf = t2.confirmacion(cfg, elegidas, df, verbose=True)
         t_conf = time.perf_counter() - t
         conf.to_csv(salidas["confirmacion"], index=False)
-        tiempos.write_text(json.dumps({"t_cribado_s": t_cribado, "t_confirmacion_s": t_conf}), encoding="utf-8")
+        tiempos.write_text(
+            json.dumps({"t_cribado_s": t_cribado, "t_confirmacion_s": t_conf}), encoding="utf-8"
+        )
     cr = t2.resumen_confirmacion(conf, p["nivel_confianza"])
     cr.to_csv(salidas["resumen_confirmacion"], index=False)
 
@@ -79,28 +100,79 @@ def ejecutar(args: argparse.Namespace) -> None:
     figura_metodologias(r, salidas["figura_metodologias"])
 
     from sklearn.decomposition import PCA
+
     from desercion_ies.features.particion import construir_preprocesador
-    n_pca = int(PCA(n_components=p_exp["varianza_pca"], svd_solver="full").fit(construir_preprocesador(numericas, categoricas).fit_transform(X)).n_components_)
-    total = (t_total_guardado or t_cribado + t_conf) if args.solo_informe else time.perf_counter() - t0
+
+    n_pca = int(
+        PCA(n_components=p_exp["varianza_pca"], svd_solver="full")
+        .fit(construir_preprocesador(numericas, categoricas).fit_transform(X))
+        .n_components_
+    )
+    total = (
+        (t_total_guardado or t_cribado + t_conf) if args.solo_informe else time.perf_counter() - t0
+    )
     if not args.solo_informe:
-        tiempos.write_text(json.dumps({"t_cribado_s": t_cribado, "t_confirmacion_s": t_conf, "t_total_s": total}), encoding="utf-8")
+        tiempos.write_text(
+            json.dumps({"t_cribado_s": t_cribado, "t_confirmacion_s": t_conf, "t_total_s": total}),
+            encoding="utf-8",
+        )
     meta = {
-        "filas": len(df), "ies": int(df["cod_ies"].nunique()), "n_numericas": len(numericas), "k_vecinos": p_exp["k_vecinos"],
-        "k_info_mutua": p_exp["k_info_mutua"], "varianza_pca": p_exp["varianza_pca"], "n_pca": n_pca,
-        "gamma_texto": "1 / n_variables" if p["kernel_pca"]["gamma"] is None else p["kernel_pca"]["gamma"], "ae_oculta": p["autoencoder"]["oculta"],
-        "ae_cuello": p["autoencoder"]["cuello"], "ae_act": p["autoencoder"]["activacion"], "ae_val": p["autoencoder"]["validation_fraction"],
-        "k_min": p["clusters"]["k_min"], "k_max": p["clusters"]["k_max"], "semilla_cribado": p["semilla_cribado"],
-        "semillas_confirmacion": p["semillas_confirmacion"], "n_configuraciones": int((r["tipo"] == "modelo").sum()),
-        "n_ajustes": p["n_splits"] * len(p["semillas_confirmacion"]), "t_cribado_s": t_cribado, "t_confirmacion_s": t_conf, "t_total_s": total,
-        "sklearn": sklearn.__version__, "xgboost": xgboost.__version__, "k_clusters": ag.k_, "siluetas": ag.siluetas_,
+        "filas": len(df),
+        "ies": int(df["cod_ies"].nunique()),
+        "n_numericas": len(numericas),
+        "k_vecinos": p_exp["k_vecinos"],
+        "k_info_mutua": p_exp["k_info_mutua"],
+        "varianza_pca": p_exp["varianza_pca"],
+        "n_pca": n_pca,
+        "gamma_texto": "1 / n_variables"
+        if p["kernel_pca"]["gamma"] is None
+        else p["kernel_pca"]["gamma"],
+        "ae_oculta": p["autoencoder"]["oculta"],
+        "ae_cuello": p["autoencoder"]["cuello"],
+        "ae_act": p["autoencoder"]["activacion"],
+        "ae_val": p["autoencoder"]["validation_fraction"],
+        "k_min": p["clusters"]["k_min"],
+        "k_max": p["clusters"]["k_max"],
+        "semilla_cribado": p["semilla_cribado"],
+        "semillas_confirmacion": p["semillas_confirmacion"],
+        "n_configuraciones": int((r["tipo"] == "modelo").sum()),
+        "n_ajustes": p["n_splits"] * len(p["semillas_confirmacion"]),
+        "t_cribado_s": t_cribado,
+        "t_confirmacion_s": t_conf,
+        "t_total_s": total,
+        "sklearn": sklearn.__version__,
+        "xgboost": xgboost.__version__,
+        "k_clusters": ag.k_,
+        "siluetas": ag.siluetas_,
     }
     diag_ae = t2.diagnostico_autoencoder(cfg, df)
     escribir_informe(cribado, r, conf, cr, desc, nombres, meta, salidas["informe"], diag_ae)
 
     cols = ["configuracion", "mae_media", "mae_desv"]
-    log.info("\nLíneas base (cribado):\n" + r[r["tipo"] == "linea_base"][cols].to_string(index=False))
-    log.info("\nTop 5 del cribado:\n" + r[r["tipo"] == "modelo"].head(5)[cols].to_string(index=False))
-    log.info("\nConfirmación:\n" + cr[["configuracion", "mae_media", "mae_ic_inf", "mae_ic_sup", "mejora_grupo_pct", "p_wilcoxon_grupo", "p_t_grupo"]].to_string(index=False))
-    log.info(f"\nClusters: k = {ag.k_}\n" + desc[["cluster", "nombre", "n_filas", "n_ies", "tasa_mediana"]].to_string(index=False))
-    log.info(f"\nTiempo: cribado {t_cribado:.0f} s, confirmación {t_conf:.0f} s, total {total:.0f} s")
-
+    log.info(
+        "\nLíneas base (cribado):\n" + r[r["tipo"] == "linea_base"][cols].to_string(index=False)
+    )
+    log.info(
+        "\nTop 5 del cribado:\n" + r[r["tipo"] == "modelo"].head(5)[cols].to_string(index=False)
+    )
+    log.info(
+        "\nConfirmación:\n"
+        + cr[
+            [
+                "configuracion",
+                "mae_media",
+                "mae_ic_inf",
+                "mae_ic_sup",
+                "mejora_grupo_pct",
+                "p_wilcoxon_grupo",
+                "p_t_grupo",
+            ]
+        ].to_string(index=False)
+    )
+    log.info(
+        f"\nClusters: k = {ag.k_}\n"
+        + desc[["cluster", "nombre", "n_filas", "n_ies", "tasa_mediana"]].to_string(index=False)
+    )
+    log.info(
+        f"\nTiempo: cribado {t_cribado:.0f} s, confirmación {t_conf:.0f} s, total {total:.0f} s"
+    )

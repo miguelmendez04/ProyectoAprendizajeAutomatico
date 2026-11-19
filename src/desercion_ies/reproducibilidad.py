@@ -3,6 +3,7 @@
 No toca la lógica de modelado: el modo rápido solo cambia la *configuración* (menos semillas, grilla reducida) y redirige todas las salidas a otra carpeta,
 de modo que los resultados publicados en `reports/` no se sobrescriben.
 """
+
 from __future__ import annotations
 
 import copy
@@ -29,7 +30,9 @@ def leer_checksums(ruta: str | Path = CHECKSUMS) -> dict:
     return json.loads(Path(ruta).read_text(encoding="utf-8"))
 
 
-def verificar_checksums(grupo: str, raiz: str | Path = ".", ruta: str | Path = CHECKSUMS) -> list[dict]:
+def verificar_checksums(
+    grupo: str, raiz: str | Path = ".", ruta: str | Path = CHECKSUMS
+) -> list[dict]:
     """Compara los archivos de un grupo (`crudos` o `procesado`) con el manifiesto.
 
     Devuelve una fila por archivo con `estado`: `ok`, `ausente` o `distinto` (y los hashes esperado y observado).
@@ -39,10 +42,19 @@ def verificar_checksums(grupo: str, raiz: str | Path = ".", ruta: str | Path = C
     for rel, info in manifiesto.items():
         p = Path(raiz) / rel
         if not p.exists():
-            filas.append({"archivo": rel, "estado": "ausente", "esperado": info["sha256"], "observado": None})
+            filas.append(
+                {"archivo": rel, "estado": "ausente", "esperado": info["sha256"], "observado": None}
+            )
             continue
         obs = sha256_archivo(p)
-        filas.append({"archivo": rel, "estado": "ok" if obs == info["sha256"] else "distinto", "esperado": info["sha256"], "observado": obs})
+        filas.append(
+            {
+                "archivo": rel,
+                "estado": "ok" if obs == info["sha256"] else "distinto",
+                "esperado": info["sha256"],
+                "observado": obs,
+            }
+        )
     return filas
 
 
@@ -80,7 +92,12 @@ def _redirigir(x, salida: str):
 
 
 # configuraciones del protocolo v3 que se conservan en el modo rápido (subconjunto del conjunto publicado; mismos nombres)
-V3_RAPIDO = ["A contexto | ridge logit info_mutua", "B historia+contexto | xgboost logit", "C corrección solo historia | ridge", "C corrección solo historia | ridge [rezagada]"]
+V3_RAPIDO = [
+    "A contexto | ridge logit info_mutua",
+    "B historia+contexto | xgboost logit",
+    "C corrección solo historia | ridge",
+    "C corrección solo historia | ridge [rezagada]",
+]
 
 
 def config_rapida(cfg: dict, salida: str) -> dict:
@@ -91,14 +108,28 @@ def config_rapida(cfg: dict, salida: str) -> dict:
     interna, réplicas del bootstrap y repeticiones de la medición de complejidad.
     """
     c = _redirigir(copy.deepcopy(cfg), salida)
-    m = c["modelado"]  # cada sección se reduce solo si existe (las configuraciones de prueba son parciales)
+    m = c[
+        "modelado"
+    ]  # cada sección se reduce solo si existe (las configuraciones de prueba son parciales)
 
     def reducir(seccion: str, **cambios):
         if seccion in m:
             m[seccion].update(cambios)
 
-    reducir("experimentos", objetivo=["ninguna"], imputacion=["mediana"], seleccion=["ninguna", "info_mutua"], modelo=["ridge", "xgboost"])
-    reducir("formulaciones", incluir=["A_contexto", "C_correccion_solo_historia"], objetivo=["ninguna"], seleccion=["ninguna"], modelo=["ridge", "xgboost"])
+    reducir(
+        "experimentos",
+        objetivo=["ninguna"],
+        imputacion=["mediana"],
+        seleccion=["ninguna", "info_mutua"],
+        modelo=["ridge", "xgboost"],
+    )
+    reducir(
+        "formulaciones",
+        incluir=["A_contexto", "C_correccion_solo_historia"],
+        objetivo=["ninguna"],
+        seleccion=["ninguna"],
+        modelo=["ridge", "xgboost"],
+    )
     if "protocolo_v3" in m:
         v3 = m["protocolo_v3"]
         v3["semillas"] = v3["semillas"][:2]
@@ -123,7 +154,17 @@ def config_rapida(cfg: dict, salida: str) -> dict:
 
 
 # ---------- comparación con lo publicado ----------
-CLAVES = ["configuracion", "tarea", "variante", "tipo", "repeticion", "semilla", "pliegue", "escenario", "etapa"]
+CLAVES = [
+    "configuracion",
+    "tarea",
+    "variante",
+    "tipo",
+    "repeticion",
+    "semilla",
+    "pliegue",
+    "escenario",
+    "etapa",
+]
 METRICAS = ["mae", "rmse", "r2", "n_entrenamiento", "n_prueba"]
 # ruido de punto flotante entre bibliotecas de álgebra lineal (MKL de Anaconda frente a OpenBLAS de los wheels de pip): ~1e-15; una diferencia real es mucho mayor
 TOLERANCIA = 1e-9
@@ -142,7 +183,14 @@ def comparar_csv(nuevo: str | Path, publicado: str | Path, filtro: dict | None =
     claves = [c for c in CLAVES if c in a.columns and c in b.columns]
     metricas = [m for m in METRICAS if m in a.columns and m in b.columns]
     j = a[claves + metricas].merge(b[claves + metricas], on=claves, suffixes=("_nuevo", "_pub"))
-    out = {"filas_nuevo": len(a), "filas_comunes": len(j), "metricas": metricas, "iguales": 0, "casi_iguales": 0, "diferencia_max": 0.0}
+    out = {
+        "filas_nuevo": len(a),
+        "filas_comunes": len(j),
+        "metricas": metricas,
+        "iguales": 0,
+        "casi_iguales": 0,
+        "diferencia_max": 0.0,
+    }
     if j.empty:
         return out
     dif = pd.concat([(j[f"{m}_nuevo"] - j[f"{m}_pub"]).abs() for m in metricas], axis=1)

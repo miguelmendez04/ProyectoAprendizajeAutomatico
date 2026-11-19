@@ -1,8 +1,11 @@
 """Utilidades de unión: rezago temporal (sin fuga) y joins que registran filas perdidas."""
+
 import pandas as pd
 
 
-def rezagar_features(df: pd.DataFrame, llave: list[str], cols: list[str], rezago: int = 1) -> pd.DataFrame:
+def rezagar_features(
+    df: pd.DataFrame, llave: list[str], cols: list[str], rezago: int = 1
+) -> pd.DataFrame:
     """Mueve los valores del año t-rezago a la fila del año t y renombra con sufijo `_t<rezago>`.
 
     `llave` debe incluir `anio`. Así, al unir con el objetivo del año t, solo hay información previa.

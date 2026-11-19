@@ -4,6 +4,7 @@ Uso, desde la raíz del proyecto:  python notebooks/construir/construir_tarea2.p
 Requiere haber corrido antes `desercion evaluar tarea2` (el notebook lee sus CSV y figuras; no repite el cribado). La sección final
 de conclusiones se toma de `reports/03_tarea2.md`.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -27,7 +28,7 @@ def seccion(titulo: str) -> str:
     texto = INFORME.read_text(encoding="utf-8")
     i = texto.index(f"## {titulo}")
     j = texto.find("\n## ", i + 3)
-    return texto[i:j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
+    return texto[i : j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
 
 
 celdas = [
@@ -216,16 +217,23 @@ display(Image("reports/figures/clusters.png"))
 # Cómo cambia la composición de cada cluster con los años (si crece o se achica, el cluster recoge también cambios de las fuentes)
 display(pd.crosstab(df_cl.assign(cluster=etiquetas).cluster.map(dict(zip(desc.cluster, desc.nombre))), df_cl.anio))
 """),
-    md("## 7. Conclusiones\n\n(Tomadas de `reports/03_tarea2.md`; todas las cifras salen de la corrida.)\n\n" + "__CONCLUSION__"),
+    md(
+        "## 7. Conclusiones\n\n(Tomadas de `reports/03_tarea2.md`; todas las cifras salen de la corrida.)\n\n"
+        + "__CONCLUSION__"
+    ),
 ]
 
 nb = nbf.v4.new_notebook()
-conclusion = seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar tarea2`."
+conclusion = (
+    seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar tarea2`."
+)
 for c in celdas:
     if c.cell_type == "markdown" and "__CONCLUSION__" in c.source:
         c.source = c.source.replace("__CONCLUSION__", conclusion)
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=900, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=900, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
 print("escrito", DESTINO)

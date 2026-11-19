@@ -11,13 +11,30 @@
   ausencia es estructural de la fuente, no una inconsistencia, y no se marca (si no, se perderían todos los años
   cuyo t-2 es anterior a 2015).
 """
+
 import pandas as pd
 
 # 2903 es la Escuela de Comunicaciones; 2906 la Escuela de Postgrados de la Fuerza Aérea; 2106 la Dirección Nacional de Escuelas
-REGIMEN_ESPECIAL = frozenset({
-    "2106", "2901", "2902", "2903", "2904", "2905", "2906", "3114", "3901", "3902",
-    "9101", "9102", "9103", "9104", "9105", "9107",
-})
+REGIMEN_ESPECIAL = frozenset(
+    {
+        "2106",
+        "2901",
+        "2902",
+        "2903",
+        "2904",
+        "2905",
+        "2906",
+        "3114",
+        "3901",
+        "3902",
+        "9101",
+        "9102",
+        "9103",
+        "9104",
+        "9105",
+        "9107",
+    }
+)
 CODIGO_SENA = "9110"
 
 
@@ -46,13 +63,17 @@ def calcular_banderas(
     mat = mat.rename(columns={"matriculados": "matriculados_t2_snies"})
     out = objetivo.merge(mat, on=["cod_ies", "anio"], how="left")
 
-    snies = out["matriculados_t2_snies"].where(out["matriculados_t2_snies"] > 0)  # 0 cuenta como sin dato
+    snies = out["matriculados_t2_snies"].where(
+        out["matriculados_t2_snies"] > 0
+    )  # 0 cuenta como sin dato
     out["ratio_spadies_snies"] = out["matriculados_t2_spadies"] / snies
     primer_anio_snies = snies_programa["anio"].min()
     fuera_de_cobertura = (out["anio"] - rezago) < primer_anio_snies
     sin_dato = snies.isna() & ~fuera_de_cobertura
     ratio = out["ratio_spadies_snies"]
-    out["inconsistencia_fuentes"] = ((ratio > umbral_ratio) | (ratio < 1 / umbral_ratio) | sin_dato).fillna(False).astype(bool)
+    out["inconsistencia_fuentes"] = (
+        ((ratio > umbral_ratio) | (ratio < 1 / umbral_ratio) | sin_dato).fillna(False).astype(bool)
+    )
     out["regimen_especial"] = es_regimen_especial(out["cod_ies"])
     out["es_sena"] = es_sena(out["cod_ies"])
     return out

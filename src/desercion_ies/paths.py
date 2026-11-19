@@ -3,6 +3,7 @@
 La raíz es la carpeta que contiene `pyproject.toml` y `configs/`. Con una instalación editable (`pip install -e .`) se encuentra subiendo desde este
 archivo; si el paquete se instaló sin el árbol del repositorio se usa la variable de entorno `DESERCION_ROOT` o, como último recurso, el directorio actual.
 """
+
 from __future__ import annotations
 
 import os
@@ -22,7 +23,9 @@ def encontrar_raiz() -> Path:
         for p in (base, *base.parents):
             if _es_raiz(p):
                 return p
-    raise RuntimeError("no se encontró la raíz del proyecto (carpeta con pyproject.toml y configs/); defina DESERCION_ROOT")
+    raise RuntimeError(
+        "no se encontró la raíz del proyecto (carpeta con pyproject.toml y configs/); defina DESERCION_ROOT"
+    )
 
 
 PROJECT_ROOT = encontrar_raiz()

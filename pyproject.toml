@@ -56,7 +56,13 @@ markers = [
 ]
 
 [tool.ruff]
+line-length = 100
+target-version = "py312"
 extend-exclude = ["notebooks/*.ipynb"]  # cuadernos generados por notebooks/construir/
+force-exclude = true  # también cuando pre-commit pasa los archivos uno a uno
 
 [tool.ruff.lint]
-# reglas predeterminadas de ruff (E4, E7, E9, F); la configuración estricta (I, B, UP, SIM, formato) viene después
+select = ["E", "F", "I", "B", "UP", "SIM"]
+# E501 desactivado: tras `ruff format` quedan ~1.400 líneas largas que son prosa en español (docstrings, comentarios y plantillas de los informes);
+# partirlas cambiaría el texto de los informes publicados.
+ignore = ["E501"]

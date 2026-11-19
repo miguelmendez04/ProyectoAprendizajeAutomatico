@@ -1,4 +1,5 @@
 """Pruebas de carga y validación de config.yaml."""
+
 import pytest
 import yaml
 

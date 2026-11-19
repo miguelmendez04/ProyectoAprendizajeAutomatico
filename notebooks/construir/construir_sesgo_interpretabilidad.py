@@ -4,6 +4,7 @@ Uso, desde la raíz del proyecto:  python notebooks/construir/construir_sesgo_in
 Requiere haber corrido antes `desercion evaluar sesgo` (el cuaderno lee sus CSV y figuras; recalcula solo lo corto: una verificación del error por subgrupo
 y el diagnóstico del colapso). La sección final de conclusiones se toma de `reports/06_sesgo_modelos.md`.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -26,7 +27,7 @@ def seccion(titulo: str) -> str:
     texto = INFORME.read_text(encoding="utf-8")
     i = texto.index(f"## {titulo}")
     j = texto.find("\n## ", i + 3)
-    return texto[i:j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
+    return texto[i : j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
 
 
 celdas = [
@@ -182,16 +183,22 @@ coef = pd.read_csv(R / "coeficientes_ridge.csv")
 display(coef[coef.modelo.str.startswith("T2")].head(12))
 display(Image("reports/figures/coeficientes_ridge.png"))
 """),
-    md("## 6. Conclusiones\n\n(Tomadas de `reports/06_sesgo_modelos.md`; todas las cifras salen de la corrida. La tabla «en lenguaje simple» con la dirección de cada variable y la coincidencia entre métodos está en ese informe.)\n\n__CONCLUSION__"),
+    md(
+        "## 6. Conclusiones\n\n(Tomadas de `reports/06_sesgo_modelos.md`; todas las cifras salen de la corrida. La tabla «en lenguaje simple» con la dirección de cada variable y la coincidencia entre métodos está en ese informe.)\n\n__CONCLUSION__"
+    ),
 ]
 
 nb = nbf.v4.new_notebook()
-conclusion = seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar sesgo`."
+conclusion = (
+    seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar sesgo`."
+)
 for c in celdas:
     if c.cell_type == "markdown" and "__CONCLUSION__" in c.source:
         c.source = c.source.replace("__CONCLUSION__", conclusion)
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
 print("escrito", DESTINO)

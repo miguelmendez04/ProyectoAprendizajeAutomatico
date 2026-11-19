@@ -4,8 +4,9 @@ Uso: desercion evaluar v2 [--config RUTA]
 Salidas: reports/tables/experimentos_v2.csv, reports/tables/experimentos_v2_resumen.csv, reports/historico/resultados_v2.md
 y reports/figures/mae_formulaciones.png (rutas en config.yaml: modelado.formulaciones.salidas).
 """
-import logging
+
 import argparse
+import logging
 import time
 from pathlib import Path
 
@@ -15,13 +16,21 @@ import xgboost
 from desercion_ies.config import load_config
 from desercion_ies.evaluation.experimentos import parametros_experimentos
 from desercion_ies.evaluation.formulaciones import (
-    FORMULACIONES, ejecutar_formulaciones, parametros_formulaciones, resumen, variables_formulacion,
+    FORMULACIONES,
+    ejecutar_formulaciones,
+    parametros_formulaciones,
+    resumen,
+    variables_formulacion,
 )
-from desercion_ies.reporting.informe_formulaciones import escribir_informe, figura_formulaciones
 from desercion_ies.features.particion import cargar_dataset
+from desercion_ies.reporting.informe_formulaciones import escribir_informe, figura_formulaciones
 
-SALIDAS = {"resultados": "reports/tables/experimentos_v2.csv", "resumen": "reports/tables/experimentos_v2_resumen.csv",
-           "informe": "reports/historico/resultados_v2.md", "figura": "reports/figures/mae_formulaciones.png"}
+SALIDAS = {
+    "resultados": "reports/tables/experimentos_v2.csv",
+    "resumen": "reports/tables/experimentos_v2_resumen.csv",
+    "informe": "reports/historico/resultados_v2.md",
+    "figura": "reports/figures/mae_formulaciones.png",
+}
 
 
 log = logging.getLogger(__name__)
@@ -49,18 +58,30 @@ def ejecutar(args: argparse.Namespace) -> None:
     figura_formulaciones(res, salidas["figura"])
     numericas, categoricas = variables_formulacion(df, cfg, "contexto")
     meta = {
-        "filas": len(df), "ies": int(df["cod_ies"].nunique()), "ventana": cfg["modelado"].get("ventana_modelado", [2015, 2021]),
-        "n_pliegues": int(resultados["pliegue"].nunique()), "n_contexto": len(numericas) + len(categoricas),
-        "k_info_mutua": p_exp["k_info_mutua"], "varianza_pca": p_exp["varianza_pca"], "semilla": p_exp["semilla"],
-        "sklearn": sklearn.__version__, "xgboost": xgboost.__version__, "tiempo_total_s": total,
+        "filas": len(df),
+        "ies": int(df["cod_ies"].nunique()),
+        "ventana": cfg["modelado"].get("ventana_modelado", [2015, 2021]),
+        "n_pliegues": int(resultados["pliegue"].nunique()),
+        "n_contexto": len(numericas) + len(categoricas),
+        "k_info_mutua": p_exp["k_info_mutua"],
+        "varianza_pca": p_exp["varianza_pca"],
+        "semilla": p_exp["semilla"],
+        "sklearn": sklearn.__version__,
+        "xgboost": xgboost.__version__,
+        "tiempo_total_s": total,
     }
     escribir_informe(resultados, res, meta, salidas["informe"])
 
-    cols = ["configuracion", "mae_media", "mae_desv", "mejora_vs_ingenua_pct", "pliegues_mejor_que_ingenua"]
+    cols = [
+        "configuracion",
+        "mae_media",
+        "mae_desv",
+        "mejora_vs_ingenua_pct",
+        "pliegues_mejor_que_ingenua",
+    ]
     log.info("\nLíneas base:\n" + res[res["tipo"] == "linea_base"][cols].to_string(index=False))
     for f in FORMULACIONES:
         g = res[res["formulacion"] == f]
         if len(g):
             log.info(f"\nMejor de {f}:\n" + g.head(1)[cols].to_string(index=False))
     log.info(f"\nTiempo total: {total:.1f} s")
-

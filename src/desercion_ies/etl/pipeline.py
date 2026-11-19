@@ -2,6 +2,7 @@
 
 Uso: desercion etl [--config RUTA] [--saltar-extract]
 """
+
 import argparse
 import logging
 from pathlib import Path
@@ -27,21 +28,40 @@ def _tabla_md(filas: list[dict]) -> str:
     return "\n".join([encabezado, *cuerpo])
 
 
-def escribir_etl_log(destino: Path, log: list[dict], reportes: list[pd.DataFrame], notas: list[str],
-                     unidad: str, filas: int) -> None:
+def escribir_etl_log(
+    destino: Path,
+    log: list[dict],
+    reportes: list[pd.DataFrame],
+    notas: list[str],
+    unidad: str,
+    filas: int,
+) -> None:
     """Escribe la parte automática de la bitácora conservando las notas manuales previas."""
     destino.parent.mkdir(parents=True, exist_ok=True)
     previo = destino.read_text(encoding="utf-8") if destino.exists() else "# Bitácora ETL\n"
     manual = previo.split(MARCA_AUTOMATICA)[0].rstrip() + "\n\n"
 
-    bloque = [MARCA_AUTOMATICA, "", "## Última corrida del pipeline", "",
-              f"Unidad de análisis: `{unidad}` · Filas del dataset: {filas}", "",
-              "### Pérdidas por join (filas de la base sin pareja)", "", _tabla_md(log), ""]
+    bloque = [
+        MARCA_AUTOMATICA,
+        "",
+        "## Última corrida del pipeline",
+        "",
+        f"Unidad de análisis: `{unidad}` · Filas del dataset: {filas}",
+        "",
+        "### Pérdidas por join (filas de la base sin pareja)",
+        "",
+        _tabla_md(log),
+        "",
+    ]
     no_vacios = [r for r in reportes if not r.empty]
     if no_vacios:
         todo = pd.concat(no_vacios, ignore_index=True)
-        bloque += [f"### Emparejamientos no exactos de municipios ({len(todo)})", "",
-                   _tabla_md(todo.head(50).to_dict("records")), ""]
+        bloque += [
+            f"### Emparejamientos no exactos de municipios ({len(todo)})",
+            "",
+            _tabla_md(todo.head(50).to_dict("records")),
+            "",
+        ]
     if notas:
         bloque += ["### Observaciones de calidad", "", *[f"- {n}" for n in notas], ""]
     destino.write_text(manual + "\n".join(bloque), encoding="utf-8")
@@ -85,7 +105,9 @@ def main(config_path: str = "configs/config.yaml", saltar_extract: bool = False)
 def configurar(ap: argparse.ArgumentParser) -> None:
     """Opciones de `desercion etl`."""
     ap.add_argument("--config", default="configs/config.yaml", help="archivo de configuración")
-    ap.add_argument("--saltar-extract", action="store_true", help="reutiliza data/raw ya descargado")
+    ap.add_argument(
+        "--saltar-extract", action="store_true", help="reutiliza data/raw ya descargado"
+    )
 
 
 def ejecutar(args: argparse.Namespace) -> None:

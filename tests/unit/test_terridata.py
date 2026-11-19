@@ -1,4 +1,5 @@
 """Pruebas del lector y del transformador de TerriData (zips `TerriData_Dim<N>.txt.zip`, formato largo con `|`)."""
+
 import zipfile
 
 import numpy as np
@@ -8,8 +9,10 @@ import pytest
 from desercion_ies.etl.extract.terridata import leer_terridata
 from desercion_ies.etl.transform.terridata import INDICADORES, transformar_terridata
 
-ENCABEZADO = ("Código Departamento|Departamento|Código Entidad|Entidad|Dimensión|Subcategoría|Indicador|"
-              "Dato Numérico|Dato Cualitativo|Año|Mes|Fuente|Unidad de Medida")
+ENCABEZADO = (
+    "Código Departamento|Departamento|Código Entidad|Entidad|Dimensión|Subcategoría|Indicador|"
+    "Dato Numérico|Dato Cualitativo|Año|Mes|Fuente|Unidad de Medida"
+)
 
 
 def _fila(ent, nombre, subcat, indicador, dato, anio, cual="", dim="X"):
@@ -29,31 +32,57 @@ def _col(nombre):
 
 def test_catalogo_tiene_las_dimensiones_pedidas():
     columnas = {i["columna"] for i in INDICADORES}
-    assert {"poblacion_hombres", "poblacion_mujeres", "nbi_pct", "ipm_censo", "cob_superior", "idf", "mdm"} <= columnas
+    assert {
+        "poblacion_hombres",
+        "poblacion_mujeres",
+        "nbi_pct",
+        "ipm_censo",
+        "cob_superior",
+        "idf",
+        "mdm",
+    } <= columnas
     assert all({"columna", "dimension", "descripcion", "modo"} <= set(i) for i in INDICADORES)
 
 
 def test_filtra_nivel_municipal_y_solo_indicadores_del_catalogo(tmp_path):
     ind = _col("cob_superior")
-    _zip(tmp_path, 4, [
-        _fila("01001", "Colombia", ind["subcategoria"], ind["indicador"], "50,00", 2018),  # nación
-        _fila("76000", "Valle del Cauca", ind["subcategoria"], ind["indicador"], "40,00", 2018),  # departamento
-        _fila("76001", "Cali", ind["subcategoria"], ind["indicador"], "56,70", 2018),
-        _fila("76001", "Cali", "Otra", "Indicador que no se usa", "1,00", 2018),
-    ])
+    _zip(
+        tmp_path,
+        4,
+        [
+            _fila(
+                "01001", "Colombia", ind["subcategoria"], ind["indicador"], "50,00", 2018
+            ),  # nación
+            _fila(
+                "76000", "Valle del Cauca", ind["subcategoria"], ind["indicador"], "40,00", 2018
+            ),  # departamento
+            _fila("76001", "Cali", ind["subcategoria"], ind["indicador"], "56,70", 2018),
+            _fila("76001", "Cali", "Otra", "Indicador que no se usa", "1,00", 2018),
+        ],
+    )
     largo = leer_terridata(tmp_path, dimensiones=[4])
-    assert largo[["cod_divipola_mpio", "anio", "columna", "valor"]].values.tolist() == [["76001", 2018, "cob_superior", 56.7]]
+    assert largo[["cod_divipola_mpio", "anio", "columna", "valor"]].values.tolist() == [
+        ["76001", 2018, "cob_superior", 56.7]
+    ]
 
 
 def test_numeros_con_separador_de_miles_y_coma_decimal(tmp_path):
     ind = _col("poblacion_hombres")
-    _zip(tmp_path, 2, [_fila("05001", "Medellín", ind["subcategoria"], ind["indicador"], "1.234.567,00", 2018)])
+    _zip(
+        tmp_path,
+        2,
+        [_fila("05001", "Medellín", ind["subcategoria"], ind["indicador"], "1.234.567,00", 2018)],
+    )
     assert leer_terridata(tmp_path, dimensiones=[2])["valor"].tolist() == [1234567.0]
 
 
 def test_dato_cualitativo_sin_numero_se_descarta(tmp_path):
     ind = _col("mdm")
-    _zip(tmp_path, 8, [_fila("05001", "Medellín", ind["subcategoria"], ind["indicador"], "", 2018, cual="G3")])
+    _zip(
+        tmp_path,
+        8,
+        [_fila("05001", "Medellín", ind["subcategoria"], ind["indicador"], "", 2018, cual="G3")],
+    )
     assert leer_terridata(tmp_path, dimensiones=[8]).empty
 
 
@@ -86,27 +115,54 @@ def test_anual_exige_el_dato_del_anio_y_no_arrastra_valores_viejos():
 
 def test_censo_arrastra_el_ultimo_censo_ya_publicado():
     largo = _largo([("76001", 2005, "nbi_pct", 20.0), ("76001", 2018, "nbi_pct", 12.0)])
-    out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")["td_nbi_pct"]
+    out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")[
+        "td_nbi_pct"
+    ]
     # El censo 2018 (NBI/IPM publicados desde 2020) solo está disponible desde el origen 2019, o sea el año objetivo 2020
-    assert out.loc[2015:2018].tolist() == [20.0, 20.0, 20.0, 20.0]  # el censo 2005 rige hasta el origen 2018
+    assert out.loc[2015:2018].tolist() == [
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+    ]  # el censo 2005 rige hasta el origen 2018
     assert out.loc[2019] == 12.0
 
 
 def test_el_censo_2018_no_se_usa_para_el_anio_objetivo_2019():
     """Fuga por publicación: con t-1, el año objetivo 2019 usa el origen 2018, y el censo 2018 aún no estaba publicado."""
-    largo = _largo([("76001", 2005, "ipm_censo", 50.0), ("76001", 2018, "ipm_censo", 30.0), ("76001", 2005, "miseria_pct", 9.0),
-                    ("76001", 2018, "miseria_pct", 4.0)])
+    largo = _largo(
+        [
+            ("76001", 2005, "ipm_censo", 50.0),
+            ("76001", 2018, "ipm_censo", 30.0),
+            ("76001", 2005, "miseria_pct", 9.0),
+            ("76001", 2018, "miseria_pct", 4.0),
+        ]
+    )
     out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020, 2021]).set_index("anio")
-    assert out.loc[2018, "td_ipm_censo"] == 50.0 and out.loc[2018, "td_miseria_pct"] == 9.0  # origen 2018 = objetivo 2019
-    assert out.loc[2019, "td_ipm_censo"] == 30.0 and out.loc[2020, "td_ipm_censo"] == 30.0  # objetivo 2020 en adelante
+    assert (
+        out.loc[2018, "td_ipm_censo"] == 50.0 and out.loc[2018, "td_miseria_pct"] == 9.0
+    )  # origen 2018 = objetivo 2019
+    assert (
+        out.loc[2019, "td_ipm_censo"] == 30.0 and out.loc[2020, "td_ipm_censo"] == 30.0
+    )  # objetivo 2020 en adelante
     assert not out["td_ipm_censo"].isna().any()
 
 
 def test_poblacion_se_completa_hacia_atras_con_el_primer_dato():
-    largo = _largo([("76001", 2018, "poblacion_hombres", 100.0), ("76001", 2018, "poblacion_mujeres", 110.0),
-                    ("76001", 2019, "poblacion_hombres", 102.0), ("76001", 2019, "poblacion_mujeres", 112.0)])
-    out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")["td_poblacion_total"]
-    assert out.loc[2015] == 210.0 and out.loc[2017] == 210.0  # relleno hacia atrás con 2018 (proyección base censo 2018)
+    largo = _largo(
+        [
+            ("76001", 2018, "poblacion_hombres", 100.0),
+            ("76001", 2018, "poblacion_mujeres", 110.0),
+            ("76001", 2019, "poblacion_hombres", 102.0),
+            ("76001", 2019, "poblacion_mujeres", 112.0),
+        ]
+    )
+    out = transformar_terridata(largo, anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")[
+        "td_poblacion_total"
+    ]
+    assert (
+        out.loc[2015] == 210.0 and out.loc[2017] == 210.0
+    )  # relleno hacia atrás con 2018 (proyección base censo 2018)
     assert out.loc[2019] == 214.0
 
 
@@ -121,10 +177,13 @@ def test_salida_cubre_los_anios_de_origen_del_rezago_t1():
     largo = _largo([("76001", 2014, "cob_superior", 1.0)])
     out = transformar_terridata(largo, anios=[2015, 2016])
     assert sorted(out["anio"].unique()) == [2014, 2015]  # t-1 de 2015 y 2016
-    assert list(out.columns[:2]) == ["cod_divipola_mpio", "anio"] and out.columns[2:].tolist() == ["td_cob_superior"]
+    assert list(out.columns[:2]) == ["cod_divipola_mpio", "anio"] and out.columns[2:].tolist() == [
+        "td_cob_superior"
+    ]
 
 
 # ---- población con la base 2005 (Dim 25) -----------------------------------------------------------
+
 
 def _b05(mpio, anio, **valores):
     return [(mpio, anio, col, v) for col, v in valores.items()]
@@ -133,21 +192,41 @@ def _b05(mpio, anio, **valores):
 def test_poblacion_anterior_a_2018_sale_de_la_base_2005_y_desde_2018_de_la_base_2018():
     filas = []
     for anio in range(2014, 2021):
-        filas += _b05("76001", anio, poblacion_hombres_b05=100.0 + anio - 2014, poblacion_mujeres_b05=110.0 + anio - 2014)
+        filas += _b05(
+            "76001",
+            anio,
+            poblacion_hombres_b05=100.0 + anio - 2014,
+            poblacion_mujeres_b05=110.0 + anio - 2014,
+        )
     filas += _b05("76001", 2018, poblacion_hombres=200.0, poblacion_mujeres=210.0)
     filas += _b05("76001", 2019, poblacion_hombres=202.0, poblacion_mujeres=212.0)
-    out = transformar_terridata(_largo(filas), anios=[2016, 2017, 2018, 2019, 2020]).set_index("anio")["td_poblacion_total"]
+    out = transformar_terridata(_largo(filas), anios=[2016, 2017, 2018, 2019, 2020]).set_index(
+        "anio"
+    )["td_poblacion_total"]
     assert out.loc[2015] == 100 + 1 + 110 + 1 and out.loc[2017] == 100 + 3 + 110 + 3  # base 2005
-    assert out.loc[2018] == 410 and out.loc[2019] == 414  # base 2018 cuando existe (aunque la 2005 también tenga el año)
+    assert (
+        out.loc[2018] == 410 and out.loc[2019] == 414
+    )  # base 2018 cuando existe (aunque la 2005 también tenga el año)
 
 
 def test_pct_rural_y_edades_se_derivan_de_los_conteos_de_la_base_2005():
-    filas = _b05("76001", 2016, poblacion_hombres_b05=50.0, poblacion_mujeres_b05=50.0, poblacion_rural_b05=20.0,
-                 poblacion_urbana_b05=80.0, hombres_15_19_b05=5.0, mujeres_15_19_b05=3.0,
-                 hombres_20_24_b05=4.0, mujeres_20_24_b05=6.0)
+    filas = _b05(
+        "76001",
+        2016,
+        poblacion_hombres_b05=50.0,
+        poblacion_mujeres_b05=50.0,
+        poblacion_rural_b05=20.0,
+        poblacion_urbana_b05=80.0,
+        hombres_15_19_b05=5.0,
+        mujeres_15_19_b05=3.0,
+        hombres_20_24_b05=4.0,
+        mujeres_20_24_b05=6.0,
+    )
     out = transformar_terridata(_largo(filas), anios=[2017]).iloc[0]
     assert out["td_pct_poblacion_rural"] == pytest.approx(20.0)
-    assert out["td_pct_pob_15_19"] == pytest.approx(8.0) and out["td_pct_pob_20_24"] == pytest.approx(10.0)
+    assert out["td_pct_pob_15_19"] == pytest.approx(8.0) and out[
+        "td_pct_pob_20_24"
+    ] == pytest.approx(10.0)
 
 
 def test_las_columnas_de_la_base_2005_no_salen_en_el_resultado():
@@ -158,6 +237,12 @@ def test_las_columnas_de_la_base_2005_no_salen_en_el_resultado():
 
 def test_lee_la_dimension_25(tmp_path):
     h = _col("poblacion_hombres_b05")
-    _zip(tmp_path, 25, [_fila("76001", "Cali", h["subcategoria"], h["indicador"], "1.234,00", 2016, dim="25")])
+    _zip(
+        tmp_path,
+        25,
+        [_fila("76001", "Cali", h["subcategoria"], h["indicador"], "1.234,00", 2016, dim="25")],
+    )
     largo = leer_terridata(tmp_path, dimensiones=[25])
-    assert largo[["columna", "valor", "anio"]].values.tolist() == [["poblacion_hombres_b05", 1234.0, 2016]]
+    assert largo[["columna", "valor", "anio"]].values.tolist() == [
+        ["poblacion_hombres_b05", 1234.0, 2016]
+    ]

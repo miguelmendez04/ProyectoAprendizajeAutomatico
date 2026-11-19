@@ -3,6 +3,7 @@
 Uso, desde la raíz del proyecto:  python notebooks/construir/construir_sesgo.py
 La subsección final se toma de `reports/05_sesgo_dataset.md` (sección "Conclusiones"), que se escribe a mano tras leer los resultados.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -502,14 +503,30 @@ for nombre in ("Entrena fuera de Bogotá, prueba en Bogotá", "Temporal 2015–2
 if INFORME.exists():
     texto = INFORME.read_text(encoding="utf-8")
     cola = texto.split("## Conclusiones", 1)
-    celdas.append(md(cola[1] if len(cola) > 1 else "_Pendiente: escribir las conclusiones en reports/05_sesgo_dataset.md._"))
+    celdas.append(
+        md(
+            cola[1]
+            if len(cola) > 1
+            else "_Pendiente: escribir las conclusiones en reports/05_sesgo_dataset.md._"
+        )
+    )
 else:
     celdas.append(md("_Pendiente: escribir las conclusiones en reports/05_sesgo_dataset.md._"))
 
 nb = nbf.v4.new_notebook()
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=900, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=900, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
-errores = [o for c in nb.cells if c.cell_type == "code" for o in c.get("outputs", []) if o.output_type == "error"]
-print(f"Notebook ejecutado: {sum(c.cell_type == 'code' for c in nb.cells)} celdas de código, {len(errores)} errores")
+errores = [
+    o
+    for c in nb.cells
+    if c.cell_type == "code"
+    for o in c.get("outputs", [])
+    if o.output_type == "error"
+]
+print(
+    f"Notebook ejecutado: {sum(c.cell_type == 'code' for c in nb.cells)} celdas de código, {len(errores)} errores"
+)

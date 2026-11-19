@@ -1,0 +1,22 @@
+# Instalación: pip install -e ".[dev]" && pre-commit install      Todos los archivos: pre-commit run --all-files
+#
+# No se incluye nbstripout: los cuadernos de notebooks/ se versionan CON sus salidas (son la evidencia ejecutada que se revisa en GitHub;
+# los genera y ejecuta notebooks/construir/). Tampoco se tocan los datos ni lo generado por el pipeline (CSV, figuras, informes, fixtures):
+# sus finales de línea y espacios son parte del resultado publicado y de sus SHA-256.
+exclude: ^(data/|reports/|notebooks/.*\.ipynb$|tests/unit/fixtures/)
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]  # deja pasar data/processed/dataset_ies.csv (843 KB)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1  # la misma versión que fija pyproject.toml
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format

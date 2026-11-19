@@ -1,4 +1,5 @@
 """Generación automática del diccionario de datos (reports/etl/data_dictionary.md)."""
+
 import re
 from pathlib import Path
 
@@ -8,38 +9,101 @@ from desercion_ies.etl.transform.terridata import descripcion_columna
 
 # nombre base de la variable -> (fuente, descripción)
 _CATALOGO = {
-    "tasa_desercion": ("SPADIES (MEN)", "Tasa de deserción anual como proporción 0-1. Variable objetivo"),
-    "cod_divipola_mpio": ("DIVIPOLA (DANE)", "Código DANE del municipio, 5 dígitos con ceros a la izquierda"),
-    "ratio_spadies_snies": ("SPADIES / SNIES", "Denominador de la tasa (matrícula SPADIES t-2) dividido por la matrícula SNIES t-2 de la IES. Diagnóstico, no explicativa"),
-    "inconsistencia_fuentes": ("SPADIES / SNIES", "Bandera: ratio_spadies_snies > 3 o < 1/3, o SNIES sin dato dentro de su cobertura. Diagnóstico"),
-    "regimen_especial": ("SNIES (MEN)", "Bandera: escuela militar o policial (lista explícita de 16 códigos SNIES). Diagnóstico"),
+    "tasa_desercion": (
+        "SPADIES (MEN)",
+        "Tasa de deserción anual como proporción 0-1. Variable objetivo",
+    ),
+    "cod_divipola_mpio": (
+        "DIVIPOLA (DANE)",
+        "Código DANE del municipio, 5 dígitos con ceros a la izquierda",
+    ),
+    "ratio_spadies_snies": (
+        "SPADIES / SNIES",
+        "Denominador de la tasa (matrícula SPADIES t-2) dividido por la matrícula SNIES t-2 de la IES. Diagnóstico, no explicativa",
+    ),
+    "inconsistencia_fuentes": (
+        "SPADIES / SNIES",
+        "Bandera: ratio_spadies_snies > 3 o < 1/3, o SNIES sin dato dentro de su cobertura. Diagnóstico",
+    ),
+    "regimen_especial": (
+        "SNIES (MEN)",
+        "Bandera: escuela militar o policial (lista explícita de 16 códigos SNIES). Diagnóstico",
+    ),
     "es_sena": ("SNIES (MEN)", "Bandera: la IES es el SENA (código 9110). Diagnóstico"),
-    "posible_cierre": ("SPADIES (MEN)", "Bandera de diagnóstico: la fila cae en los 2 semestres previos al último reporte de una IES que dejó de reportar. No es explicativa"),
+    "posible_cierre": (
+        "SPADIES (MEN)",
+        "Bandera de diagnóstico: la fila cae en los 2 semestres previos al último reporte de una IES que dejó de reportar. No es explicativa",
+    ),
     "cod_ies": ("SNIES (MEN)", "Código de la institución de educación superior"),
     "cod_snies_programa": ("SNIES (MEN)", "Código SNIES del programa académico"),
     "anio": ("—", "Año del objetivo (t). Las variables explicativas son del año t-1"),
     "sector": ("SNIES (MEN)", "Sector de la IES (id_sector: oficial/privada)"),
     "caracter": ("SNIES (MEN)", "Carácter académico de la IES (id_caracter)"),
-    "punt_global_media": ("Saber 11 (ICFES)", "Media del puntaje global de los estudiantes del municipio"),
-    "punt_global_mediana": ("Saber 11 (ICFES)", "Mediana del puntaje global de los estudiantes del municipio"),
-    "pct_estrato_bajo": ("Saber 11 (ICFES)", "Proporción de estudiantes de estratos 1-2 (entre los de estrato conocido)"),
+    "punt_global_media": (
+        "Saber 11 (ICFES)",
+        "Media del puntaje global de los estudiantes del municipio",
+    ),
+    "punt_global_mediana": (
+        "Saber 11 (ICFES)",
+        "Mediana del puntaje global de los estudiantes del municipio",
+    ),
+    "pct_estrato_bajo": (
+        "Saber 11 (ICFES)",
+        "Proporción de estudiantes de estratos 1-2 (entre los de estrato conocido)",
+    ),
     "pct_colegio_oficial": ("Saber 11 (ICFES)", "Proporción de estudiantes de colegio oficial"),
     "n_estudiantes": ("Saber 11 (ICFES)", "Número de estudiantes que presentaron Saber 11"),
     "mpio_matriculados": ("SNIES (MEN)", "Matrícula de educación superior en el municipio"),
     "mpio_ies_con_oferta": ("SNIES (MEN)", "IES con oferta en el municipio"),
-    "log_matriculados_spadies": ("SPADIES (MEN)", "Logaritmo natural de 1 + el denominador de la tasa (matrícula SPADIES de hace dos semestres, promedio de los dos del año). Tamaño por defecto; información de t-2, completa 2015–2021"),
-    "tasa_t1": ("ETL (SPADIES)", "Historia: tasa de deserción anual de la misma IES en el año t-1 (nula si no hay tasa de ese año). Desde 2015 sale del dataset; para años anteriores, de SPADIES (misma definición y filtros). Opt-in en el modelado: no es explicativa por defecto"),
-    "tasa_t2": ("ETL (SPADIES)", "Historia: tasa de deserción anual de la misma IES en el año t-2 (nula si no hay tasa de ese año). Compartida por la historia normal y la rezagada. Opt-in en el modelado"),
-    "tasa_media_previa": ("ETL (SPADIES)", "Historia: media de todas las tasas anuales de la misma IES de años anteriores a t, desde 1999 (nula si no hay ninguna). Opt-in en el modelado"),
-    "n_anios_previos": ("ETL (SPADIES)", "Historia: número de tasas anuales de años anteriores a t de la misma IES (0 si ninguna). Solo cuenta el pasado, a diferencia de n_anios_ies. Opt-in en el modelado"),
-    "falta_historia": ("ETL", "Indicador: la fila no tiene tasa_t1 (IES nueva en SPADIES o sin tasa válida en t-1; ver reports/etl/sin_historia.csv)"),
-    "tasa_media_rezagada": ("ETL (SPADIES)", "Historia rezagada (escenario conservador, sin usar t-1): media de las tasas anuales de la misma IES de años <= t-2 (nula si no hay ninguna). Opt-in en el modelado"),
-    "n_anios_rezagados": ("ETL (SPADIES)", "Historia rezagada: número de tasas anuales de años <= t-2 de la misma IES (0 si ninguna). Opt-in en el modelado"),
+    "log_matriculados_spadies": (
+        "SPADIES (MEN)",
+        "Logaritmo natural de 1 + el denominador de la tasa (matrícula SPADIES de hace dos semestres, promedio de los dos del año). Tamaño por defecto; información de t-2, completa 2015–2021",
+    ),
+    "tasa_t1": (
+        "ETL (SPADIES)",
+        "Historia: tasa de deserción anual de la misma IES en el año t-1 (nula si no hay tasa de ese año). Desde 2015 sale del dataset; para años anteriores, de SPADIES (misma definición y filtros). Opt-in en el modelado: no es explicativa por defecto",
+    ),
+    "tasa_t2": (
+        "ETL (SPADIES)",
+        "Historia: tasa de deserción anual de la misma IES en el año t-2 (nula si no hay tasa de ese año). Compartida por la historia normal y la rezagada. Opt-in en el modelado",
+    ),
+    "tasa_media_previa": (
+        "ETL (SPADIES)",
+        "Historia: media de todas las tasas anuales de la misma IES de años anteriores a t, desde 1999 (nula si no hay ninguna). Opt-in en el modelado",
+    ),
+    "n_anios_previos": (
+        "ETL (SPADIES)",
+        "Historia: número de tasas anuales de años anteriores a t de la misma IES (0 si ninguna). Solo cuenta el pasado, a diferencia de n_anios_ies. Opt-in en el modelado",
+    ),
+    "falta_historia": (
+        "ETL",
+        "Indicador: la fila no tiene tasa_t1 (IES nueva en SPADIES o sin tasa válida en t-1; ver reports/etl/sin_historia.csv)",
+    ),
+    "tasa_media_rezagada": (
+        "ETL (SPADIES)",
+        "Historia rezagada (escenario conservador, sin usar t-1): media de las tasas anuales de la misma IES de años <= t-2 (nula si no hay ninguna). Opt-in en el modelado",
+    ),
+    "n_anios_rezagados": (
+        "ETL (SPADIES)",
+        "Historia rezagada: número de tasas anuales de años <= t-2 de la misma IES (0 si ninguna). Opt-in en el modelado",
+    ),
     "falta_historia_rezagada": ("ETL", "Indicador: la fila no tiene tasa_t2 (historia rezagada)"),
-    "falta_saber11": ("ETL", "Indicador: la fila no tiene variables de Saber 11 (años con cobertura incompleta del calendario A: 2019 y 2021)"),
-    "falta_mdm": ("ETL", "Indicador: la fila no tiene la medición de desempeño municipal (MDM empieza en 2016: faltan 2015–2016)"),
-    "falta_snies": ("ETL", "Indicador: la fila no tiene matrícula SNIES t-2 (SNIES por programa empieza en 2015: faltan 2015–2016)"),
-    "log_matriculados_ies": ("SNIES (MEN)", "Logaritmo natural de 1 + matrícula anual de la IES (log1p); versión explicativa de la matrícula"),
+    "falta_saber11": (
+        "ETL",
+        "Indicador: la fila no tiene variables de Saber 11 (años con cobertura incompleta del calendario A: 2019 y 2021)",
+    ),
+    "falta_mdm": (
+        "ETL",
+        "Indicador: la fila no tiene la medición de desempeño municipal (MDM empieza en 2016: faltan 2015–2016)",
+    ),
+    "falta_snies": (
+        "ETL",
+        "Indicador: la fila no tiene matrícula SNIES t-2 (SNIES por programa empieza en 2015: faltan 2015–2016)",
+    ),
+    "log_matriculados_ies": (
+        "SNIES (MEN)",
+        "Logaritmo natural de 1 + matrícula anual de la IES (log1p); versión explicativa de la matrícula",
+    ),
     "matriculados_ies": ("SNIES (MEN)", "Matrícula anual de la IES (suma de sus programas)"),
     "matriculados_programa": ("SNIES (MEN)", "Matrícula anual del programa (máximo semestral)"),
 }
@@ -53,7 +117,10 @@ def describir_columnas(columnas: list[str]) -> tuple[dict[str, str], dict[str, s
         m = _REZAGO.match(c)
         base, sufijo = (m["base"], f" (año t-{m['k']})") if m and c not in _CATALOGO else (c, "")
         if base.startswith("td_"):
-            fuentes[c], descripciones[c] = "TerriData (DNP)", f"{descripcion_columna(base[3:]) or 'Indicador territorial ' + base[3:]}{sufijo}"
+            fuentes[c], descripciones[c] = (
+                "TerriData (DNP)",
+                f"{descripcion_columna(base[3:]) or 'Indicador territorial ' + base[3:]}{sufijo}",
+            )
         elif base in _CATALOGO:
             fuente, desc = _CATALOGO[base]
             fuentes[c], descripciones[c] = fuente, desc + sufijo
@@ -77,7 +144,11 @@ def generar_diccionario(
     ]
     for c in df.columns:
         serie = df[c]
-        if pd.api.types.is_numeric_dtype(serie) and not pd.api.types.is_bool_dtype(serie) and serie.notna().any():
+        if (
+            pd.api.types.is_numeric_dtype(serie)
+            and not pd.api.types.is_bool_dtype(serie)
+            and serie.notna().any()
+        ):
             rango = f"{serie.min():.4g} – {serie.max():.4g}"
         else:
             rango = f"{serie.nunique()} valores distintos"

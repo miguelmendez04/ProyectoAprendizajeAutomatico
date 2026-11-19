@@ -17,6 +17,7 @@ LDA no se implementa: es un método lineal y supervisado para **clases** (maximi
 es una tasa continua. Solo aplicaría discretizando la tasa (p. ej., en terciles), lo que pierde información del objetivo y cambia el
 problema de regresión en uno de clasificación.
 """
+
 import warnings
 
 import numpy as np
@@ -46,8 +47,15 @@ class KernelPCAComoPCA(TransformerMixin, BaseEstimator):
 
     def fit(self, X, y=None):
         X = check_array(X, dtype=float)
-        self.n_componentes_ = int(PCA(n_components=self.varianza, svd_solver="full").fit(X).n_components_)
-        self.kpca_ = KernelPCA(n_components=self.n_componentes_, kernel="rbf", gamma=self.gamma, random_state=self.random_state).fit(X)
+        self.n_componentes_ = int(
+            PCA(n_components=self.varianza, svd_solver="full").fit(X).n_components_
+        )
+        self.kpca_ = KernelPCA(
+            n_components=self.n_componentes_,
+            kernel="rbf",
+            gamma=self.gamma,
+            random_state=self.random_state,
+        ).fit(X)
         self.n_features_in_ = X.shape[1]
         return self
 
@@ -68,8 +76,17 @@ def _activar(h: np.ndarray, nombre: str) -> np.ndarray:
 class AutoencoderPequeno(TransformerMixin, BaseEstimator):
     """Autoencoder n → `oculta` → `cuello` → `oculta` → n con parada temprana; `transform` devuelve el cuello de botella."""
 
-    def __init__(self, oculta: int = 16, cuello: int = 8, activacion: str = "tanh", max_iter: int = 500, validation_fraction: float = 0.15,
-                 n_iter_no_change: int = 15, alpha: float = 1e-4, random_state: int = 0):
+    def __init__(
+        self,
+        oculta: int = 16,
+        cuello: int = 8,
+        activacion: str = "tanh",
+        max_iter: int = 500,
+        validation_fraction: float = 0.15,
+        n_iter_no_change: int = 15,
+        alpha: float = 1e-4,
+        random_state: int = 0,
+    ):
         self.oculta = oculta
         self.cuello = cuello
         self.activacion = activacion
@@ -83,11 +100,20 @@ class AutoencoderPequeno(TransformerMixin, BaseEstimator):
         X = check_array(X, dtype=float)
         _activar(X[:1], self.activacion)  # valida el nombre
         self.mlp_ = MLPRegressor(
-            hidden_layer_sizes=(self.oculta, self.cuello, self.oculta), activation=self.activacion, solver="adam", alpha=self.alpha,
-            early_stopping=True, validation_fraction=self.validation_fraction, n_iter_no_change=self.n_iter_no_change,
-            max_iter=self.max_iter, random_state=self.random_state)
+            hidden_layer_sizes=(self.oculta, self.cuello, self.oculta),
+            activation=self.activacion,
+            solver="adam",
+            alpha=self.alpha,
+            early_stopping=True,
+            validation_fraction=self.validation_fraction,
+            n_iter_no_change=self.n_iter_no_change,
+            max_iter=self.max_iter,
+            random_state=self.random_state,
+        )
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", ConvergenceWarning)  # llegar a max_iter sin parar antes no es un error
+            warnings.simplefilter(
+                "ignore", ConvergenceWarning
+            )  # llegar a max_iter sin parar antes no es un error
             self.mlp_.fit(X, X)
         self.n_iter_ = int(self.mlp_.n_iter_)
         self.paro_temprano_ = self.n_iter_ < self.max_iter
@@ -96,7 +122,9 @@ class AutoencoderPequeno(TransformerMixin, BaseEstimator):
 
     def transform(self, X):
         h = check_array(X, dtype=float)
-        for peso, sesgo in zip(self.mlp_.coefs_[:2], self.mlp_.intercepts_[:2]):  # n → oculta → cuello
+        for peso, sesgo in zip(
+            self.mlp_.coefs_[:2], self.mlp_.intercepts_[:2], strict=False
+        ):  # n → oculta → cuello
             h = _activar(h @ peso + sesgo, self.activacion)
         return h
 
@@ -107,7 +135,15 @@ class AgregarClusters(TransformerMixin, BaseEstimator):
     `transform` devuelve `[cluster en one-hot (k columnas), distancias a los k centroides]` (2k columnas) para agregarlas a las demás.
     """
 
-    def __init__(self, numericas: list[str], categoricas: list[str], k_min: int = 3, k_max: int = 8, n_init: int = 10, random_state: int = 0):
+    def __init__(
+        self,
+        numericas: list[str],
+        categoricas: list[str],
+        k_min: int = 3,
+        k_max: int = 8,
+        n_init: int = 10,
+        random_state: int = 0,
+    ):
         self.numericas = numericas
         self.categoricas = categoricas
         self.k_min = k_min
@@ -117,10 +153,28 @@ class AgregarClusters(TransformerMixin, BaseEstimator):
 
     def _preprocesador(self) -> ColumnTransformer:
         num = [c for c in self.numericas if not c.startswith(PREFIJO_INDICADORES)]
-        pasos = [("num", Pipeline([("imputar", SimpleImputer(strategy="median")), ("escalar", StandardScaler())]), num)]
+        pasos = [
+            (
+                "num",
+                Pipeline(
+                    [("imputar", SimpleImputer(strategy="median")), ("escalar", StandardScaler())]
+                ),
+                num,
+            )
+        ]
         if self.categoricas:
-            pasos.append(("cat", Pipeline([("imputar", SimpleImputer(strategy="most_frequent")),
-                                           ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), list(self.categoricas)))
+            pasos.append(
+                (
+                    "cat",
+                    Pipeline(
+                        [
+                            ("imputar", SimpleImputer(strategy="most_frequent")),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+                        ]
+                    ),
+                    list(self.categoricas),
+                )
+            )
         return ColumnTransformer(pasos)
 
     def fit(self, X: pd.DataFrame, y=None):
@@ -131,7 +185,9 @@ class AgregarClusters(TransformerMixin, BaseEstimator):
         for k in range(self.k_min, self.k_max + 1):
             km = KMeans(n_clusters=k, n_init=self.n_init, random_state=self.random_state).fit(Z)
             self.siluetas_[k] = float(silhouette_score(Z, km.labels_))
-            if mejor is None or self.siluetas_[k] > self.siluetas_[mejor[0]]:  # empate: gana el k menor
+            if (
+                mejor is None or self.siluetas_[k] > self.siluetas_[mejor[0]]
+            ):  # empate: gana el k menor
                 mejor = (k, km)
         self.k_, self.kmeans_ = mejor
         self.n_entrenamiento_ = len(Z)

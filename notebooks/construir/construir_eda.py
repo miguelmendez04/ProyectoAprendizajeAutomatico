@@ -3,6 +3,7 @@
 Uso, desde la raíz del proyecto:  python notebooks/construir/construir_eda.py
 Las conclusiones del final están en `notebooks/conclusiones_eda.md` y se escriben a mano después de leer los resultados.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -562,13 +563,28 @@ print("Rayado: departamentos con 1 o 2 IES (la mediana describe solo a esas inst
 ]
 
 conclusiones = AQUI / "conclusiones_eda.md"
-celdas.append(md(conclusiones.read_text(encoding="utf-8") if conclusiones.exists()
-                 else "_Pendiente: escribir las conclusiones tras revisar los resultados._"))
+celdas.append(
+    md(
+        conclusiones.read_text(encoding="utf-8")
+        if conclusiones.exists()
+        else "_Pendiente: escribir las conclusiones tras revisar los resultados._"
+    )
+)
 
 nb = nbf.v4.new_notebook()
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=600, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=600, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
-errores = [o for c in nb.cells if c.cell_type == "code" for o in c.get("outputs", []) if o.output_type == "error"]
-print(f"Notebook ejecutado: {sum(c.cell_type == 'code' for c in nb.cells)} celdas de código, {len(errores)} errores")
+errores = [
+    o
+    for c in nb.cells
+    if c.cell_type == "code"
+    for o in c.get("outputs", [])
+    if o.output_type == "error"
+]
+print(
+    f"Notebook ejecutado: {sum(c.cell_type == 'code' for c in nb.cells)} celdas de código, {len(errores)} errores"
+)

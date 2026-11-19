@@ -4,6 +4,7 @@ Uso, desde la raíz del proyecto:  python notebooks/construir/construir_compleji
 Requiere haber corrido antes `desercion evaluar complejidad` (el cuaderno lee sus CSV y figuras). Las cifras oficiales vienen de esa corrida controlada; el cuaderno solo
 repite una demostración corta de la metodología. La sección final de conclusiones se toma de `reports/07_complejidad.md`.
 """
+
 from pathlib import Path
 
 import nbformat as nbf
@@ -26,7 +27,7 @@ def seccion(titulo: str) -> str:
     texto = INFORME.read_text(encoding="utf-8")
     i = texto.index(f"## {titulo}")
     j = texto.find("\n## ", i + 3)
-    return texto[i:j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
+    return texto[i : j if j != -1 else None].replace(f"## {titulo}", "", 1).strip()
 
 
 celdas = [
@@ -146,16 +147,22 @@ p = pd.read_csv(R / "complejidad_protocolo.csv")
 display(p[["etapa", "configuraciones", "ajustes", "tiempo_pared_s", "paralelismo", "suma_t_ajuste_s"]])
 print("Total de ajustes:", int(p.ajustes.sum()), "| tiempo de pared acumulado:", round(p.tiempo_pared_s.sum() / 60, 1), "min")
 """),
-    md("## 7. Conclusiones\n\n(Tomadas de `reports/07_complejidad.md`; todas las cifras salen de la corrida.)\n\n__CONCLUSION__"),
+    md(
+        "## 7. Conclusiones\n\n(Tomadas de `reports/07_complejidad.md`; todas las cifras salen de la corrida.)\n\n__CONCLUSION__"
+    ),
 ]
 
 nb = nbf.v4.new_notebook()
-conclusion = seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar complejidad`."
+conclusion = (
+    seccion("Conclusión") if INFORME.exists() else "Ejecutar antes `desercion evaluar complejidad`."
+)
 for c in celdas:
     if c.cell_type == "markdown" and "__CONCLUSION__" in c.source:
         c.source = c.source.replace("__CONCLUSION__", conclusion)
 nb.cells = celdas
 nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
-ExecutePreprocessor(timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}).preprocess(nb)
+ExecutePreprocessor(
+    timeout=1200, kernel_name="python3", resources={"metadata": {"path": str(AQUI)}}
+).preprocess(nb)
 nbf.write(nb, DESTINO)
 print("escrito", DESTINO)

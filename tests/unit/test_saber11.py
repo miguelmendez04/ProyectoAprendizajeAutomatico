@@ -1,4 +1,5 @@
 """Pruebas del transform de Saber 11 (esquema unificado kgxf-xxbe)."""
+
 import pandas as pd
 import pytest
 
@@ -46,8 +47,13 @@ def test_sin_estrato_y_nulos_quedan_nulos(crudo):
 
 
 def test_column_map_cubre_columnas_usadas():
-    assert set(COLUMN_MAP) >= {"periodo", "cole_cod_mcpio_ubicacion", "punt_global",
-                               "fami_estratovivienda", "cole_naturaleza"}
+    assert set(COLUMN_MAP) >= {
+        "periodo",
+        "cole_cod_mcpio_ubicacion",
+        "punt_global",
+        "fami_estratovivienda",
+        "cole_naturaleza",
+    }
 
 
 def test_leer_saber11_por_chunks_equivale_a_una_pasada(crudo):
@@ -67,9 +73,12 @@ def test_leer_saber11_elimina_estudiantes_repetidos_entre_chunks():
     duplicado.to_csv(ruta, index=False)
     try:
         notas = []
-        out = leer_saber11(ruta, chunksize=7, notas=notas)  # los duplicados caen en chunks distintos
+        out = leer_saber11(
+            ruta, chunksize=7, notas=notas
+        )  # los duplicados caen en chunks distintos
     finally:
         import os
+
         os.remove(ruta)
     assert len(out) == len(original)
     assert any("5 fila(s)" in n for n in notas)

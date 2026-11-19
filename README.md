@@ -41,10 +41,10 @@ Los modelos finales se pueden usar sobre filas nuevas desde la línea de comando
 ```
 desercion entrenar                                    # reentrena con todo el dataset y reescribe models/
 desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
-desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [--modelo mediana]
+desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [--modelo ridge]
 ```
 - **Tarea 1 (con historia):** exige la columna `tasa_t1` (tasa de deserción del año anterior, entre 0 y 1) y acepta `tasa_t2`, `tasa_media_previa`, `n_anios_previos` y `falta_historia`; sin `tasa_t1` el comando sugiere la Tarea 2.
-- **Tarea 2 (sin historia):** exige el contexto de la IES (`sector`, `caracter` y las variables de Saber 11, TerriData y matrícula; las columnas de `data/processed/dataset_ies.csv` sirven de plantilla). `--modelo ridge` (por defecto) o `--modelo mediana` (línea base).
+- **Tarea 2 (sin historia):** exige el contexto de la IES (`sector`, `caracter` y las variables de Saber 11, TerriData y matrícula; las columnas de `data/processed/dataset_ies.csv` sirven de plantilla). Por defecto usa la mediana por carácter × sector (`tarea2_mediana`), porque el ridge no la supera con firmeza y colapsó en la partición prepandemia; `--modelo ridge` lo usa igual, con una advertencia (ver la ficha).
 - La entrada se valida antes de predecir y los errores dicen qué falta (código de salida 2).
 
 Ejemplo con cinco filas de 2021 del propio dataset (`historia.csv` con `cod_ies, anio, tasa_t1, tasa_t2, tasa_media_previa, n_anios_previos, falta_historia`):
@@ -72,7 +72,7 @@ pip install -e ".[dev]"           # instala el paquete (comando `desercion`) con
 desercion verificar                           # SHA-256 del dataset (y de los crudos, si están)
 desercion reproducir --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
 desercion reproducir --etapa todo             # corrida completa (≈ 1,5 h)
-python -m pytest -q                           # 438 pruebas (≈ 2,5 min); `-m "not integration"` omite las que necesitan los datos publicados
+python -m pytest -q                           # 440 pruebas (≈ 2,5 min); `-m "not integration"` omite las que necesitan los datos publicados
 ```
 Sin `pip install -e` (solo con `requirements.txt`, generado desde `pyproject.toml`): `pip install -r requirements.txt` y anteponer `PYTHONPATH=src` (PowerShell: `$env:PYTHONPATH = "src"`) a `python -m desercion_ies <comando>`, que es equivalente a `desercion <comando>`.
 

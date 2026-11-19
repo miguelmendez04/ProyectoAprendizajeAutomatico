@@ -76,14 +76,14 @@ Ningún subgrupo es significativamente peor que su línea base para estos dos mo
 - **Persistencia:** la Tarea 1 es, en esencia, la tasa del año anterior con una pequeña corrección. Su ventaja (0,001 de MAE) es real pero chica; el contexto casi no aporta sobre la historia.
 - **Población:** solo IES con al menos 100 matriculados en el denominador de la tasa; no extrapole a instituciones más pequeñas.
 - **No es causal:** asociaciones, no efectos.
-- **Tarea 2:** sin firmeza estadística sobre la mediana por carácter × sector. Si necesita una estimación sin historia, `tarea2_mediana` es la alternativa razonable (≈ 700 veces más barata de ajustar, ver `reports/07_complejidad.md`) y no tiene el colapso temporal del ridge.
+- **Tarea 2:** sin firmeza estadística sobre la mediana por carácter × sector. Si necesita una estimación sin historia, `tarea2_mediana` es la alternativa razonable (y el modelo por defecto de `desercion predecir --tarea 2`; el ridge exige `--modelo ridge` y emite una advertencia) (≈ 700 veces más barata de ajustar, ver `reports/07_complejidad.md`) y no tiene el colapso temporal del ridge.
 - **Datos:** las fuentes de datos.gov.co se actualizan; una descarga nueva puede cambiar el dataset. Con una sola ventana 2015–2021, los años de pandemia están en el entrenamiento.
 - **Entrada de `predecir`:** la Tarea 1 exige `tasa_t1` (proporción entre 0 y 1); si faltan `tasa_t2`, `tasa_media_previa` o `n_anios_previos`, el pipeline las imputa con la mediana del entrenamiento y la predicción es menos precisa. Con `tasa_t1` vacía use la Tarea 2.
 
 ## 10. Cómo usar y reentrenar
 ```
 desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
-desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [--modelo mediana]
+desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [--modelo ridge]   # por defecto: tarea2_mediana
 desercion entrenar            # reentrena los tres modelos con data/processed/dataset_ies.csv y reescribe models/
 ```
 `desercion entrenar` usa los hiperparámetros de consenso de `reports/tables/ajuste.csv`. Para regenerar el dataset y los hiperparámetros desde cero:

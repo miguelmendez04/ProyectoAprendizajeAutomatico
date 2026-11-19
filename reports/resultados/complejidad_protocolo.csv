@@ -1,0 +1,10 @@
+etapa,configuraciones,ajustes,tiempo_pared_s,paralelismo,suma_t_ajuste_s,detalle,tiempo_pared_min
+"v1: 36 configuraciones, GroupKFold 5",36,180,337.0,1 proceso,327.1855586000056,,5.616666666666666
+"v2: formulaciones con historia, GroupKFold 5",72,360,874.0,1 proceso,854.8898030000164,,14.566666666666666
+v3: protocolo repetido 5 × 5,15,375,671.0,1 proceso,659.3793300000398,,11.183333333333334
+"Tarea 2: cribado (120 configuraciones, 1 semilla)",120,600,827.0,16 procesos,12972.695299500061,,13.783333333333333
+Tarea 2: confirmación 5 × 5,7,175,42.0,16 procesos,574.7257347999184,,0.7
+"Ajuste anidado (7 configuraciones, 5 × 5 externos)",7,16100,1582.2362704,16 procesos,20515.178460542138,175 ajustes por defecto + 175 búsquedas internas de 91 ajustes (30 iteraciones × 3 pliegues + el reajuste),26.370604506666666
+Particiones temporales (2 particiones × 7 configuraciones),7,1288,222.07810289999998,16 procesos,1031.1933373115621,14 ajustes por defecto + 14 búsquedas internas de 91 ajustes,3.7013017149999996
+Arranque en frío por municipio 5 × 5,7,175,59.647813900000074,16 procesos,791.4211457999991,,0.9941302316666679
+Sesgo y sensibilidad (5 escenarios × 5 modelos finales × 25 pliegues),5,625,116.65066939999906,16 procesos,390.5683754999809,"el tiempo de pared incluye además subgrupos, el diagnóstico del colapso, SHAP, permutación y coeficientes",1.9441778233333176

@@ -1,0 +1,18 @@
+{
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+  "nucleos_fisicos": 12,
+  "hilos_logicos": 16,
+  "ram_gib": 31.6,
+  "sistema_operativo": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.6",
+  "numpy": "2.4.6",
+  "pandas": "3.0.3",
+  "scipy": "1.18.0",
+  "scikit_learn": "1.9.0",
+  "xgboost": "3.4.1",
+  "bibliotecas_de_hilos": "mkl 2025.0-Product (1 hilos disponibles); openmp None (1 hilos disponibles)",
+  "hilos_en_la_medicion": 1,
+  "afinidad": "afinidad fija a la CPU lógica 0",
+  "repeticiones": 5,
+  "calentamiento": 1
+}

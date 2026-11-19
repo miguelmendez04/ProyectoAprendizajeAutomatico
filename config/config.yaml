@@ -277,6 +277,25 @@ modelado:
       figura_shap_t2: reports/figuras/shap_t2.png
       figura_coeficientes: reports/figuras/coeficientes_ridge.png
 
+  # --- Complejidad computacional medida (src/modelado/complejidad.py; python run_complejidad.py) ---
+  # Un solo hilo (también xgboost), calentamiento + 5 repeticiones (mediana y RIQ), submuestras por IES del 25/50/75/100 %. Modelos con los hiperparámetros finales (consenso).
+  complejidad:
+    repeticiones: 5
+    calentamiento: 1
+    fracciones: [0.25, 0.5, 0.75, 1.0]
+    semilla_submuestra: 7
+    kmeans_k: 6                        # k fijo del componente «K-means» (el de los clusters de la Tarea 2 salió 6 por silueta)
+    afinidad_cpu: 0                    # CPU lógica a la que se fija el proceso (null = sin fijar); en CPU híbridas reduce la variabilidad
+    salidas:
+      entorno: reports/resultados/complejidad_entorno.json
+      complejidad: reports/resultados/complejidad.csv
+      escalado: reports/resultados/complejidad_escalado.csv
+      exponentes: reports/resultados/complejidad_exponentes.csv
+      protocolo: reports/resultados/complejidad_protocolo.csv
+      informe: reports/resultados_complejidad.md
+      figura_costo_error: reports/figuras/complejidad_costo_error.png
+      figura_escalado: reports/figuras/complejidad_escalado.png
+
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021

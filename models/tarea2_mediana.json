@@ -1,0 +1,62 @@
+{
+  "modelo": "tarea2_mediana",
+  "nombre": "T2 mediana carácter × sector",
+  "descripcion": "Tarea 2: mediana por carácter × sector (línea base)",
+  "tarea": 2,
+  "fecha_entrenamiento_utc": "2026-11-19T15:47:59Z",
+  "commit": "c515fdcb93f0feaea30fc98b530a6cf798643b46",
+  "arbol_sin_cambios": true,
+  "dataset": {
+    "ruta": "data/processed/dataset_ies.csv",
+    "sha256": "fdbd629d4ea462b51006c8daf7577e7a62db1e69e03271fe6af99dde4a79f8f7",
+    "filas": 1928,
+    "ies": 295
+  },
+  "versiones": {
+    "python": "3.14.6",
+    "scikit-learn": "1.9.0",
+    "xgboost": "3.4.1",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.18.0",
+    "joblib": "1.5.3",
+    "desercion_ies": "1.0.0"
+  },
+  "hiperparametros": {},
+  "columnas": {
+    "obligatorias": [
+      "sector",
+      "caracter"
+    ],
+    "opcionales": [],
+    "numericas": [],
+    "categoricas": [
+      "sector",
+      "caracter"
+    ]
+  },
+  "categorias_conocidas": {
+    "sector": [
+      "1",
+      "2"
+    ],
+    "caracter": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  },
+  "validacion": {
+    "fuente": "reports/tables/ajuste_resumen.csv",
+    "protocolo": "validación anidada, GroupKFold por IES 5 × 5 (semillas 301-305), IC 95 % de Nadeau y Bengio",
+    "mae": 0.0399991109634815,
+    "mae_ic95": [
+      0.0345339215565797,
+      0.0454643003703833
+    ],
+    "n_ajustes": 25
+  },
+  "archivo": "tarea2_mediana.joblib",
+  "sha256_modelo": "f6e709e8e1fd3ab14e93167a4d127eb9a09b56031c0746d1e6e7480e3e058f1a"
+}

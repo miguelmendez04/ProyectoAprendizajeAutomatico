@@ -1,6 +1,11 @@
 # Deserción en educación superior en Colombia: ETL y modelado (IES × año, 2015–2021)
 
-> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Reproduce:** `pip install -r requirements.txt` then `desercion reproducir --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
+[![CI](https://github.com/miguelmendez04/ProyectoAprendizajeAutomatico/actions/workflows/ci.yml/badge.svg)](https://github.com/miguelmendez04/ProyectoAprendizajeAutomatico/actions/workflows/ci.yml)
+[![Licencia](https://img.shields.io/badge/licencia-MIT%20(c%C3%B3digo)%20%7C%20CC%20BY--SA%204.0%20(datos)-blue)](#licencia-y-citación)
+[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.14-blue)](pyproject.toml)
+[![Estilo: ruff](https://img.shields.io/badge/estilo-ruff-261230)](pyproject.toml)
+
+> **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Use / reproduce:** `pip install -e ".[dev]"`, then `desercion predecir --tarea 1 ...` (models in `models/`, see the [model card](models/model_card.md)) or `desercion reproducir --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
 
 Proyecto del curso Aprendizaje Automático (Maestría IA y Ciencia de Datos, UAO). Entrega: 26 de noviembre de 2026 (tag `v1.0-entrega`).
 Especificación: `docs/guia_etl.md` · Bitácora de decisiones y calidad de datos: `reports/01_etl.md`.
@@ -31,6 +36,32 @@ MAE (menor es mejor) con validación anidada: GroupKFold por IES 5 × 5 = 25 aju
 
 **Lectura.** En la Tarea 1 el ridge de corrección supera a la ingenua con significancia en ambas pruebas, pero la ventaja es pequeña (0,001 de MAE) y en las particiones temporales (prepandemia y 2020–2021) ningún modelo se distingue de la ingenua. En la Tarea 2 el contexto no mejora a la mediana por carácter × sector con firmeza estadística; xgboost y random forest empeoran con hiperparámetros por defecto y quedan «sin diferencia firme» tras el ajuste. Costo: el ridge de la Tarea 1 se ajusta en ~9 ms; random forest, en ~1,3 s sin menos error (`reports/07_complejidad.md`).
 
+## Uso del modelo
+Los modelos finales se pueden usar sobre filas nuevas desde la línea de comandos (el detalle, las métricas con IC, los subgrupos peor servidos y las limitaciones están en la **[ficha del modelo](models/model_card.md)**; la arquitectura, en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)). Quedan guardados en `models/` (joblib + JSON con fecha, commit, SHA-256 del dataset y versiones).
+```
+desercion entrenar                                    # reentrena con todo el dataset y reescribe models/
+desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
+desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [--modelo mediana]
+```
+- **Tarea 1 (con historia):** exige la columna `tasa_t1` (tasa de deserción del año anterior, entre 0 y 1) y acepta `tasa_t2`, `tasa_media_previa`, `n_anios_previos` y `falta_historia`; sin `tasa_t1` el comando sugiere la Tarea 2.
+- **Tarea 2 (sin historia):** exige el contexto de la IES (`sector`, `caracter` y las variables de Saber 11, TerriData y matrícula; las columnas de `data/processed/dataset_ies.csv` sirven de plantilla). `--modelo ridge` (por defecto) o `--modelo mediana` (línea base).
+- La entrada se valida antes de predecir y los errores dicen qué falta (código de salida 2).
+
+Ejemplo con cinco filas de 2021 del propio dataset (`historia.csv` con `cod_ies, anio, tasa_t1, tasa_t2, tasa_media_previa, n_anios_previos, falta_historia`):
+```
+$ desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
+5 predicciones (T1 C solo historia | ridge (ajustado)) escritas en predicciones.csv
+```
+| cod_ies | tasa_t1 | tasa_predicha | tasa observada |
+|---|---|---|---|
+| 1101 | 0,0460 | 0,0448 | 0,0259 |
+| 1102 | 0,1070 | 0,0925 | 0,0399 |
+| 1103 | 0,0460 | 0,0453 | 0,0338 |
+| 1104 | 0,0512 | 0,0515 | 0,0342 |
+| 1105 | 0,0797 | 0,0725 | 0,0512 |
+
+Son filas con las que se entrenó el modelo (no una evaluación) y muestran el tipo de resultado: la predicción es casi la tasa del año anterior con una pequeña corrección, y el error típico fuera de muestra es de unos 0,025 (ver arriba). Los modelos están guardados con pickle: no cargue archivos de modelo de origen desconocido (`predecir` verifica el SHA-256).
+
 ## Cómo reproducir
 **Requisitos:** Python 3.14, las versiones fijas de `requirements.txt` y el dataset `data/processed/dataset_ies.csv` (ya está en el repositorio). Los datos crudos **no** son necesarios para el modelado; solo para la etapa `etl` (ver [`docs/DATOS.md`](docs/DATOS.md): URL, pasos de descarga, nombre y carpeta de cada archivo, fecha y checksums).
 
@@ -41,7 +72,7 @@ pip install -e ".[dev]"           # instala el paquete (comando `desercion`) con
 desercion verificar                           # SHA-256 del dataset (y de los crudos, si están)
 desercion reproducir --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
 desercion reproducir --etapa todo             # corrida completa (≈ 1,5 h)
-python -m pytest -q                           # 399 pruebas (≈ 2 min); `-m "not integration"` omite las que necesitan los datos publicados
+python -m pytest -q                           # 438 pruebas (≈ 2,5 min); `-m "not integration"` omite las que necesitan los datos publicados
 ```
 Sin `pip install -e` (solo con `requirements.txt`, generado desde `pyproject.toml`): `pip install -r requirements.txt` y anteponer `PYTHONPATH=src` (PowerShell: `$env:PYTHONPATH = "src"`) a `python -m desercion_ies <comando>`, que es equivalente a `desercion <comando>`.
 
@@ -57,7 +88,7 @@ Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--ra
 | `sesgo` | subgrupos, sensibilidad, colapso, SHAP | 2 min | 1 min |
 | `complejidad` | medición con un hilo | 3 min | 2 min |
 
-`--etapa todo --rapido` tardó **585 s (9,8 min)** con el ETL y el EDA incluidos; desde un clon limpio, sin los crudos (`etl` y `eda` se omiten), **381 s (6,3 min)**. Los tiempos son de la máquina original (**Windows 11, Intel Core i5-12500H, 16 hilos, 31,6 GiB**) y **dependen de la máquina**: las etapas pesadas usan 16 procesos en paralelo. La corrida completa regenera además los cuadernos 04–07 (`--sin-notebooks` lo evita).
+`--etapa todo --rapido` tardó **585–633 s (≈ 10 min)** en dos corridas con el ETL y el EDA incluidos; desde un clon limpio, sin los crudos (`etl` y `eda` se omiten), **381 s (6,3 min)**. Los tiempos son de la máquina original (**Windows 11, Intel Core i5-12500H, 16 hilos, 31,6 GiB**) y **dependen de la máquina**: las etapas pesadas usan 16 procesos en paralelo. La corrida completa regenera además los cuadernos 04–07 (`--sin-notebooks` lo evita).
 
 **Modo `--rapido`.** Solo cambia la *configuración*: menos semillas (se conservan las primeras de las publicadas), grillas más chicas, `n_iter` = 3 en la búsqueda interna, 100 réplicas de bootstrap y 2 repeticiones en la medición. Escribe todo en `reproduccion/` (no se versiona) y no toca `reports/`. Al final **compara contra los CSV publicados**: las cifras por pliegue de las configuraciones comunes coinciden **exactamente** en el entorno original y hasta ~1e-13 con otra biblioteca de álgebra lineal (v1, v3, Tarea 2, ajuste por defecto, arranque en frío), salvo dos diferencias esperadas y documentadas en [`docs/REPRODUCIBILIDAD.md`](docs/REPRODUCIBILIDAD.md) (la v2 con historia y el ajuste con `n_iter` reducido). Los tiempos medidos (complejidad) nunca coinciden: dependen de la máquina.
 
@@ -85,6 +116,7 @@ src/desercion_ies/
   cli.py, __main__.py    comando `desercion` (etl, eda, evaluar, reproducir, verificar)
   paths.py, config.py    rutas del proyecto (raíz detectada sin depender del directorio actual) y lectura de la configuración
   reproduce.py, reproducibilidad.py   reproducción por etapas, checksums, modo rápido y comparación con lo publicado
+  inference/             entrenar, predecir y el objeto del modelo guardado (desercion entrenar / predecir)
   etl/                   extract/, transform/, homologation/, integrate/, validate/ y pipeline.py
   features/              particion, objetivo
   models/                metodos (KernelPCA, autoencoder, clusters, selección)
@@ -92,13 +124,19 @@ src/desercion_ies/
   analysis/              sesgo, subgrupos, sensibilidad, interpretabilidad, diagnostico_colapso, complejidad, costo_protocolo…
   reporting/             generadores de los informes (informe_*)
   runners/               lógica de cada `desercion evaluar <etapa>`
+models/                  modelos finales (joblib + JSON de metadatos) y model_card.md
 data/raw/                crudos (no versionados; ver docs/DATOS.md)
 data/processed/          dataset_ies.csv (versionado, CC BY-SA 4.0)   ·   data/checksums.json (SHA-256)
 reports/                 01_etl.md … 07_complejidad.md, etl/ (anexos del ETL), historico/ (v1 y v2), tables/ (CSV), figures/
 notebooks/               01 a 06 (+ construir/: los scripts que los generan y ejecutan)
 tests/unit/              pruebas unitarias   ·   tests/integration/: necesitan data/processed, data/interim o los resultados publicados
-docs/                    guia_etl.md, DATOS.md, REPRODUCIBILIDAD.md, MIGRACION.md
+docs/                    guia_etl.md, DATOS.md, REPRODUCIBILIDAD.md, MIGRACION.md, ARQUITECTURA.md
+.github/workflows/ci.yml integración continua (ruff, pytest sin integración, desercion verificar)
+.pre-commit-config.yaml  ruff, ruff-format y revisiones de archivos
 ```
+
+### Desarrollo
+`pip install -e ".[dev]"` y `pre-commit install` activan los hooks (ruff, ruff-format, espacios y final de archivo, archivos grandes). `make lint`, `make format` y `make test-unit` (o sus equivalentes de abajo) corren lo mismo que la integración continua de GitHub Actions (Python 3.12 y 3.14, `ruff check`, `pytest -m "not integration"` y `desercion verificar`). Los cuadernos se versionan con sus salidas, por eso no se usa `nbstripout`.
 
 ### Equivalentes en PowerShell
 `make` no viene con Windows; cada objetivo del `Makefile` equivale a:

@@ -1,0 +1,137 @@
+{
+  "modelo": "tarea2_ridge",
+  "nombre": "T2 ridge info_mutua (ajustado)",
+  "descripcion": "Tarea 2: ridge con información mutua, solo contexto",
+  "tarea": 2,
+  "fecha_entrenamiento_utc": "2026-11-19T15:47:59Z",
+  "commit": "c515fdcb93f0feaea30fc98b530a6cf798643b46",
+  "arbol_sin_cambios": true,
+  "dataset": {
+    "ruta": "data/processed/dataset_ies.csv",
+    "sha256": "fdbd629d4ea462b51006c8daf7577e7a62db1e69e03271fe6af99dde4a79f8f7",
+    "filas": 1928,
+    "ies": 295
+  },
+  "versiones": {
+    "python": "3.14.6",
+    "scikit-learn": "1.9.0",
+    "xgboost": "3.4.1",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.18.0",
+    "joblib": "1.5.3",
+    "desercion_ies": "1.0.0"
+  },
+  "hiperparametros": {
+    "alpha": 4.0428727350273315,
+    "k": 15
+  },
+  "columnas": {
+    "obligatorias": [
+      "log_matriculados_spadies_t2",
+      "punt_global_media_t1",
+      "punt_global_mediana_t1",
+      "pct_estrato_bajo_t1",
+      "pct_colegio_oficial_t1",
+      "n_estudiantes_t1",
+      "mpio_matriculados_t2",
+      "mpio_ies_con_oferta_t2",
+      "td_cob_bruta_media_t1",
+      "td_cob_bruta_total_t1",
+      "td_cob_neta_media_t1",
+      "td_desercion_escolar_t1",
+      "td_idf_t1",
+      "td_idf_ahorro_t1",
+      "td_idf_deuda_t1",
+      "td_idf_inversion_t1",
+      "td_idf_recursos_propios_t1",
+      "td_idf_transferencias_t1",
+      "td_ipm_censo_t1",
+      "td_mdm_t1",
+      "td_mdm_educacion_t1",
+      "td_mdm_gestion_t1",
+      "td_mdm_resultados_t1",
+      "td_miseria_pct_t1",
+      "td_nbi_pct_t1",
+      "td_pct_pob_15_19_t1",
+      "td_pct_pob_20_24_t1",
+      "td_pct_poblacion_rural_t1",
+      "td_repitencia_oficial_t1",
+      "td_transito_superior_t1",
+      "falta_saber11",
+      "falta_mdm",
+      "falta_snies",
+      "sector",
+      "caracter"
+    ],
+    "opcionales": [],
+    "numericas": [
+      "log_matriculados_spadies_t2",
+      "punt_global_media_t1",
+      "punt_global_mediana_t1",
+      "pct_estrato_bajo_t1",
+      "pct_colegio_oficial_t1",
+      "n_estudiantes_t1",
+      "mpio_matriculados_t2",
+      "mpio_ies_con_oferta_t2",
+      "td_cob_bruta_media_t1",
+      "td_cob_bruta_total_t1",
+      "td_cob_neta_media_t1",
+      "td_desercion_escolar_t1",
+      "td_idf_t1",
+      "td_idf_ahorro_t1",
+      "td_idf_deuda_t1",
+      "td_idf_inversion_t1",
+      "td_idf_recursos_propios_t1",
+      "td_idf_transferencias_t1",
+      "td_ipm_censo_t1",
+      "td_mdm_t1",
+      "td_mdm_educacion_t1",
+      "td_mdm_gestion_t1",
+      "td_mdm_resultados_t1",
+      "td_miseria_pct_t1",
+      "td_nbi_pct_t1",
+      "td_pct_pob_15_19_t1",
+      "td_pct_pob_20_24_t1",
+      "td_pct_poblacion_rural_t1",
+      "td_repitencia_oficial_t1",
+      "td_transito_superior_t1",
+      "falta_saber11",
+      "falta_mdm",
+      "falta_snies"
+    ],
+    "categoricas": [
+      "sector",
+      "caracter"
+    ]
+  },
+  "categorias_conocidas": {
+    "sector": [
+      "1",
+      "2"
+    ],
+    "caracter": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  },
+  "validacion": {
+    "fuente": "reports/tables/ajuste_resumen.csv",
+    "protocolo": "validación anidada, GroupKFold por IES 5 × 5 (semillas 301-305), IC 95 % de Nadeau y Bengio",
+    "mae": 0.0396249947758734,
+    "mae_ic95": [
+      0.0344511615883295,
+      0.0447988279634174
+    ],
+    "n_ajustes": 25,
+    "linea_base": "T2 base_mediana_grupo",
+    "mae_linea_base": 0.0399991109634815,
+    "mejora_frente_a_la_linea_base_pct": 0.9353112571667078,
+    "p_wilcoxon": 0.1266481280326843,
+    "p_t_corregida": 0.5962157460722342
+  },
+  "archivo": "tarea2_ridge.joblib",
+  "sha256_modelo": "7bfa1159f5104b84ca52327cff3d31e09180516b5a3f304388deb2a8bdb1f521"
+}

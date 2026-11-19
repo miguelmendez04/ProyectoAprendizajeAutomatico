@@ -1,0 +1,65 @@
+{
+  "modelo": "tarea1_ridge",
+  "nombre": "T1 C solo historia | ridge (ajustado)",
+  "descripcion": "Tarea 1: ridge de corrección sobre la ingenua, solo historia",
+  "tarea": 1,
+  "fecha_entrenamiento_utc": "2026-11-19T15:47:59Z",
+  "commit": "c515fdcb93f0feaea30fc98b530a6cf798643b46",
+  "arbol_sin_cambios": true,
+  "dataset": {
+    "ruta": "data/processed/dataset_ies.csv",
+    "sha256": "fdbd629d4ea462b51006c8daf7577e7a62db1e69e03271fe6af99dde4a79f8f7",
+    "filas": 1928,
+    "ies": 295
+  },
+  "versiones": {
+    "python": "3.14.6",
+    "scikit-learn": "1.9.0",
+    "xgboost": "3.4.1",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scipy": "1.18.0",
+    "joblib": "1.5.3",
+    "desercion_ies": "1.0.0"
+  },
+  "hiperparametros": {
+    "alpha": 157.41890047456639
+  },
+  "columnas": {
+    "obligatorias": [
+      "tasa_t1"
+    ],
+    "opcionales": [
+      "tasa_t2",
+      "tasa_media_previa",
+      "n_anios_previos",
+      "falta_historia"
+    ],
+    "numericas": [
+      "tasa_t1",
+      "tasa_t2",
+      "tasa_media_previa",
+      "n_anios_previos",
+      "falta_historia"
+    ],
+    "categoricas": []
+  },
+  "categorias_conocidas": {},
+  "validacion": {
+    "fuente": "reports/tables/ajuste_resumen.csv",
+    "protocolo": "validación anidada, GroupKFold por IES 5 × 5 (semillas 301-305), IC 95 % de Nadeau y Bengio",
+    "mae": 0.0245008299943247,
+    "mae_ic95": [
+      0.021217523630562,
+      0.0277841363580873
+    ],
+    "n_ajustes": 25,
+    "linea_base": "T1 base_ingenua",
+    "mae_linea_base": 0.0256312724744442,
+    "mejora_frente_a_la_linea_base_pct": 4.410403272980797,
+    "p_wilcoxon": 2.562999725341797e-06,
+    "p_t_corregida": 0.0112263077612123
+  },
+  "archivo": "tarea1_ridge.joblib",
+  "sha256_modelo": "49674e2868c42bf6006d4f4c0f32dfbcc6c9b4a23d03989ff87e25556c0ceddf"
+}

@@ -207,3 +207,14 @@ def test_rapido_corre_de_punta_a_punta_con_datos_de_juguete(tmp_path):
     assert (salida / "reports/resultados/complejidad_escalado.csv").exists() and (salida / "logs/run_complejidad.log").exists()
     if publicado_antes is not None:
         assert Path("reports/resultados/complejidad.csv").read_bytes() == publicado_antes  # lo publicado no se tocó
+
+
+def test_el_eda_sin_crudos_se_omite_en_todo_y_falla_si_se_pide_solo(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(rp, "verificar_checksums", lambda grupo, raiz=".", ruta=rp.CHECKSUMS: [{"archivo": "data/raw/x.csv", "estado": "ausente", "esperado": "0", "observado": None}])
+    monkeypatch.setattr(rep, "correr", lambda cmd, log: pytest.fail("no debe correr nada"))
+    assert rep.main(["--etapa", "eda", "--rapido", "--salida", str(tmp_path / "r")]) == 1
+    assert "necesita los datos crudos" in capsys.readouterr().out
+    monkeypatch.setattr(rep, "verificar", lambda grupo, raiz=".": (False, "no importa"))  # en `todo` solo se omiten etl y eda; el resto se detiene al no poder verificar el dataset
+    assert rep.main(["--etapa", "todo", "--rapido", "--salida", str(tmp_path / "r2")]) == 1
+    salida = capsys.readouterr().out
+    assert "etl          omitida" in salida and "eda          omitida" in salida

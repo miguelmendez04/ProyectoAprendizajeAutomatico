@@ -227,12 +227,15 @@ def main(argv: list[str] | None = None) -> int:
             if not a.sin_verificar and e != "etl":
                 ok, txt = verificar("procesado")
                 print(f"    {txt}", flush=True)
-            if e == "etl":
+            if e in ("etl", "eda"):  # ambas leen data/raw (el EDA, además, data/interim): sin los crudos se omiten en `todo` y fallan si se piden solas
                 raw_ok = all(f["estado"] == "ok" for f in rp.verificar_checksums("crudos"))
                 if a.etapa == "todo" and not raw_ok:
                     resumen.append((e, "omitida", 0.0, "datos crudos no disponibles (se usa el dataset procesado verificado; ver docs/DATOS.md)"))
                     print("    datos crudos no disponibles: se omite", flush=True)
                     continue
+                if e == "eda" and not raw_ok:
+                    raise ErrorEtapa("el EDA (cuadernos 01 y 02) necesita los datos crudos y el resultado del ETL; ver docs/DATOS.md")
+            if e == "etl":
                 extra = etapa_etl(ctx)
             elif e == "eda":
                 extra = etapa_eda(ctx)

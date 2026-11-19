@@ -88,6 +88,14 @@ def entorno() -> dict:
         if j:
             d = json.loads(j)
             cpu, fisicos = d["Name"].strip(), int(d["NumberOfCores"])
+    elif not cpu and os.path.exists(
+        "/proc/cpuinfo"
+    ):  # Linux: platform.processor() suele venir vacío
+        with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as f:
+            cpu = next(
+                (x.split(":", 1)[1].strip() for x in f if x.lower().startswith("model name")), cpu
+            )
+    cpu = cpu or "desconocida"
     try:
         import psutil
 

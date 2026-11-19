@@ -39,7 +39,7 @@ pip install -r requirements.txt
 python reproducir.py --solo-verificar         # SHA-256 del dataset (y de los crudos, si están)
 python reproducir.py --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
 python reproducir.py --etapa todo             # corrida completa (≈ 1,5 h)
-python -m pytest -q                            # 398 pruebas (≈ 2 min)
+python -m pytest -q                            # 399 pruebas (≈ 2 min)
 ```
 Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--rapido`, `--reanudar` (reutiliza lo ya calculado donde el script lo permite: ajuste anidado, sesgo y complejidad guardan puntos de control), `--sin-notebooks`, `--sin-verificar`. Al terminar imprime el tiempo y las cifras clave de cada etapa. Cada etapa llama a los scripts existentes (`pipeline.py`, `run_experimentos.py`, `run_formulaciones.py`, `run_protocolo_v3.py`, `run_tarea2.py`, `run_ajuste_temporal.py`, `run_sesgo_sensibilidad.py`, `run_complejidad.py`) con sus semillas, sin cambiar su lógica.
 

@@ -117,6 +117,7 @@ def test_la_comparacion_exige_igualdad_exacta_solo_en_claves_comunes(tmp_path):
     nuevo.to_csv(tmp_path / "nuevo.csv", index=False)
     c = rp.comparar_csv(tmp_path / "nuevo.csv", tmp_path / "pub.csv")
     assert c["filas_comunes"] == 3 and c["iguales"] == 2 and c["diferencia_max"] == pytest.approx(0.05)
+    assert c["casi_iguales"] == 2  # una diferencia real (0,05) no cabe en la tolerancia de punto flotante
     d = rp.comparar_csv(tmp_path / "nuevo.csv", tmp_path / "pub.csv", {"variante": "defecto"})
     assert d["filas_comunes"] == 2 and d["iguales"] == 2 and d["diferencia_max"] == 0.0
 
@@ -179,3 +180,13 @@ def test_el_eda_sin_crudos_se_omite_en_todo_y_falla_si_se_pide_solo(tmp_path, mo
     assert rep.main(["--etapa", "todo", "--rapido", "--salida", str(tmp_path / "r2")]) == 1
     salida = caplog.text
     assert "etl          omitida" in salida and "eda          omitida" in salida
+
+
+def test_el_ruido_de_punto_flotante_cuenta_como_casi_igual_pero_no_como_igual_exacto(tmp_path):
+    base = pd.DataFrame({"configuracion": ["a", "a"], "pliegue": [0, 1], "mae": [0.1, 0.2]})
+    base.to_csv(tmp_path / "pub.csv", index=False)
+    ruido = base.copy()
+    ruido.loc[0, "mae"] += 3e-15
+    ruido.to_csv(tmp_path / "nuevo.csv", index=False)
+    c = rp.comparar_csv(tmp_path / "nuevo.csv", tmp_path / "pub.csv")
+    assert c["iguales"] == 1 and c["casi_iguales"] == 2 and c["diferencia_max"] < 1e-9

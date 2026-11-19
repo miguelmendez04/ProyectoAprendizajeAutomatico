@@ -125,10 +125,12 @@ def config_rapida(cfg: dict, salida: str) -> dict:
 # ---------- comparación con lo publicado ----------
 CLAVES = ["configuracion", "tarea", "variante", "tipo", "repeticion", "semilla", "pliegue", "escenario", "etapa"]
 METRICAS = ["mae", "rmse", "r2", "n_entrenamiento", "n_prueba"]
+# ruido de punto flotante entre bibliotecas de álgebra lineal (MKL de Anaconda frente a OpenBLAS de los wheels de pip): ~1e-15; una diferencia real es mucho mayor
+TOLERANCIA = 1e-9
 
 
 def comparar_csv(nuevo: str | Path, publicado: str | Path, filtro: dict | None = None) -> dict:
-    """Compara fila a fila (por clave) las métricas de dos CSV, con igualdad EXACTA.
+    """Compara fila a fila (por clave) las métricas de dos CSV: cuenta las filas EXACTAMENTE iguales y las iguales salvo ruido de punto flotante (≤ `TOLERANCIA`).
 
     Solo se comparan las filas con la misma clave en ambos (en el modo rápido el nuevo es un subconjunto del publicado).
     `filtro` ({columna: valor}) restringe a una variante (p. ej. `{"variante": "defecto"}`).
@@ -140,11 +142,12 @@ def comparar_csv(nuevo: str | Path, publicado: str | Path, filtro: dict | None =
     claves = [c for c in CLAVES if c in a.columns and c in b.columns]
     metricas = [m for m in METRICAS if m in a.columns and m in b.columns]
     j = a[claves + metricas].merge(b[claves + metricas], on=claves, suffixes=("_nuevo", "_pub"))
-    out = {"filas_nuevo": len(a), "filas_comunes": len(j), "metricas": metricas, "iguales": 0, "diferencia_max": 0.0}
+    out = {"filas_nuevo": len(a), "filas_comunes": len(j), "metricas": metricas, "iguales": 0, "casi_iguales": 0, "diferencia_max": 0.0}
     if j.empty:
         return out
     dif = pd.concat([(j[f"{m}_nuevo"] - j[f"{m}_pub"]).abs() for m in metricas], axis=1)
     fila_igual = (dif.fillna(0) == 0).all(axis=1)
     out["iguales"] = int(fila_igual.sum())
+    out["casi_iguales"] = int((dif.fillna(0) <= TOLERANCIA).all(axis=1).sum())
     out["diferencia_max"] = float(dif.max().max())
     return out

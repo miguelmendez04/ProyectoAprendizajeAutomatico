@@ -273,7 +273,7 @@ def ejecutar(a: argparse.Namespace) -> int:
     if a.rapido and (a.comparar or True) and any(r[1] == "ok" for r in resumen):
         comp = comparar_con_publicado(ctx)
         if comp:
-            log.info("\nComparación con los CSV publicados (filas con la misma clave; igualdad exacta):")
+            log.info("\nComparación con los CSV publicados (filas con la misma clave; igualdad exacta o hasta 1e-9):")
             for c in comp:
-                log.info(f"  {c['archivo']:42s} comunes {c['filas_comunes']:5d}  idénticas {c['iguales']:5d}  dif. máx. {c['diferencia_max']:.2e}  {c['nota']}")
+                log.info(f"  {c['archivo']:42s} comunes {c['filas_comunes']:5d}  idénticas {c['iguales']:5d}  ≤1e-9 {c['casi_iguales']:5d}  dif. máx. {c['diferencia_max']:.2e}  {c['nota']}")
     return 0 if all(r[1] in ("ok", "omitida") for r in resumen) else 1

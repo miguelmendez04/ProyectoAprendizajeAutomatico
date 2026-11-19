@@ -52,7 +52,7 @@ def ejecutar(args: argparse.Namespace) -> None:
         entorno["afinidad"] = cx.fijar_afinidad(pc["afinidad_cpu"])
         entorno["repeticiones"], entorno["calentamiento"] = pc["repeticiones"], pc["calentamiento"]
         s["entorno"].write_text(json.dumps(entorno, ensure_ascii=False, indent=2), encoding="utf-8")
-        log.info("Entorno:", json.dumps(entorno, ensure_ascii=False))
+        log.info("Entorno: %s", json.dumps(entorno, ensure_ascii=False))
         df = cargar_dataset(cfg)
         t0 = time.perf_counter()
         filas = []

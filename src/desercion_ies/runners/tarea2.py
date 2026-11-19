@@ -62,7 +62,7 @@ def ejecutar(args: argparse.Namespace) -> None:
         # b) confirmación: línea base + mejor de cada modelo y de cada reducción, semillas distintas
         elegidas = t2.seleccion_confirmacion(r)
         nombres = [t2.nombre_configuracion(c) for c in elegidas]
-        log.info("\nElegidas para la confirmación:", *nombres, sep="\n  ")
+        log.info("\nElegidas para la confirmación:\n  " + "\n  ".join(nombres))
         t = time.perf_counter()
         conf = t2.confirmacion(cfg, elegidas, df, verbose=True)
         t_conf = time.perf_counter() - t

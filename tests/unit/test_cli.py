@@ -155,3 +155,18 @@ def test_el_codigo_no_usa_el_paquete_anterior():
     patron = re.compile(r"\b(src\.modelado|from src\b|import src\b)")
     ofensores = [str(p.relative_to(RAIZ)) for carpeta in ("src", "tests", "tools") for p in (RAIZ / carpeta).rglob("*.py") if patron.search(p.read_text(encoding="utf-8")) and p != Path(__file__).resolve()]
     assert ofensores == []
+
+
+def test_las_llamadas_a_logging_del_paquete_son_validas():
+    """Un `print(..., sep=...)` convertido a `log.info` a medias no falla hasta que corre la etapa: aquí se revisa la forma de cada llamada."""
+    import ast
+
+    problemas = []
+    for p in (RAIZ / "src").rglob("*.py"):
+        for n in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("debug", "info", "warning", "error") and isinstance(n.func.value, ast.Name) and n.func.value.id == "log":
+                if {k.arg for k in n.keywords} - {"exc_info", "extra"}:
+                    problemas.append(f"{p.name}:{n.lineno} argumentos con nombre no admitidos")
+                if len(n.args) > 1 and not (isinstance(n.args[0], ast.Constant) and "%" in n.args[0].value):
+                    problemas.append(f"{p.name}:{n.lineno} varios argumentos sin formato %")
+    assert problemas == []

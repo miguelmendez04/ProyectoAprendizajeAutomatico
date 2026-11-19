@@ -53,7 +53,7 @@ Opciones: `--etapa {etl,eda,tarea1,tarea2,ajuste,sesgo,complejidad,todo}`, `--ra
 | `sesgo` | subgrupos, sensibilidad, colapso, SHAP | 2 min | 1 min |
 | `complejidad` | medición con un hilo | 3 min | 2 min |
 
-`--etapa todo --rapido` tardó **585 s (9,8 min)** con el ETL incluido (sin los crudos, la etapa `etl` se omite y son ~7,5 min). Los tiempos son de la máquina original (**Windows 11, Intel Core i5-12500H, 16 hilos, 31,6 GiB**) y **dependen de la máquina**: las etapas pesadas usan 16 procesos en paralelo. La corrida completa regenera además los cuadernos 04–07 (`--sin-notebooks` lo evita).
+`--etapa todo --rapido` tardó **585 s (9,8 min)** con el ETL y el EDA incluidos; desde un clon limpio, sin los crudos (`etl` y `eda` se omiten), **381 s (6,3 min)**. Los tiempos son de la máquina original (**Windows 11, Intel Core i5-12500H, 16 hilos, 31,6 GiB**) y **dependen de la máquina**: las etapas pesadas usan 16 procesos en paralelo. La corrida completa regenera además los cuadernos 04–07 (`--sin-notebooks` lo evita).
 
 **Modo `--rapido`.** Solo cambia la *configuración*: menos semillas (se conservan las primeras de las publicadas), grillas más chicas, `n_iter` = 3 en la búsqueda interna, 100 réplicas de bootstrap y 2 repeticiones en la medición. Escribe todo en `reproduccion/` (no se versiona) y no toca `reports/`. Al final **compara contra los CSV publicados**: las cifras por pliegue de las configuraciones comunes coinciden **exactamente** (v1, v3, Tarea 2, ajuste por defecto, arranque en frío), salvo dos diferencias esperadas y documentadas en [`docs/REPRODUCIBILIDAD.md`](docs/REPRODUCIBILIDAD.md) (la v2 con historia y el ajuste con `n_iter` reducido). Los tiempos medidos (complejidad) nunca coinciden: dependen de la máquina.
 

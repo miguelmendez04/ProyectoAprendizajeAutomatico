@@ -1,0 +1,361 @@
+particion,tarea,configuracion,variante,variable,nivel,n,mae
+prepandemia,T1,T1 base_ingenua,linea_base,sector,oficial,150,0.019419474133140747
+prepandemia,T1,T1 base_ingenua,linea_base,sector,privada,401,0.023811402913904527
+prepandemia,T1,T1 base_mediana,linea_base,sector,oficial,150,0.039386599054242785
+prepandemia,T1,T1 base_mediana,linea_base,sector,privada,401,0.04573306203771528
+prepandemia,T2,T2 base_mediana_grupo,linea_base,sector,oficial,150,0.03213999963410104
+prepandemia,T2,T2 base_mediana_grupo,linea_base,sector,privada,401,0.0367750140385981
+prepandemia,T2,T2 base_mediana,linea_base,sector,oficial,150,0.039386599054242785
+prepandemia,T2,T2 base_mediana,linea_base,sector,privada,401,0.04573306203771528
+estres,T1,T1 base_ingenua,linea_base,sector,oficial,147,0.02344640138772566
+estres,T1,T1 base_ingenua,linea_base,sector,privada,397,0.02376318975555712
+estres,T1,T1 base_mediana,linea_base,sector,oficial,147,0.04179853311918163
+estres,T1,T1 base_mediana,linea_base,sector,privada,397,0.05379719115127996
+estres,T2,T2 base_mediana_grupo,linea_base,sector,oficial,147,0.034085124882827646
+estres,T2,T2 base_mediana_grupo,linea_base,sector,privada,397,0.042787598961428565
+estres,T2,T2 base_mediana,linea_base,sector,oficial,147,0.04179853311918163
+estres,T2,T2 base_mediana,linea_base,sector,privada,397,0.05379719115127996
+prepandemia,T1,T1 C solo historia | ridge,defecto,sector,oficial,150,0.017390472783406895
+prepandemia,T1,T1 C solo historia | ridge,defecto,sector,privada,401,0.02263981714040947
+prepandemia,T1,T1 C solo historia | ridge,ajustado,sector,oficial,150,0.017782657133832733
+prepandemia,T1,T1 C solo historia | ridge,ajustado,sector,privada,401,0.022728277265654656
+prepandemia,T1,T1 C solo historia | random_forest,defecto,sector,oficial,150,0.02182939091732765
+prepandemia,T1,T1 C solo historia | random_forest,defecto,sector,privada,401,0.026913564514063744
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,sector,oficial,150,0.02032539899999813
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,sector,privada,401,0.02371734713406136
+prepandemia,T1,T1 C solo historia | xgboost,defecto,sector,oficial,150,0.01976196643054316
+prepandemia,T1,T1 C solo historia | xgboost,defecto,sector,privada,401,0.027539860203688576
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,sector,oficial,150,0.020036986004263627
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,sector,privada,401,0.024737861106829642
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,sector,oficial,150,0.02267272869388826
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,sector,privada,401,0.02718176144038663
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,sector,oficial,150,0.019741017838242746
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,sector,privada,401,0.02441243111057443
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,sector,oficial,150,0.030580152781333247
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,sector,privada,401,0.03796639742171326
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,sector,oficial,150,0.03840436664883594
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,sector,privada,401,0.07381616275637483
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,sector,oficial,150,0.025895645762500225
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,sector,privada,401,0.03679736764502234
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,sector,oficial,150,0.028314177487753434
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,sector,privada,401,0.035424456094469675
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,sector,oficial,150,0.024557094281646985
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,sector,privada,401,0.036305057950368765
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,sector,oficial,150,0.03130898805589953
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,sector,privada,401,0.03550266267139438
+estres,T1,T1 C solo historia | ridge,defecto,sector,oficial,147,0.019667029654968138
+estres,T1,T1 C solo historia | ridge,defecto,sector,privada,397,0.025904921933510575
+estres,T1,T1 C solo historia | ridge,ajustado,sector,oficial,147,0.019865127839568175
+estres,T1,T1 C solo historia | ridge,ajustado,sector,privada,397,0.025352916099922834
+estres,T1,T1 C solo historia | random_forest,defecto,sector,oficial,147,0.0220993534182434
+estres,T1,T1 C solo historia | random_forest,defecto,sector,privada,397,0.026279451834560083
+estres,T1,T1 C solo historia | random_forest,ajustado,sector,oficial,147,0.020576104128076946
+estres,T1,T1 C solo historia | random_forest,ajustado,sector,privada,397,0.02388871964061719
+estres,T1,T1 C solo historia | xgboost,defecto,sector,oficial,147,0.022655363797223892
+estres,T1,T1 C solo historia | xgboost,defecto,sector,privada,397,0.02699084986220109
+estres,T1,T1 C solo historia | xgboost,ajustado,sector,oficial,147,0.02076427431033183
+estres,T1,T1 C solo historia | xgboost,ajustado,sector,privada,397,0.024243091315228893
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,sector,oficial,147,0.022349543152968197
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,sector,privada,397,0.026250799600850663
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,sector,oficial,147,0.020525698469162253
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,sector,privada,397,0.0267675939957924
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,sector,oficial,147,0.03149818592961285
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,sector,privada,397,0.041953021291336386
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,sector,oficial,147,0.03143580536880654
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,sector,privada,397,0.041930534264608514
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,sector,oficial,147,0.029392478175103966
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,sector,privada,397,0.041871781785182145
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,sector,oficial,147,0.03250152627512754
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,sector,privada,397,0.04185735273541157
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,sector,oficial,147,0.02862160514555114
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,sector,privada,397,0.041121717649748445
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,sector,oficial,147,0.03355617689851501
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,sector,privada,397,0.041088925438359784
+prepandemia,T1,T1 base_ingenua,linea_base,caracter,universidad,242,0.012729051854423894
+prepandemia,T1,T1 base_ingenua,linea_base,caracter,institución universitaria,212,0.02183819718972445
+prepandemia,T1,T1 base_ingenua,linea_base,caracter,tecnológica,63,0.05118363824717757
+prepandemia,T1,T1 base_ingenua,linea_base,caracter,técnica profesional,34,0.04489988605536688
+prepandemia,T1,T1 base_mediana,linea_base,caracter,universidad,242,0.03084091556633578
+prepandemia,T1,T1 base_mediana,linea_base,caracter,institución universitaria,212,0.032418360741443164
+prepandemia,T1,T1 base_mediana,linea_base,caracter,tecnológica,63,0.09434340748473137
+prepandemia,T1,T1 base_mediana,linea_base,caracter,técnica profesional,34,0.11667997116126352
+prepandemia,T2,T2 base_mediana_grupo,linea_base,caracter,universidad,242,0.022153730311539298
+prepandemia,T2,T2 base_mediana_grupo,linea_base,caracter,institución universitaria,212,0.0324272617843948
+prepandemia,T2,T2 base_mediana_grupo,linea_base,caracter,tecnológica,63,0.0732541463265625
+prepandemia,T2,T2 base_mediana_grupo,linea_base,caracter,técnica profesional,34,0.07991138595103964
+prepandemia,T2,T2 base_mediana,linea_base,caracter,universidad,242,0.03084091556633578
+prepandemia,T2,T2 base_mediana,linea_base,caracter,institución universitaria,212,0.032418360741443164
+prepandemia,T2,T2 base_mediana,linea_base,caracter,tecnológica,63,0.09434340748473137
+prepandemia,T2,T2 base_mediana,linea_base,caracter,técnica profesional,34,0.11667997116126352
+estres,T1,T1 base_ingenua,linea_base,caracter,universidad,236,0.012944263031144296
+estres,T1,T1 base_ingenua,linea_base,caracter,institución universitaria,213,0.021350543747911087
+estres,T1,T1 base_ingenua,linea_base,caracter,tecnológica,57,0.04737739715415242
+estres,T1,T1 base_ingenua,linea_base,caracter,técnica profesional,38,0.06783115277658014
+estres,T1,T1 base_mediana,linea_base,caracter,universidad,236,0.03570913791126419
+estres,T1,T1 base_mediana,linea_base,caracter,institución universitaria,213,0.03894567362914444
+estres,T1,T1 base_mediana,linea_base,caracter,tecnológica,57,0.10248959618731351
+estres,T1,T1 base_mediana,linea_base,caracter,técnica profesional,38,0.12992571691670682
+estres,T2,T2 base_mediana_grupo,linea_base,caracter,universidad,236,0.025267282194010303
+estres,T2,T2 base_mediana_grupo,linea_base,caracter,institución universitaria,213,0.03900689808250864
+estres,T2,T2 base_mediana_grupo,linea_base,caracter,tecnológica,57,0.07587772938670176
+estres,T2,T2 base_mediana_grupo,linea_base,caracter,técnica profesional,38,0.08948978108052719
+estres,T2,T2 base_mediana,linea_base,caracter,universidad,236,0.03570913791126419
+estres,T2,T2 base_mediana,linea_base,caracter,institución universitaria,213,0.03894567362914444
+estres,T2,T2 base_mediana,linea_base,caracter,tecnológica,57,0.10248959618731351
+estres,T2,T2 base_mediana,linea_base,caracter,técnica profesional,38,0.12992571691670682
+prepandemia,T1,T1 C solo historia | ridge,defecto,caracter,universidad,242,0.011913995252540187
+prepandemia,T1,T1 C solo historia | ridge,defecto,caracter,institución universitaria,212,0.02096462846982181
+prepandemia,T1,T1 C solo historia | ridge,defecto,caracter,tecnológica,63,0.048227754991977165
+prepandemia,T1,T1 C solo historia | ridge,defecto,caracter,técnica profesional,34,0.03885590998834472
+prepandemia,T1,T1 C solo historia | ridge,ajustado,caracter,universidad,242,0.012326547570686127
+prepandemia,T1,T1 C solo historia | ridge,ajustado,caracter,institución universitaria,212,0.02040392569922046
+prepandemia,T1,T1 C solo historia | ridge,ajustado,caracter,tecnológica,63,0.049001628520457814
+prepandemia,T1,T1 C solo historia | ridge,ajustado,caracter,técnica profesional,34,0.0407552469550825
+prepandemia,T1,T1 C solo historia | random_forest,defecto,caracter,universidad,242,0.015010180343936655
+prepandemia,T1,T1 C solo historia | random_forest,defecto,caracter,institución universitaria,212,0.024920092598989054
+prepandemia,T1,T1 C solo historia | random_forest,defecto,caracter,tecnológica,63,0.05563321361776107
+prepandemia,T1,T1 C solo historia | random_forest,defecto,caracter,técnica profesional,34,0.04842153751768857
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,caracter,universidad,242,0.013712454329701416
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,caracter,institución universitaria,212,0.021409801103093755
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,caracter,tecnológica,63,0.05069411209914607
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,caracter,técnica profesional,34,0.04436603549613245
+prepandemia,T1,T1 C solo historia | xgboost,defecto,caracter,universidad,242,0.015118674207692081
+prepandemia,T1,T1 C solo historia | xgboost,defecto,caracter,institución universitaria,212,0.02409027391741435
+prepandemia,T1,T1 C solo historia | xgboost,defecto,caracter,tecnológica,63,0.05772255579671392
+prepandemia,T1,T1 C solo historia | xgboost,defecto,caracter,técnica profesional,34,0.0472176665386556
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,caracter,universidad,242,0.013623435765531221
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,caracter,institución universitaria,212,0.022348998091798713
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,caracter,tecnológica,63,0.051684374103622734
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,caracter,técnica profesional,34,0.04807222309500342
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,universidad,242,0.01545589372409615
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,institución universitaria,212,0.02388952636634397
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,tecnológica,63,0.06260345786227327
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,técnica profesional,34,0.045643291925260954
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,universidad,242,0.012744577067023605
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,institución universitaria,212,0.02163324566774441
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,tecnológica,63,0.05679107174983735
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,técnica profesional,34,0.04418424408986695
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,universidad,242,0.022278226084841427
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,institución universitaria,212,0.03328977153798746
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,tecnológica,63,0.08125635786465187
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,técnica profesional,34,0.06598927821320492
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,universidad,242,0.040226151730068035
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,institución universitaria,212,0.06922737386770927
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,tecnológica,63,0.1182055075725045
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,técnica profesional,34,0.10303109726273776
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,universidad,242,0.019928166863722226
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,institución universitaria,212,0.030102567626873765
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,tecnológica,63,0.08673136833454051
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,técnica profesional,34,0.05798983432455654
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,universidad,242,0.021261714910880945
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,institución universitaria,212,0.030205942011947085
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,tecnológica,63,0.07991727093321391
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,técnica profesional,34,0.054957374508438454
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,universidad,242,0.019242949155673917
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,institución universitaria,212,0.03070381309595702
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,tecnológica,63,0.08331626761409995
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,técnica profesional,34,0.05373427790119556
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,universidad,242,0.022719052550481532
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,institución universitaria,212,0.03132881705571281
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,tecnológica,63,0.07159421153658518
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,técnica profesional,34,0.06714001999357538
+estres,T1,T1 C solo historia | ridge,defecto,caracter,universidad,236,0.01333787348523779
+estres,T1,T1 C solo historia | ridge,defecto,caracter,institución universitaria,213,0.021550657869129675
+estres,T1,T1 C solo historia | ridge,defecto,caracter,tecnológica,57,0.051781406855716854
+estres,T1,T1 C solo historia | ridge,defecto,caracter,técnica profesional,38,0.0654141817754583
+estres,T1,T1 C solo historia | ridge,ajustado,caracter,universidad,236,0.013135597149689619
+estres,T1,T1 C solo historia | ridge,ajustado,caracter,institución universitaria,213,0.021099505959711714
+estres,T1,T1 C solo historia | ridge,ajustado,caracter,tecnológica,57,0.05078551080269688
+estres,T1,T1 C solo historia | ridge,ajustado,caracter,técnica profesional,38,0.06569241241017945
+estres,T1,T1 C solo historia | random_forest,defecto,caracter,universidad,236,0.013605878248953
+estres,T1,T1 C solo historia | random_forest,defecto,caracter,institución universitaria,213,0.02184309883418795
+estres,T1,T1 C solo historia | random_forest,defecto,caracter,tecnológica,57,0.05219208344027446
+estres,T1,T1 C solo historia | random_forest,defecto,caracter,técnica profesional,38,0.07481661200714598
+estres,T1,T1 C solo historia | random_forest,ajustado,caracter,universidad,236,0.012520980815684743
+estres,T1,T1 C solo historia | random_forest,ajustado,caracter,institución universitaria,213,0.02029592246413024
+estres,T1,T1 C solo historia | random_forest,ajustado,caracter,tecnológica,57,0.04961131564897284
+estres,T1,T1 C solo historia | random_forest,ajustado,caracter,técnica profesional,38,0.06322844881051429
+estres,T1,T1 C solo historia | xgboost,defecto,caracter,universidad,236,0.013517083141718912
+estres,T1,T1 C solo historia | xgboost,defecto,caracter,institución universitaria,213,0.021850423347096568
+estres,T1,T1 C solo historia | xgboost,defecto,caracter,tecnológica,57,0.05319833564101278
+estres,T1,T1 C solo historia | xgboost,defecto,caracter,técnica profesional,38,0.08340076177817851
+estres,T1,T1 C solo historia | xgboost,ajustado,caracter,universidad,236,0.012547304185872778
+estres,T1,T1 C solo historia | xgboost,ajustado,caracter,institución universitaria,213,0.020358789467491215
+estres,T1,T1 C solo historia | xgboost,ajustado,caracter,tecnológica,57,0.049860916507260246
+estres,T1,T1 C solo historia | xgboost,ajustado,caracter,técnica profesional,38,0.06676835237918972
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,universidad,236,0.01347023643997183
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,institución universitaria,213,0.022106533371744515
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,tecnológica,57,0.049043266283298775
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,caracter,técnica profesional,38,0.07957412365423878
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,universidad,236,0.013557609715383917
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,institución universitaria,213,0.022996124490644348
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,tecnológica,57,0.05105084587102704
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,caracter,técnica profesional,38,0.06937747019236953
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,universidad,236,0.024239097529334737
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,institución universitaria,213,0.03863827447659521
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,tecnológica,57,0.0759075418380263
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,caracter,técnica profesional,38,0.07917035313443045
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,universidad,236,0.024239006967580946
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,institución universitaria,213,0.03863990297645317
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,tecnológica,57,0.0757825706988357
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,caracter,técnica profesional,38,0.07887299958149677
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,universidad,236,0.023005943735948425
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,institución universitaria,213,0.03760469954499683
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,tecnológica,57,0.07893149454717803
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,caracter,técnica profesional,38,0.07909191438158672
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,universidad,236,0.024390529214921602
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,institución universitaria,213,0.03827739534826811
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,tecnológica,57,0.07779000171480045
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,caracter,técnica profesional,38,0.0803108735988398
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,universidad,236,0.021713092439474488
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,institución universitaria,213,0.035877866903794915
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,tecnológica,57,0.08295251221817773
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,caracter,técnica profesional,38,0.07995076843909804
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,universidad,236,0.024221509412407746
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,institución universitaria,213,0.03777817179917252
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,tecnológica,57,0.07704103407244352
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,caracter,técnica profesional,38,0.08133409595866536
+prepandemia,T1,T1 base_ingenua,linea_base,anio,2018,277,0.026437288131099187
+prepandemia,T1,T1 base_ingenua,linea_base,anio,2019,274,0.01875242655522756
+prepandemia,T1,T1 base_mediana,linea_base,anio,2018,277,0.045171931185729826
+prepandemia,T1,T1 base_mediana,linea_base,anio,2019,274,0.04282599560880687
+prepandemia,T2,T2 base_mediana_grupo,linea_base,anio,2018,277,0.03584963658377839
+prepandemia,T2,T2 base_mediana_grupo,linea_base,anio,2019,274,0.03517310671856342
+prepandemia,T2,T2 base_mediana,linea_base,anio,2018,277,0.045171931185729826
+prepandemia,T2,T2 base_mediana,linea_base,anio,2019,274,0.04282599560880687
+estres,T1,T1 base_ingenua,linea_base,anio,2020,273,0.02051984606355107
+estres,T1,T1 base_ingenua,linea_base,anio,2021,271,0.02685863233063619
+estres,T1,T1 base_mediana,linea_base,anio,2020,273,0.047470049239383576
+estres,T1,T1 base_mediana,linea_base,anio,2021,271,0.053662530676111174
+estres,T2,T2 base_mediana_grupo,linea_base,anio,2020,273,0.0391904212501676
+estres,T2,T2 base_mediana_grupo,linea_base,anio,2021,271,0.04169079388991532
+estres,T2,T2 base_mediana,linea_base,anio,2020,273,0.047470049239383576
+estres,T2,T2 base_mediana,linea_base,anio,2021,271,0.053662530676111174
+prepandemia,T1,T1 C solo historia | ridge,defecto,anio,2018,277,0.02336071180680625
+prepandemia,T1,T1 C solo historia | ridge,defecto,anio,2019,274,0.019037300804123723
+prepandemia,T1,T1 C solo historia | ridge,ajustado,anio,2018,277,0.023804796310464383
+prepandemia,T1,T1 C solo historia | ridge,ajustado,anio,2019,274,0.018932515239429903
+prepandemia,T1,T1 C solo historia | random_forest,defecto,anio,2018,277,0.028058089158669627
+prepandemia,T1,T1 C solo historia | random_forest,defecto,anio,2019,274,0.02297320186418694
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,anio,2018,277,0.025766633073976544
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,anio,2019,274,0.019788717844039492
+prepandemia,T1,T1 C solo historia | xgboost,defecto,anio,2018,277,0.027845539188050467
+prepandemia,T1,T1 C solo historia | xgboost,defecto,anio,2019,274,0.022972863325440195
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,anio,2018,277,0.026506285595369196
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,anio,2019,274,0.02037660253489403
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,anio,2018,277,0.027774794014045017
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,anio,2019,274,0.02411378722550295
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,anio,2018,277,0.02444792373503449
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,anio,2019,274,0.021819206848438702
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,anio,2018,277,0.03641792153512902
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,anio,2019,274,0.035488262839694404
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,anio,2018,277,0.036822996445738984
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,anio,2019,274,0.09182834396774452
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,anio,2018,277,0.03317374985900398
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,anio,2019,274,0.03449256415724412
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,anio,2018,277,0.033933510579142914
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,anio,2019,274,0.03303923754241886
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,anio,2018,277,0.03290158958880121
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,anio,2019,274,0.03331442359214229
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,anio,2018,277,0.03502541976901066
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,anio,2019,274,0.03368932358977417
+estres,T1,T1 C solo historia | ridge,defecto,anio,2020,273,0.02134534808361383
+estres,T1,T1 C solo historia | ridge,defecto,anio,2021,271,0.02711449202973225
+estres,T1,T1 C solo historia | ridge,ajustado,anio,2020,273,0.02100603047063945
+estres,T1,T1 C solo historia | ridge,ajustado,anio,2021,271,0.02675511131218198
+estres,T1,T1 C solo historia | random_forest,defecto,anio,2020,273,0.021950791671903724
+estres,T1,T1 C solo historia | random_forest,defecto,anio,2021,271,0.028372624370377922
+estres,T1,T1 C solo historia | random_forest,ajustado,anio,2020,273,0.01969705108922889
+estres,T1,T1 C solo historia | random_forest,ajustado,anio,2021,271,0.026314443013995752
+estres,T1,T1 C solo historia | xgboost,defecto,anio,2020,273,0.02239859321209792
+estres,T1,T1 C solo historia | xgboost,defecto,anio,2021,271,0.02926527648185613
+estres,T1,T1 C solo historia | xgboost,ajustado,anio,2020,273,0.019844305481817908
+estres,T1,T1 C solo historia | xgboost,ajustado,anio,2021,271,0.02678730693442199
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,anio,2020,273,0.02149494975536678
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,anio,2021,271,0.028925568272357587
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,anio,2020,273,0.021709683195733184
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,anio,2021,271,0.028477007302071127
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,anio,2020,273,0.03883289141868551
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,anio,2021,271,0.03942510489672505
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,anio,2020,273,0.03878583963736821
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,anio,2021,271,0.039405724248201546
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,anio,2020,273,0.03529994705087611
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,anio,2021,271,0.04172290079545542
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,anio,2020,273,0.0374108201194243
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,anio,2021,271,0.04126176939409339
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,anio,2020,273,0.035477088292649804
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,anio,2021,271,0.04002750095739024
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,anio,2020,273,0.03739138026881185
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,anio,2021,271,0.040727729113376035
+prepandemia,T1,T1 base_ingenua,linea_base,bogota,Bogotá,170,0.028099094747591955
+prepandemia,T1,T1 base_ingenua,linea_base,bogota,resto,381,0.020169153756840405
+prepandemia,T1,T1 base_mediana,linea_base,bogota,Bogotá,170,0.05915936828771443
+prepandemia,T1,T1 base_mediana,linea_base,bogota,resto,381,0.03724371424238528
+prepandemia,T2,T2 base_mediana_grupo,linea_base,bogota,Bogotá,170,0.04879380639787126
+prepandemia,T2,T2 base_mediana_grupo,linea_base,bogota,resto,381,0.029587489467073166
+prepandemia,T2,T2 base_mediana,linea_base,bogota,Bogotá,170,0.05915936828771443
+prepandemia,T2,T2 base_mediana,linea_base,bogota,resto,381,0.03724371424238528
+estres,T1,T1 base_ingenua,linea_base,bogota,Bogotá,167,0.025355018455854694
+estres,T1,T1 base_ingenua,linea_base,bogota,resto,377,0.02293453383242471
+estres,T1,T1 base_mediana,linea_base,bogota,Bogotá,167,0.06707421343756707
+estres,T1,T1 base_mediana,linea_base,bogota,resto,377,0.043237335839533535
+estres,T2,T2 base_mediana_grupo,linea_base,bogota,Bogotá,167,0.05364014104842051
+estres,T2,T2 base_mediana_grupo,linea_base,bogota,resto,377,0.034586967083227005
+estres,T2,T2 base_mediana,linea_base,bogota,Bogotá,167,0.06707421343756707
+estres,T2,T2 base_mediana,linea_base,bogota,resto,377,0.043237335839533535
+prepandemia,T1,T1 C solo historia | ridge,defecto,bogota,Bogotá,170,0.02581463079512741
+prepandemia,T1,T1 C solo historia | ridge,defecto,bogota,resto,381,0.01915656261323772
+prepandemia,T1,T1 C solo historia | ridge,ajustado,bogota,Bogotá,170,0.02576586195458507
+prepandemia,T1,T1 C solo historia | ridge,ajustado,bogota,resto,381,0.01942582997722563
+prepandemia,T1,T1 C solo historia | random_forest,defecto,bogota,Bogotá,170,0.03264699913072902
+prepandemia,T1,T1 C solo historia | random_forest,defecto,bogota,resto,381,0.02235369594623301
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,bogota,Bogotá,170,0.026434966307959114
+prepandemia,T1,T1 C solo historia | random_forest,ajustado,bogota,resto,381,0.021169348499751384
+prepandemia,T1,T1 C solo historia | xgboost,defecto,bogota,Bogotá,170,0.03349610613404437
+prepandemia,T1,T1 C solo historia | xgboost,defecto,bogota,resto,381,0.021820054759771782
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,bogota,Bogotá,170,0.02806291483426434
+prepandemia,T1,T1 C solo historia | xgboost,ajustado,bogota,resto,381,0.021403503104076887
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,bogota,Bogotá,170,0.03197212541361781
+prepandemia,T1,T1 B historia+contexto | xgboost logit,defecto,bogota,resto,381,0.02326911895370932
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,bogota,Bogotá,170,0.028662292931516214
+prepandemia,T1,T1 B historia+contexto | xgboost logit,ajustado,bogota,resto,381,0.020677028222359582
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,bogota,Bogotá,170,0.04829131937346472
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,bogota,resto,381,0.03045150653495539
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,bogota,Bogotá,170,0.13672038633950667
+prepandemia,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,bogota,resto,381,0.0318070094092272
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,bogota,Bogotá,170,0.04773962122821865
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,bogota,resto,381,0.027622980790634702
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,bogota,Bogotá,170,0.047676677960290424
+prepandemia,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,bogota,resto,381,0.02715826315956951
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,bogota,Bogotá,170,0.04767152024315255
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,bogota,resto,381,0.02660822556170338
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,bogota,Bogotá,170,0.04778858349901127
+prepandemia,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,bogota,resto,381,0.028369702742210394
+estres,T1,T1 C solo historia | ridge,defecto,bogota,Bogotá,167,0.027097165683078975
+estres,T1,T1 C solo historia | ridge,defecto,bogota,resto,377,0.022944511134774078
+estres,T1,T1 C solo historia | ridge,ajustado,bogota,Bogotá,167,0.026315661272736834
+estres,T1,T1 C solo historia | ridge,ajustado,bogota,resto,377,0.022786647351561894
+estres,T1,T1 C solo historia | random_forest,defecto,bogota,Bogotá,167,0.027370059550298302
+estres,T1,T1 C solo historia | random_forest,defecto,bogota,resto,377,0.024166438689396063
+estres,T1,T1 C solo historia | random_forest,ajustado,bogota,Bogotá,167,0.024760164738166227
+estres,T1,T1 C solo historia | random_forest,ajustado,bogota,resto,377,0.022211038442648743
+estres,T1,T1 C solo historia | xgboost,defecto,bogota,Bogotá,167,0.02782541318192351
+estres,T1,T1 C solo historia | xgboost,defecto,bogota,resto,377,0.02493066809576795
+estres,T1,T1 C solo historia | xgboost,ajustado,bogota,Bogotá,167,0.024917898054710997
+estres,T1,T1 C solo historia | xgboost,ajustado,bogota,resto,377,0.022587709815989156
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,bogota,Bogotá,167,0.027777034212349533
+estres,T1,T1 B historia+contexto | xgboost logit,defecto,bogota,resto,377,0.024053542630137044
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,bogota,Bogotá,167,0.030035212524270702
+estres,T1,T1 B historia+contexto | xgboost logit,ajustado,bogota,resto,377,0.022886291776507233
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,bogota,Bogotá,167,0.05257531081486978
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,defecto,bogota,resto,377,0.03317110312527952
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,bogota,Bogotá,167,0.05257468891485832
+estres,T2,T2 | ridge | logit | mediana | info_mutua | sin clusters,ajustado,bogota,resto,377,0.033123375181651996
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,bogota,Bogotá,167,0.053257242186510734
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,defecto,bogota,resto,377,0.0319624196692581
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,bogota,Bogotá,167,0.05284983903214925
+estres,T2,T2 | xgboost | logit | mediana | ninguna | con clusters,ajustado,bogota,resto,377,0.03333997421759474
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,bogota,Bogotá,167,0.05429350732988986
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,defecto,bogota,resto,377,0.030412949971497467
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,bogota,Bogotá,167,0.0524407229666741
+estres,T2,T2 | random_forest | logit | mediana | ninguna | con clusters,ajustado,bogota,resto,377,0.03312323784529435

@@ -1,0 +1,33 @@
+configuracion,hiperparametro,resumen,n
+T1 C solo historia | ridge,alpha,mediana 157.4 (rango 98.78–506.2),25
+T1 C solo historia | random_forest,max_depth,None (13 de 25),25
+T1 C solo historia | random_forest,max_features,sqrt (13 de 25),25
+T1 C solo historia | random_forest,min_samples_leaf,10 (15 de 25),25
+T1 C solo historia | random_forest,n_estimators,500 (21 de 25),25
+T1 C solo historia | xgboost,colsample_bytree,0.8 (11 de 25),25
+T1 C solo historia | xgboost,learning_rate,mediana 0.02028 (rango 0.01056–0.05426),25
+T1 C solo historia | xgboost,max_depth,6 (8 de 25),25
+T1 C solo historia | xgboost,min_child_weight,1 (15 de 25),25
+T1 C solo historia | xgboost,n_estimators,200 (21 de 25),25
+T1 C solo historia | xgboost,reg_lambda,mediana 5.247 (rango 0.1075–9.896),25
+T1 C solo historia | xgboost,subsample,1.0 (14 de 25),25
+T1 B historia+contexto | xgboost logit,colsample_bytree,0.8 (15 de 25),25
+T1 B historia+contexto | xgboost logit,learning_rate,mediana 0.01606 (rango 0.01454–0.05426),25
+T1 B historia+contexto | xgboost logit,max_depth,2 (16 de 25),25
+T1 B historia+contexto | xgboost logit,min_child_weight,1 (17 de 25),25
+T1 B historia+contexto | xgboost logit,n_estimators,200 (17 de 25),25
+T1 B historia+contexto | xgboost logit,reg_lambda,mediana 3.244 (rango 0.1002–9.896),25
+T1 B historia+contexto | xgboost logit,subsample,0.7 (16 de 25),25
+T2 | ridge | logit | mediana | info_mutua | sin clusters,alpha,mediana 4.043 (rango 0.001329–21.48),25
+T2 | ridge | logit | mediana | info_mutua | sin clusters,k,15 (11 de 25),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,colsample_bytree,1.0 (12 de 25),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,learning_rate,mediana 0.01803 (rango 0.01056–0.05363),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,max_depth,2 (23 de 25),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,min_child_weight,10 (12 de 25),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,n_estimators,500 (22 de 25),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,reg_lambda,mediana 0.1754 (rango 0.1002–3.241),25
+T2 | xgboost | logit | mediana | ninguna | con clusters,subsample,1.0 (14 de 25),25
+T2 | random_forest | logit | mediana | ninguna | con clusters,max_depth,3 (21 de 25),25
+T2 | random_forest | logit | mediana | ninguna | con clusters,max_features,0.5 (15 de 25),25
+T2 | random_forest | logit | mediana | ninguna | con clusters,min_samples_leaf,20 (13 de 25),25
+T2 | random_forest | logit | mediana | ninguna | con clusters,n_estimators,200 (15 de 25),25

@@ -5,3 +5,4 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 docs/superpowers/
+reports/resultados/_parcial_ajuste/

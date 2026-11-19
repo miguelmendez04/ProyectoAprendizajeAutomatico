@@ -199,6 +199,48 @@ modelado:
       figura_metodologias: reports/figuras/tarea2_metodologias.png
       figura_clusters: reports/figuras/clusters.png
 
+  # --- Ajuste de hiperparámetros con validación anidada, particiones temporales y arranque en frío estricto
+  # (src/modelado/ajuste.py, temporal.py, arranque_frio.py; python run_ajuste_temporal.py). Las configuraciones se FIJARON antes de correr.
+  ajuste_temporal:
+    # Validación anidada: externa GroupKFold por IES (5 pliegues x 5 semillas, distintas a las del cribado, la confirmación y la v3);
+    # interna GroupKFold por IES de 3 pliegues SOLO con el entrenamiento externo, RandomizedSearchCV de 30 iteraciones con scoring MAE.
+    semillas_externas: [301, 302, 303, 304, 305]
+    n_splits_externo: 5
+    n_splits_interno: 3
+    n_iter: 30
+    semilla_busqueda: 42               # semilla del muestreo aleatorio de hiperparámetros y de los pliegues internos
+    nivel_confianza: 0.95
+    n_jobs: -1                         # paralelo sobre (configuración, pliegue externo); cada búsqueda interna usa 1 hilo por tarea
+    k_info_mutua: [5, 10, 15, 20, 25, 30]   # si el preprocesamiento incluye info_mutua, también se ajusta k
+    # Tarea 1 (con historia): C solo historia (ridge, random_forest, xgboost) y B historia + contexto (xgboost, logit).
+    # Tarea 2: la mejor configuración de cada modelo de la confirmación (reports/resultados/experimentos_tarea2_confirmacion_resumen.csv).
+    configuraciones_tarea1:
+      - {nombre: "T1 C solo historia | ridge", formulacion: C_correccion_solo_historia, modelo: ridge, objetivo: ninguna, seleccion: ninguna, imputacion: mediana}
+      - {nombre: "T1 C solo historia | random_forest", formulacion: C_correccion_solo_historia, modelo: random_forest, objetivo: ninguna, seleccion: ninguna, imputacion: mediana}
+      - {nombre: "T1 C solo historia | xgboost", formulacion: C_correccion_solo_historia, modelo: xgboost, objetivo: ninguna, seleccion: ninguna, imputacion: mediana}
+      - {nombre: "T1 B historia+contexto | xgboost logit", formulacion: B_historia_contexto, modelo: xgboost, objetivo: logit, seleccion: ninguna, imputacion: mediana}
+    confirmacion_tarea2: reports/resultados/experimentos_tarea2_confirmacion_resumen.csv
+    # Particiones temporales (para cada una se re-ajusta con búsqueda interna solo sobre los años de entrenamiento)
+    particiones_temporales:
+      prepandemia: {entrena: [2015, 2017], prueba: [2018, 2019]}
+      estres: {entrena: [2015, 2019], prueba: [2020, 2021]}
+    bootstrap: {replicas: 1000, semilla: 2026}   # IC 95 % por bootstrap sobre IES
+    # Arranque en frío estricto (Tarea 2): confirmación 5 x 5 con las mismas configuraciones, agrupando por municipio sede
+    arranque_frio: {agrupar_por: cod_divipola_mpio}
+    salidas:
+      ajuste: reports/resultados/ajuste.csv
+      ajuste_resumen: reports/resultados/ajuste_resumen.csv
+      hiperparametros: reports/resultados/ajuste_hiperparametros.csv
+      temporal: reports/resultados/temporal.csv
+      temporal_predicciones: reports/resultados/temporal_predicciones.csv
+      temporal_grupos: reports/resultados/temporal_grupos.csv
+      arranque_frio: reports/resultados/arranque_frio_municipio.csv
+      arranque_frio_resumen: reports/resultados/arranque_frio_municipio_resumen.csv
+      arranque_frio_pliegues: reports/resultados/arranque_frio_pliegues.csv
+      informe: reports/resultados_ajuste_temporal.md
+      figura_ajuste: reports/figuras/ajuste_vs_defecto.png
+      figura_temporal: reports/figuras/temporal_por_anio.png
+
 particion:
   n_splits: 5                  # GroupKFold por cod_ies
   ultimo_anio_entrenamiento: 2019   # temporal: entrena 2015-2019, prueba 2020-2021

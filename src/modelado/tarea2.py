@@ -178,11 +178,14 @@ def _tarea(c: dict, etapa: str, rep: int, semilla: int, k: int, entrena: np.ndar
                  t_ajuste, t_pred, k_elegido(pipe))
 
 
-def evaluar(cfg: dict, configs: list[dict], etapa: str, semillas: list[int], df: pd.DataFrame | None = None, verbose: bool = False) -> pd.DataFrame:
-    """Líneas base y `configs` con los mismos pliegues (una repetición por semilla), en paralelo sobre (configuración, pliegue)."""
+def evaluar(cfg: dict, configs: list[dict], etapa: str, semillas: list[int], df: pd.DataFrame | None = None, verbose: bool = False,
+            grupo: str = "cod_ies") -> pd.DataFrame:
+    """Líneas base y `configs` con los mismos pliegues (una repetición por semilla), en paralelo sobre (configuración, pliegue).
+
+    `grupo` es la columna por la que se agrupan los pliegues: `cod_ies` (por defecto) o, para el arranque en frío estricto, `cod_divipola_mpio`."""
     p_exp, p = parametros_experimentos(cfg), parametros_tarea2(cfg)
     df, X, y, numericas, categoricas = preparar_datos(cfg, df)
-    repeticiones = particiones_repetidas(df, p["n_splits"], semillas)  # una sola vez
+    repeticiones = particiones_repetidas(df, p["n_splits"], semillas, grupo)  # una sola vez
     filas = lineas_base(df, y, etapa, repeticiones, semillas)
     hashes = [[hash_pliegue(df, prueba) for _, prueba in pliegues] for pliegues in repeticiones]
     tareas = [(c, rep, int(semilla), k, entrena, prueba, hashes[rep][k])

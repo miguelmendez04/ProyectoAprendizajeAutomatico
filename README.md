@@ -46,6 +46,7 @@ desercion predecir --tarea 2 --entrada contexto.csv --salida predicciones.csv [-
 - **Tarea 1 (con historia):** exige la columna `tasa_t1` (tasa de deserción del año anterior, entre 0 y 1) y acepta `tasa_t2`, `tasa_media_previa`, `n_anios_previos` y `falta_historia`; sin `tasa_t1` el comando sugiere la Tarea 2.
 - **Tarea 2 (sin historia):** exige el contexto de la IES (`sector`, `caracter` y las variables de Saber 11, TerriData y matrícula; las columnas de `data/processed/dataset_ies.csv` sirven de plantilla). Por defecto usa la mediana por carácter × sector (`tarea2_mediana`), porque el ridge no la supera con firmeza y colapsó en la partición prepandemia; `--modelo ridge` lo usa igual, con una advertencia (ver la ficha).
 - La entrada se valida antes de predecir y los errores dicen qué falta (código de salida 2).
+- **Columnas de la salida:** `modelo`, `tasa_predicha` y las identificadoras que haya en la entrada: `cod_ies`, `anio`, `semestre`, `cod_divipola_mpio`, `caso` e `id`. Para copiar otras (por ejemplo un nombre), use `--conservar nombre_ies,otra_columna`.
 
 Ejemplo con cinco filas de 2021 del propio dataset (`historia.csv` con `cod_ies, anio, tasa_t1, tasa_t2, tasa_media_previa, n_anios_previos, falta_historia`):
 ```
@@ -62,6 +63,16 @@ $ desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
 
 Son filas con las que se entrenó el modelo (no una evaluación) y muestran el tipo de resultado: la predicción es casi la tasa del año anterior con una pequeña corrección, y el error típico fuera de muestra es de unos 0,025 (ver arriba). Los modelos están guardados con pickle: no cargue archivos de modelo de origen desconocido (`predecir` verifica el SHA-256).
 
+
+## Demo
+Dos entradas de ejemplo en [`examples/`](examples/) (construidas con filas reales del dataset: no son datos nuevos de 2022). Tras `pip install -e .`:
+```
+desercion predecir --tarea 1 --entrada examples/historia_2022.csv --salida predicciones_t1.csv
+desercion predecir --tarea 2 --entrada examples/ies_nuevas.csv   --salida predicciones_t2.csv
+```
+- `historia_2022.csv` (Tarea 1): `cod_ies`, `anio`, `tasa_t1`, `tasa_t2` de cinco IES; `tasa_t1` es la tasa de 2021.
+- `ies_nuevas.csv` (Tarea 2, sin historia): una columna `caso` (nombre libre que la salida conserva) y el contexto de cinco IES de distinto sector y carácter. Usa la mediana por carácter × sector; agregue `--modelo ridge` para comparar (con advertencia).
+
 ## Cómo reproducir
 **Requisitos:** Python 3.14, las versiones fijas de `requirements.txt` y el dataset `data/processed/dataset_ies.csv` (ya está en el repositorio). Los datos crudos **no** son necesarios para el modelado; solo para la etapa `etl` (ver [`docs/DATOS.md`](docs/DATOS.md): URL, pasos de descarga, nombre y carpeta de cada archivo, fecha y checksums).
 
@@ -72,7 +83,7 @@ pip install -e ".[dev]"           # instala el paquete (comando `desercion`) con
 desercion verificar                           # SHA-256 del dataset (y de los crudos, si están)
 desercion reproducir --etapa todo --rapido    # verificación en < 10 min; escribe en reproduccion/
 desercion reproducir --etapa todo             # corrida completa (≈ 1,5 h)
-python -m pytest -q                           # 440 pruebas (≈ 2,5 min); `-m "not integration"` omite las que necesitan los datos publicados
+python -m pytest -q                           # 448 pruebas (≈ 2,5 min); `-m "not integration"` omite las que necesitan los datos publicados
 ```
 Sin `pip install -e` (solo con `requirements.txt`, generado desde `pyproject.toml`): `pip install -r requirements.txt` y anteponer `PYTHONPATH=src` (PowerShell: `$env:PYTHONPATH = "src"`) a `python -m desercion_ies <comando>`, que es equivalente a `desercion <comando>`.
 

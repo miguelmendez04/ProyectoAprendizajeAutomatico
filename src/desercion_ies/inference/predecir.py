@@ -7,7 +7,7 @@ La entrada es un CSV con una fila por IES × año y las columnas que espera el m
 `data/processed/dataset_ies.csv` sirven de ejemplo). Se valida antes de predecir y los errores dicen qué falta.
 - **Tarea 1** (con historia): exige `tasa_t1` (tasa de deserción del año anterior, entre 0 y 1). Las demás columnas de historia son opcionales.
 - **Tarea 2** (sin historia): exige el contexto de la IES (`sector`, `caracter`, `log_matriculados_spadies_t2`, indicadores de Saber 11 y TerriData…).
-La salida trae los identificadores que haya en la entrada (`cod_ies`, `anio`, …), `modelo` y `tasa_predicha` (proporción entre 0 y 1).
+La salida trae los identificadores que haya en la entrada (`cod_ies`, `anio`, `semestre`, `cod_divipola_mpio`, `caso`, `id`) y las columnas pedidas con `--conservar`, `modelo` y `tasa_predicha` (proporción entre 0 y 1).
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from desercion_ies.reproducibilidad import sha256_archivo
 
 log = logging.getLogger(__name__)
 
+CLAVES_PUBLICADAS = ("tarea1_ridge", "tarea2_ridge", "tarea2_mediana")
 MODELOS_T2 = {"ridge": "tarea2_ridge", "mediana": "tarea2_mediana"}
 
 
@@ -49,6 +50,11 @@ def configurar(ap: argparse.ArgumentParser) -> None:
         choices=sorted(MODELOS_T2),
         default="mediana",
         help="solo Tarea 2: mediana por carácter × sector (por defecto) o ridge con información mutua (sin mejora firme sobre la mediana; ver models/model_card.md)",
+    )
+    ap.add_argument(
+        "--conservar",
+        default="",
+        help="columnas de la entrada, separadas por comas, que se copian a la salida además de las identificadoras",
     )
     ap.add_argument(
         "--modelos-dir",
@@ -103,10 +109,21 @@ def leer_entrada(ruta: str | Path) -> pd.DataFrame:
         ) from e
 
 
-def predecir_tabla(modelo: ModeloEntrenado, df: pd.DataFrame, etiqueta: str) -> pd.DataFrame:
-    """Tabla de salida: identificadores presentes + `modelo` + `tasa_predicha`."""
+def predecir_tabla(
+    modelo: ModeloEntrenado, df: pd.DataFrame, etiqueta: str, conservar: tuple[str, ...] = ()
+) -> pd.DataFrame:
+    """Tabla de salida: columnas identificadoras presentes + `modelo` + `tasa_predicha`.
+
+    Se conservan `IDENTIFICADORES` (cod_ies, anio, semestre, cod_divipola_mpio), `caso` e `id` si están en la
+    entrada, y las que se pidan con `conservar` (`--conservar`); pedir una que no existe es un error.
+    """
+    faltan = [c for c in conservar if c not in df.columns]
+    if faltan:
+        raise EntradaInvalida(f"--conservar pide columnas que no están en la entrada: {faltan}")
     pred = modelo.predecir(df)
-    ids = [c for c in IDENTIFICADORES if c in df.columns]
+    ids = list(
+        dict.fromkeys(c for c in (*IDENTIFICADORES, "caso", "id", *conservar) if c in df.columns)
+    )
     salida = df[ids].copy() if ids else pd.DataFrame(index=df.index)
     salida["modelo"] = etiqueta
     salida["tasa_predicha"] = pred
@@ -125,7 +142,12 @@ def ejecutar(args: argparse.Namespace) -> int:
         log.warning(ADVERTENCIA_RIDGE)
     try:
         modelo, meta = cargar_modelo(clave_modelo(args.tarea, args.modelo), args.modelos_dir)
-        salida = predecir_tabla(modelo, leer_entrada(args.entrada), meta["nombre"])
+        salida = predecir_tabla(
+            modelo,
+            leer_entrada(args.entrada),
+            meta["nombre"],
+            tuple(c.strip() for c in args.conservar.split(",") if c.strip()),
+        )
     except EntradaInvalida as e:
         log.error("entrada no válida: %s", e)
         return 2

@@ -24,6 +24,7 @@ dependencies = [
     "psutil==7.2.2",
     "matplotlib==3.11.0",
     "pandera==0.35.0",
+    "pyarrow==23.0.1",  # lo necesita joblib.load de los modelos de models/ (dtypes de pandas 3)
     "PyYAML==6.0.3",
     "requests==2.34.2",
     "openpyxl==3.1.5",

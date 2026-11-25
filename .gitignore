@@ -13,3 +13,4 @@ reproduccion/
 *.egg-info/
 build/
 .ruff_cache/
+/paper_overleaf.zip

@@ -19,6 +19,11 @@
 \IEEEauthorblockA{\textit{Maestr\'ia en Inteligencia Artificial y Ciencia de Datos} \\
 \textit{Universidad Aut\'onoma de Occidente}\\
 Cali, Colombia}
+\and
+\IEEEauthorblockN{Sim\'on Colonia Amador}
+\IEEEauthorblockA{\textit{Maestr\'ia en Inteligencia Artificial y Ciencia de Datos} \\
+\textit{Universidad Aut\'onoma de Occidente}\\
+Cali, Colombia}
 }
 
 \maketitle
@@ -45,7 +50,7 @@ We therefore pose dropout prediction at the institution level, as a supervised r
 
 Our contributions are:
 \begin{enumerate}
-\item A reproducible ETL that builds an institution-year dataset (1,928 rows, 295 HEIs, 2015--2021) from four Colombian open sources, with explicit lags, quality filters, 448 automated tests with continuous integration, a single-command reproduction, a measured bias analysis, and an installable package whose command-line interface trains and applies the final models, documented in a model card~\cite{mitchell2019}.
+\item A reproducible ETL that builds an institution-year dataset (1,928 rows, 295 HEIs, 2015--2021) from four Colombian open sources, with explicit lags, quality filters, 448 automated tests with continuous integration, a single-command reproduction of every table, a measured bias analysis, and an installable package whose command-line interface trains and applies the final models, documented in a model card~\cite{mitchell2019}.
 \item A rigorous evaluation protocol: grouped cross-validation by institution, repeated $5\times5$ with the Nadeau--Bengio corrected $t$-test~\cite{nadeau2003}, a two-stage screening/confirmation design, nested hyperparameter search, temporal splits and a municipality-level cold start.
 \item A comparison of three models and three preprocessing methodologies, including nonlinear dimensionality reduction (kernel PCA, an autoencoder) and K-means cluster features.
 \item An honest negative result: persistence dominates Task~1, and territorial context adds no detectable value over institution type in Task~2.
@@ -79,7 +84,7 @@ We address the three gaps with a national institution-year panel built from open
 
 \section{Dataset Construction}
 
-The final dataset has 1,928 institution-year rows for 295 HEIs, with target years 2015--2021 and 43 columns. Every step is code in the public repository~\cite{repo}, and a test suite of 448 checks, run by continuous integration, covers the ETL and the modeling code. A single command reruns every stage; from a clean clone, the ETL regenerates the dataset byte for byte (same SHA-256), and the seeded experiments reproduce the published results exactly.
+The final dataset has 1,928 institution-year rows for 295 HEIs, with target years 2015--2021 and 43 columns. Every step is code in the public repository~\cite{repo}, and a test suite of 448 checks, run by continuous integration, covers the ETL and the modeling code. A single command reruns every stage. Given the raw source files, some of which require a manual download, the ETL regenerates the dataset byte for byte (same SHA-256); the processed dataset is also versioned, so from a clean clone the seeded experiments reproduce the published tables exactly, except run times and a quick mode that shortens the hyperparameter search.
 
 \subsection{Sources}
 \begin{itemize}

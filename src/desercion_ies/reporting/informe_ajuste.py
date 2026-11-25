@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from desercion_ies.analysis.descriptivo_temporal import descriptivo_temporal
 from desercion_ies.reporting.informe_experimentos import _num, _pct
 from desercion_ies.reporting.informe_v3 import _c, _ic, _p, _veredicto
 
@@ -440,6 +441,20 @@ def _nota_diagnostico(pred: pd.DataFrame, umbral: float = 0.005, peores: int = 4
     )
 
 
+def _tabla_descriptiva(d: pd.DataFrame) -> str:
+    lineas = [
+        "| Tarea | Configuración | Variante | n | MAE | Error abs. mediano | R² | Error ≤ 0,02 | Error ≤ 0,05 | Spearman | Precisión 25 % mayor riesgo |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for f in d.itertuples():
+        lineas.append(
+            f"| {f.tarea[1]} | `{_c(corto(f.configuracion))}` | {f.variante} | {f.n} | {_num(f.mae)} | {_num(f.error_absoluto_mediano)} | "
+            f"{_num(f.r2, 2)} | {f.pct_error_hasta_2pp:.0f} % | {f.pct_error_hasta_5pp:.0f} % | {_num(f.spearman, 2)} | "
+            f"{100 * f.precision_25_mayor_riesgo:.0f} % |"
+        )
+    return "\n".join(lineas)
+
+
 # ---------- figuras ----------
 def figura_ajuste(r: pd.DataFrame, ruta: str | Path) -> None:
     fig, ejes = plt.subplots(1, 2, figsize=(14, 5.8))
@@ -543,6 +558,8 @@ def generar_informe(cfg: dict, s: dict[str, Path], tiempos: dict) -> str:
     tam = pd.read_csv(s["arranque_frio_pliegues"])
     ies = pd.read_csv(p["confirmacion_tarea2"])
     pred = pd.read_csv(s["temporal_predicciones"], dtype={"cod_ies": str, "cod_divipola_mpio": str})
+    descriptivo = descriptivo_temporal(pred)
+    descriptivo.to_csv(Path(s["temporal"]).with_name("temporal_descriptivo.csv"), index=False)
     figura_ajuste(r, s["figura_ajuste"])
     figura_temporal(gr, s["figura_temporal"])
     b = p["bootstrap"]
@@ -613,6 +630,12 @@ Medias por pliegue externo, con las configuraciones corriendo en paralelo (no so
 {chr(10).join(secciones_temporales)}
 
 ![MAE por año de prueba](figures/temporal_por_anio.png)
+
+### Resumen descriptivo con las dos particiones juntas
+
+**Descriptivo: sin intervalos ni pruebas de significancia.** Junta las filas de prueba de prepandemia y de estrés (cada partición con su propio reajuste), por configuración; no sirve para afirmar que un modelo supera a otro. «Precisión 25 % mayor riesgo»: de la cuarta parte con mayor predicción, cuánto está en la cuarta parte con mayor tasa observada (empates repartidos en proporción). Tabla completa: `reports/tables/temporal_descriptivo.csv`.
+
+{_tabla_descriptiva(descriptivo)}
 
 ### Degradación en 2020–2021 (modelos ajustados y líneas base)
 

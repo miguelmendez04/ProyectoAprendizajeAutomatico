@@ -195,6 +195,31 @@ Medias por pliegue externo, con las configuraciones corriendo en paralelo (no so
 
 ![MAE por año de prueba](figures/temporal_por_anio.png)
 
+### Resumen descriptivo con las dos particiones juntas
+
+**Descriptivo: sin intervalos ni pruebas de significancia.** Junta las filas de prueba de prepandemia y de estrés (cada partición con su propio reajuste), por configuración; no sirve para afirmar que un modelo supera a otro. «Precisión 25 % mayor riesgo»: de la cuarta parte con mayor predicción, cuánto está en la cuarta parte con mayor tasa observada (empates repartidos en proporción). Tabla completa: `reports/tables/temporal_descriptivo.csv`.
+
+| Tarea | Configuración | Variante | n | MAE | Error abs. mediano | R² | Error ≤ 0,02 | Error ≤ 0,05 | Spearman | Precisión 25 % mayor riesgo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `base_ingenua` | linea_base | 1095 | 0,0231 | 0,0113 | 0,61 | 68 % | 91 % | 0,87 | 78 % |
+| 1 | `base_mediana` | linea_base | 1095 | 0,0473 | 0,0321 | -0,02 | 33 % | 72 % | 0,04 | 25 % |
+| 2 | `T2 base_mediana_grupo` | linea_base | 1095 | 0,0380 | 0,0262 | 0,29 | 39 % | 78 % | 0,59 | 59 % |
+| 2 | `T2 base_mediana` | linea_base | 1095 | 0,0473 | 0,0321 | -0,02 | 33 % | 72 % | 0,04 | 25 % |
+| 1 | `C solo historia \| ridge` | defecto | 1095 | 0,0227 | 0,0124 | 0,66 | 69 % | 91 % | 0,88 | 77 % |
+| 1 | `C solo historia \| ridge` | ajustado | 1095 | 0,0226 | 0,0120 | 0,66 | 68 % | 92 % | 0,88 | 77 % |
+| 1 | `C solo historia \| random_forest` | defecto | 1095 | 0,0253 | 0,0138 | 0,58 | 65 % | 90 % | 0,87 | 77 % |
+| 1 | `C solo historia \| random_forest` | ajustado | 1095 | 0,0229 | 0,0120 | 0,65 | 67 % | 91 % | 0,88 | 78 % |
+| 1 | `C solo historia \| xgboost` | defecto | 1095 | 0,0256 | 0,0139 | 0,56 | 65 % | 91 % | 0,87 | 76 % |
+| 1 | `C solo historia \| xgboost` | ajustado | 1095 | 0,0234 | 0,0121 | 0,63 | 67 % | 91 % | 0,88 | 79 % |
+| 1 | `B historia+contexto \| xgboost logit` | defecto | 1095 | 0,0256 | 0,0140 | 0,59 | 64 % | 89 % | 0,87 | 76 % |
+| 1 | `B historia+contexto \| xgboost logit` | ajustado | 1095 | 0,0241 | 0,0133 | 0,61 | 67 % | 91 % | 0,88 | 77 % |
+| 2 | `ridge \| logit \| mediana \| info_mutua \| sin clusters` | defecto | 1095 | 0,0375 | 0,0249 | 0,34 | 42 % | 79 % | 0,59 | 62 % |
+| 2 | `ridge \| logit \| mediana \| info_mutua \| sin clusters` | ajustado | 1095 | 0,0517 | 0,0279 | -0,18 | 40 % | 73 % | 0,53 | 59 % |
+| 2 | `xgboost \| logit \| mediana \| ninguna \| con clusters` | defecto | 1095 | 0,0361 | 0,0224 | 0,34 | 45 % | 80 % | 0,67 | 69 % |
+| 2 | `xgboost \| logit \| mediana \| ninguna \| con clusters` | ajustado | 1095 | 0,0364 | 0,0244 | 0,37 | 43 % | 78 % | 0,63 | 66 % |
+| 2 | `random_forest \| logit \| mediana \| ninguna \| con clusters` | defecto | 1095 | 0,0354 | 0,0225 | 0,40 | 45 % | 81 % | 0,68 | 69 % |
+| 2 | `random_forest \| logit \| mediana \| ninguna \| con clusters` | ajustado | 1095 | 0,0367 | 0,0248 | 0,34 | 43 % | 79 % | 0,62 | 66 % |
+
 ### Degradación en 2020–2021 (modelos ajustados y líneas base)
 
 #### Tarea 1

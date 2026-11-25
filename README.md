@@ -7,6 +7,8 @@
 
 > **English summary.** ETL and machine-learning experiments to estimate the dropout rate of Colombian higher-education institutions (IES × year, 2015–2021; 1,928 rows, 295 institutions) from SPADIES (target), SNIES, Saber 11 and TerriData. **Task 1** (with the institution's own history): does a model beat the naive forecast "this year's rate = last year's rate"? **Task 2** (no history, "cold start"): can the municipal and institutional context alone beat the median by character × sector? Evaluation: GroupKFold by institution (5 × 5), 95 % CIs with the Nadeau–Bengio correction, nested hyper-parameter tuning, temporal splits, bias analysis, and measured computational cost. **Main findings:** the best Task 1 model (ridge correcting the naive forecast) improves MAE by 4.4 % over the naive baseline (0.0245 vs 0.0256), small but significant under both tests; in Task 2 no model beats the median-by-group baseline with statistical firmness (best: ridge, +0.9 %, p = 0.60). **Use / reproduce:** `pip install -e ".[dev]"`, then `desercion predecir --tarea 1 ...` (models in `models/`, see the [model card](models/model_card.md)) or `desercion reproducir --etapa todo --rapido` (< 10 min, writes to `reproduccion/`, does not touch published results) or `--etapa todo` (≈ 1.5 h). Code: MIT; the derived dataset is CC BY-SA 4.0 with attribution to MEN (SPADIES/SNIES), ICFES, DNP (TerriData) and DANE ([`data/processed/LICENSE`](data/processed/LICENSE)); raw data keep their sources' terms ([`docs/DATOS.md`](docs/DATOS.md)).
 
+**Paper:** [`paper/paper_desercion_ies.pdf`](paper/paper_desercion_ies.pdf) (en inglés; fuentes LaTeX en [`paper/`](paper/)).
+
 Proyecto del curso Aprendizaje Automático (Maestría IA y Ciencia de Datos, UAO). Entrega: 26 de noviembre de 2026 (tag `v1.0-entrega`).
 Especificación: `docs/guia_etl.md` · Bitácora de decisiones y calidad de datos: `reports/01_etl.md`.
 
@@ -149,6 +151,7 @@ data/processed/          dataset_ies.csv (versionado, CC BY-SA 4.0)   ·   data/
 reports/                 01_etl.md … 07_complejidad.md, etl/ (anexos del ETL), historico/ (v1 y v2), tables/ (CSV), figures/
 notebooks/               01 a 06 (+ construir/: los scripts que los generan y ejecutan)
 tests/unit/              pruebas unitarias   ·   tests/integration/: necesitan data/processed, data/interim o los resultados publicados
+paper/                   paper en formato IEEE (main.tex, references.bib, figuras) y paper_desercion_ies.pdf
 docs/                    guia_etl.md, DATOS.md, REPRODUCIBILIDAD.md, MIGRACION.md, ARQUITECTURA.md
 .github/workflows/ci.yml integración continua (ruff, pytest sin integración, desercion verificar)
 .pre-commit-config.yaml  ruff, ruff-format y revisiones de archivos

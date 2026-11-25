@@ -2,8 +2,8 @@
 #
 # No se incluye nbstripout: los cuadernos de notebooks/ se versionan CON sus salidas (son la evidencia ejecutada que se revisa en GitHub;
 # los genera y ejecuta notebooks/construir/). Tampoco se tocan los datos ni lo generado por el pipeline (CSV, figuras, informes, fixtures):
-# sus finales de línea y espacios son parte del resultado publicado y de sus SHA-256.
-exclude: ^(data/|reports/|notebooks/.*\.ipynb$|tests/unit/fixtures/)
+# sus finales de línea y espacios son parte del resultado publicado y de sus SHA-256. paper/ se versiona tal como se entregó.
+exclude: ^(data/|paper/|reports/|notebooks/.*\.ipynb$|tests/unit/fixtures/)
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

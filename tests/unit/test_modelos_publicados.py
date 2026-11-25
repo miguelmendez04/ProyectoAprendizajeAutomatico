@@ -47,11 +47,11 @@ def test_pyarrow_esta_declarado_en_las_dependencias():
 
 
 @pytest.mark.parametrize(
-    ("tarea", "archivo", "id_esperado"),
-    [(1, "historia_2022.csv", "cod_ies"), (2, "ies_nuevas.csv", "caso")],
+    ("tarea", "archivo", "id_esperado", "filas"),
+    [(1, "historia_2022.csv", "cod_ies", 5), (2, "ies_nuevas.csv", "caso", 4)],
 )
 def test_los_ejemplos_de_examples_se_predicen_y_conservan_su_identificador(
-    tarea, archivo, id_esperado, tmp_path
+    tarea, archivo, id_esperado, filas, tmp_path
 ):
     salida = tmp_path / "p.csv"
     ap = argparse.ArgumentParser()
@@ -62,7 +62,7 @@ def test_los_ejemplos_de_examples_se_predicen_y_conservan_su_identificador(
     )
     assert pr.ejecutar(args) == 0
     p = pd.read_csv(salida)
-    assert id_esperado in p.columns and len(p) == 5
+    assert id_esperado in p.columns and len(p) == filas
     assert p["tasa_predicha"].between(0, 1).all()
 
 

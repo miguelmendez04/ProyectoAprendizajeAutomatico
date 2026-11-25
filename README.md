@@ -63,15 +63,23 @@ $ desercion predecir --tarea 1 --entrada historia.csv --salida predicciones.csv
 
 Son filas con las que se entrenó el modelo (no una evaluación) y muestran el tipo de resultado: la predicción es casi la tasa del año anterior con una pequeña corrección, y el error típico fuera de muestra es de unos 0,025 (ver arriba). Los modelos están guardados con pickle: no cargue archivos de modelo de origen desconocido (`predecir` verifica el SHA-256).
 
-
 ## Demo
-Dos entradas de ejemplo en [`examples/`](examples/) (construidas con filas reales del dataset: no son datos nuevos de 2022). Tras `pip install -e .`:
+Dos entradas de ejemplo en [`examples/`](examples/). Tras `pip install -e .`:
 ```
 desercion predecir --tarea 1 --entrada examples/historia_2022.csv --salida predicciones_t1.csv
 desercion predecir --tarea 2 --entrada examples/ies_nuevas.csv   --salida predicciones_t2.csv
 ```
-- `historia_2022.csv` (Tarea 1): `cod_ies`, `anio`, `tasa_t1`, `tasa_t2` de cinco IES; `tasa_t1` es la tasa de 2021.
-- `ies_nuevas.csv` (Tarea 2, sin historia): una columna `caso` (nombre libre que la salida conserva) y el contexto de cinco IES de distinto sector y carácter. Usa la mediana por carácter × sector; agregue `--modelo ridge` para comparar (con advertencia).
+- `historia_2022.csv` (Tarea 1): la historia de cinco IES para estimar 2022 (`cod_ies`, `tasa_t1` = tasa observada en 2021, `tasa_t2`, `tasa_media_previa`, `n_anios_previos`, `falta_historia`). El repositorio no tiene la tasa de 2022, así que estas predicciones no se pueden evaluar aquí.
+- `ies_nuevas.csv` (Tarea 2, sin historia): cuatro casos descritos solo por `sector` y `caracter`, con una columna `caso` que la salida conserva. Usa la mediana por carácter × sector; con estas columnas **no** se puede usar `--modelo ridge`, que además exige el contexto completo (el comando lo dice y sale con código 2).
+
+Salida de la Tarea 2:
+```
+caso,modelo,tasa_predicha
+A,T2 mediana carácter × sector,0.20635759557547279
+B,T2 mediana carácter × sector,0.0820695807314897
+C,T2 mediana carácter × sector,0.13731280495697534
+D,T2 mediana carácter × sector,0.0742733765155289
+```
 
 ## Cómo reproducir
 **Requisitos:** Python 3.14, las versiones fijas de `requirements.txt` y el dataset `data/processed/dataset_ies.csv` (ya está en el repositorio). Los datos crudos **no** son necesarios para el modelado; solo para la etapa `etl` (ver [`docs/DATOS.md`](docs/DATOS.md): URL, pasos de descarga, nombre y carpeta de cada archivo, fecha y checksums).
